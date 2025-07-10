@@ -9,6 +9,7 @@ import {
   primaryKey,
   foreignKey,
   boolean,
+  unique,
 } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('User', {
@@ -168,3 +169,98 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+// Organization Management Tables
+export const organization = pgTable('Organization', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull().unique(),
+  description: text('description'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  ownerId: uuid('ownerId')
+    .notNull()
+    .references(() => user.id),
+});
+
+export type Organization = InferSelectModel<typeof organization>;
+
+export const organizationMember = pgTable(
+  'OrganizationMember',
+  {
+    id: uuid('id').primaryKey().notNull().defaultRandom(),
+    organizationId: uuid('organizationId')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    userId: uuid('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    role: varchar('role', { enum: ['owner', 'admin', 'member'] })
+      .notNull()
+      .default('member'),
+    joinedAt: timestamp('joinedAt').notNull().defaultNow(),
+    invitedBy: uuid('invitedBy').references(() => user.id),
+  },
+  (table) => ({
+    // Ensure a user can only be a member of an organization once
+    uniqueUserOrg: unique().on(table.organizationId, table.userId),
+  }),
+);
+
+export type OrganizationMember = InferSelectModel<typeof organizationMember>;
+
+export const organizationInvitation = pgTable('OrganizationInvitation', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  organizationId: uuid('organizationId')
+    .notNull()
+    .references(() => organization.id, { onDelete: 'cascade' }),
+  email: varchar('email', { length: 255 }).notNull(),
+  role: varchar('role', { enum: ['admin', 'member'] })
+    .notNull()
+    .default('member'),
+  token: varchar('token', { length: 255 }).notNull().unique(),
+  invitedBy: uuid('invitedBy')
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  expiresAt: timestamp('expiresAt').notNull(),
+  acceptedAt: timestamp('acceptedAt'),
+  rejectedAt: timestamp('rejectedAt'),
+});
+
+export type OrganizationInvitation = InferSelectModel<typeof organizationInvitation>;
+
+// Add organizationId to chat table to support organization-level chats
+export const organizationChat = pgTable('OrganizationChat', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  createdAt: timestamp('createdAt').notNull(),
+  title: text('title').notNull(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id),
+  organizationId: uuid('organizationId')
+    .notNull()
+    .references(() => organization.id, { onDelete: 'cascade' }),
+  visibility: varchar('visibility', { enum: ['public', 'private', 'organization'] })
+    .notNull()
+    .default('organization'),
+});
+
+export type OrganizationChat = InferSelectModel<typeof organizationChat>;
+
+// User's active organization context
+export const userOrganizationContext = pgTable(
+  'UserOrganizationContext',
+  {
+    userId: uuid('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    activeOrganizationId: uuid('activeOrganizationId')
+      .references(() => organization.id, { onDelete: 'set null' }),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.userId] }),
+  }),
+);
+
+export type UserOrganizationContext = InferSelectModel<typeof userOrganizationContext>;

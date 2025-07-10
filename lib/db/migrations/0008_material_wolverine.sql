@@ -1,0 +1,1 @@
+-- This migration is no longer needed since we fixed the original migration
