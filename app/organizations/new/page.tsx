@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,59 +63,63 @@ export default function NewOrganizationPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Create New Organization</h1>
-        <p className="text-gray-600 mt-2">
-          Create a new organization to collaborate with your team
-        </p>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 p-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold">Create Organization</h1>
+            <p className="text-gray-600 mt-1">
+              Create a new organization to collaborate with your team
+            </p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Organization Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Organization Name *</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter organization name"
+                    disabled={creating}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Input
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Brief description of your organization"
+                    disabled={creating}
+                  />
+                </div>
+
+                <div className="flex space-x-2 pt-4">
+                  <Button type="submit" disabled={creating || !name.trim()}>
+                    {creating ? 'Creating...' : 'Create Organization'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.back()}
+                    disabled={creating}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Organization Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Organization Name *</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter organization name"
-                disabled={creating}
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="description">Description (Optional)</Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Brief description of your organization"
-                disabled={creating}
-              />
-            </div>
-
-            <div className="flex space-x-2 pt-4">
-              <Button type="submit" disabled={creating || !name.trim()}>
-                {creating ? 'Creating...' : 'Create Organization'}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.back()}
-                disabled={creating}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -248,170 +248,171 @@ export default function OrganizationDetailPage({
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="space-y-4">
-          <div className="h-8 bg-gray-200 animate-pulse rounded"></div>
-          <Card className="animate-pulse">
-            <CardContent className="p-6">
-              <div className="space-y-3">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-4 bg-gray-200 rounded"></div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+      <div className="flex flex-col h-full">
+        <div className="flex-1 p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-16 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 p-6">
+        <div className="mb-6">
           <h1 className="text-2xl font-bold">Organization Management</h1>
           <p className="text-gray-600 mt-1">
-            Manage members and permissions for your organization
+            Manage members and settings for this organization
           </p>
         </div>
-        <Button variant="outline" onClick={() => router.push('/organizations')}>
-          Back to Organizations
-        </Button>
-      </div>
 
-      {/* Invite Member Section */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <MailIcon className="h-5 w-5" />
-            <span>Invite New Member</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleInviteMember} className="flex space-x-4">
-            <div className="flex-1">
-              <Label htmlFor="email" className="sr-only">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter email address"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                disabled={inviting}
-              />
-            </div>
-            <div className="w-32">
-              <Select
-                value={inviteRole}
-                onValueChange={(value: 'admin' | 'member') => setInviteRole(value)}
-                disabled={inviting}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="submit" disabled={inviting || !inviteEmail.trim()}>
-              {inviting ? 'Sending...' : 'Send Invite'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Members List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <UsersIcon className="h-5 w-5" />
-            <span>Members ({members.length})</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {members.map((member) => (
-              <div
-                key={member.id}
-                className="flex items-center justify-between p-4 border rounded-lg"
-              >
-                <div className="flex items-center space-x-3">
-                  <UserCheckIcon className="h-8 w-8 text-gray-400" />
-                  <div>
-                    <div className="font-medium">{member.email}</div>
-                    <div className="text-sm text-gray-500">
-                      Joined {new Date(member.joinedAt).toLocaleDateString()}
-                    </div>
-                  </div>
+        <div className="grid gap-6">
+          {/* Invite Members Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <MailIcon className="h-5 w-5 mr-2" />
+                Invite Members
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleInviteMember} className="flex gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="email" className="sr-only">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter email address"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    disabled={inviting}
+                  />
                 </div>
-                <div className="flex items-center space-x-3">
-                  <Badge variant={getRoleBadgeVariant(member.role)}>
-                    {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-                  </Badge>
-                  {member.role !== 'owner' && (
-                    <div className="flex items-center space-x-2">
-                      <Select
-                        value={member.role}
-                        onValueChange={(value: 'admin' | 'member') =>
-                          handleUpdateMemberRole(member.userId, value)
-                        }
-                        disabled={updatingMember === member.userId}
-                      >
-                        <SelectTrigger className="w-24">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="member">Member</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={updatingMember === member.userId}
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remove Member</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to remove {member.email} from the
-                              organization?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleRemoveMember(member.userId)}
-                              className="bg-red-600 hover:bg-red-700"
+                <div className="w-32">
+                  <Select
+                    value={inviteRole}
+                    onValueChange={(value: 'admin' | 'member') => setInviteRole(value)}
+                    disabled={inviting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="member">Member</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="submit" disabled={inviting || !inviteEmail.trim()}>
+                  {inviting ? 'Inviting...' : 'Invite'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Members List */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <UsersIcon className="h-5 w-5 mr-2" />
+                Members ({members.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {members.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <UsersIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>No members found</p>
+                  <p className="text-sm">Invite members to get started</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {members.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <UserCheckIcon className="h-8 w-8 text-gray-400" />
+                        <div>
+                          <p className="font-medium">{member.email}</p>
+                          <p className="text-sm text-gray-500">
+                            Joined {new Date(member.joinedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant={getRoleBadgeVariant(member.role)}>
+                          {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                        </Badge>
+                        {member.role !== 'owner' && (
+                          <div className="flex items-center space-x-1">
+                            <Select
+                              value={member.role}
+                              onValueChange={(value: 'admin' | 'member') =>
+                                handleUpdateMemberRole(member.userId, value)
+                              }
+                              disabled={updatingMember === member.userId}
                             >
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <SelectTrigger className="w-24 h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="member">Member</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700"
+                                  disabled={updatingMember === member.userId}
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove Member</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to remove {member.email} from this
+                                    organization? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleRemoveMember(member.userId)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Remove
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
-            ))}
-
-            {members.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No members found. Invite someone to get started!
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

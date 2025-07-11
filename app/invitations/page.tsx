@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BuildingIcon, CheckIcon, XIcon } from 'lucide-react';
 import { toast } from '@/components/toast';
 
-export default function InvitationPage() {
+function InvitationPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -85,7 +85,7 @@ export default function InvitationPage() {
           </div>
           <CardTitle className="text-2xl">Organization Invitation</CardTitle>
           <p className="text-gray-600 dark:text-gray-400">
-            You've been invited to join an organization
+            You&apos;ve been invited to join an organization
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -128,5 +128,13 @@ export default function InvitationPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function InvitationPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <InvitationPageContent />
+    </Suspense>
   );
 }
