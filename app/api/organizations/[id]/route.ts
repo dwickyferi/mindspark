@@ -4,6 +4,7 @@ import {
   getOrganizationById,
   deleteOrganization,
   setActiveOrganization,
+  updateOrganization,
 } from '@/lib/db/queries';
 
 export async function GET(
@@ -74,7 +75,7 @@ export async function PUT(
 
   try {
     const { id } = await params;
-    const { action } = await request.json();
+    const { action, name, description } = await request.json();
 
     if (action === 'set_active') {
       await setActiveOrganization({
@@ -83,6 +84,21 @@ export async function PUT(
       });
 
       return new Response('Active organization updated', { status: 200 });
+    }
+
+    if (action === 'update_details') {
+      if (!name || !name.trim()) {
+        return new Response('Organization name is required', { status: 400 });
+      }
+
+      const updatedOrg = await updateOrganization({
+        id,
+        name: name.trim(),
+        description: description?.trim() || undefined,
+        userId: session.user.id,
+      });
+
+      return Response.json(updatedOrg);
     }
 
     return new Response('Invalid action', { status: 400 });

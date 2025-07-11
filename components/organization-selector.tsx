@@ -1,86 +1,92 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { useState, useEffect, useCallback } from 'react';
+import { Building2, Plus, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { PlusIcon, UsersIcon, BuildingIcon } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useRouter } from 'next/navigation';
 import { toast } from '@/components/toast';
+import { LoaderIcon } from '@/components/icons';
+import { usePolling, useRefreshListener } from '@/hooks/use-polling';
 
 interface Organization {
   id: string;
   name: string;
-  description?: string;
-  role: string;
   memberCount: number;
+  isActive: boolean;
 }
 
 interface OrganizationSelectorProps {
-  activeOrganizationId?: string | null;
-  onOrganizationChange?: (organizationId: string | null) => void;
+  onOrganizationChange?: (organizationId: string) => void;
 }
 
-export function OrganizationSelector({
-  activeOrganizationId,
-  onOrganizationChange,
-}: OrganizationSelectorProps) {
-  const router = useRouter();
+export function OrganizationSelector({ onOrganizationChange }: OrganizationSelectorProps) {
+  const [open, setOpen] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [switching, setSwitching] = useState(false);
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
+  const router = useRouter();
 
-  useEffect(() => {
-    fetchOrganizations();
-  }, []);
-
-  const fetchOrganizations = async () => {
+  const fetchOrganizations = useCallback(async () => {
     try {
       const response = await fetch('/api/organizations');
       if (response.ok) {
         const data = await response.json();
         setOrganizations(data);
-      } else if (response.status === 500) {
-        // Likely the organization tables don't exist yet
-        console.warn('Organization features not available yet');
-        setOrganizations([]);
-      } else {
-        console.error('Failed to fetch organizations');
-        setOrganizations([]);
+        
+        // Find the active organization
+        const activeOrg = data.find((org: Organization) => org.isActive);
+        if (activeOrg) {
+          setSelectedOrg(activeOrg);
+        }
       }
     } catch (error) {
       console.error('Error fetching organizations:', error);
-      setOrganizations([]);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
 
-  const handleOrganizationChange = async (organizationId: string) => {
-    setSwitching(true);
+  // Initial fetch and polling
+  usePolling(fetchOrganizations, {
+    enabled: true,
+    interval: 30000, // 30 seconds
+  });
+
+  // Listen for manual refresh triggers
+  useRefreshListener(fetchOrganizations);
+
+  const handleOrganizationSwitch = async (organizationId: string) => {
+    setIsSwitching(true);
     try {
       const response = await fetch('/api/organizations/switch', {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          organizationId: organizationId === 'personal' ? null : organizationId,
-        }),
+        body: JSON.stringify({ organizationId }),
       });
 
       if (response.ok) {
-        onOrganizationChange?.(organizationId === 'personal' ? null : organizationId);
-        toast({
-          type: 'success',
-          description: 'Organization switched successfully',
-        });
-        router.refresh();
+        const newActiveOrg = organizations.find(org => org.id === organizationId);
+        if (newActiveOrg) {
+          setSelectedOrg(newActiveOrg);
+          onOrganizationChange?.(organizationId);
+          
+          // Trigger refresh for other components
+          window.dispatchEvent(new CustomEvent('organization-refresh'));
+          
+          toast({
+            type: 'success',
+            description: `Switched to ${newActiveOrg.name}`,
+          });
+        }
       } else {
         toast({
           type: 'error',
@@ -94,81 +100,70 @@ export function OrganizationSelector({
         description: 'Failed to switch organization',
       });
     } finally {
-      setSwitching(false);
+      setIsSwitching(false);
+      setOpen(false);
     }
   };
 
   const handleCreateOrganization = () => {
+    setOpen(false);
     router.push('/organizations/new');
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center space-x-2">
-        <div className="h-8 w-40 bg-gray-200 animate-pulse rounded"></div>
-      </div>
-    );
-  }
+  const handleManageOrganizations = () => {
+    setOpen(false);
+    router.push('/organizations');
+  };
 
   return (
-    <div className="flex items-center space-x-2">
-      <Select
-        value={activeOrganizationId || 'personal'}
-        onValueChange={handleOrganizationChange}
-        disabled={switching}
-      >
-        <SelectTrigger className="w-[200px]">
-          <SelectValue placeholder="Select organization">
-            <div className="flex items-center space-x-2">
-              {activeOrganizationId ? (
-                <>
-                  <BuildingIcon className="h-4 w-4" />
-                  <span>
-                    {organizations.find((org) => org.id === activeOrganizationId)?.name ||
-                      'Unknown Organization'}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <UsersIcon className="h-4 w-4" />
-                  <span>Personal</span>
-                </>
-              )}
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          disabled={isSwitching}
+        >
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            <span className="truncate">
+              {selectedOrg ? selectedOrg.name : 'Select organization...'}
+            </span>
+          </div>
+          {isSwitching && (
+            <LoaderIcon size={16} />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-[300px]">
+        {organizations.map((org) => (
+          <DropdownMenuItem
+            key={org.id}
+            onClick={() => handleOrganizationSwitch(org.id)}
+            className={cn(
+              'flex items-center justify-between',
+              selectedOrg?.id === org.id && 'bg-accent'
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              <span>{org.name}</span>
             </div>
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="personal">
-            <div className="flex items-center space-x-2">
-              <UsersIcon className="h-4 w-4" />
-              <span>Personal</span>
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Users className="h-3 w-3" />
+              <span>{org.memberCount}</span>
             </div>
-          </SelectItem>
-          {organizations.map((org) => (
-            <SelectItem key={org.id} value={org.id}>
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center space-x-2">
-                  <BuildingIcon className="h-4 w-4" />
-                  <span>{org.name}</span>
-                </div>
-                <div className="flex items-center space-x-1 text-xs text-gray-500">
-                  <UsersIcon className="h-3 w-3" />
-                  <span>{org.memberCount}</span>
-                </div>
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleCreateOrganization}
-        className="px-2"
-      >
-        <PlusIcon className="h-4 w-4" />
-      </Button>
-    </div>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleCreateOrganization}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create organization
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleManageOrganizations}>
+          <Building2 className="mr-2 h-4 w-4" />
+          Manage organizations
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

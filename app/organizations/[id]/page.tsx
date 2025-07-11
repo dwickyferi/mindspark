@@ -132,6 +132,8 @@ export default function OrganizationDetailPage({
         });
         setInviteEmail('');
         setInviteRole('member');
+        // Trigger refresh for other components
+        window.dispatchEvent(new CustomEvent('organization-refresh'));
       } else {
         const errorText = await response.text();
         toast({
@@ -177,6 +179,8 @@ export default function OrganizationDetailPage({
             member.userId === userId ? { ...member, role: newRole } : member
           )
         );
+        // Trigger refresh for other components
+        window.dispatchEvent(new CustomEvent('organization-refresh'));
       } else {
         const errorText = await response.text();
         toast({
@@ -217,6 +221,8 @@ export default function OrganizationDetailPage({
           description: 'Member removed successfully',
         });
         setMembers((prev) => prev.filter((member) => member.userId !== userId));
+        // Trigger refresh for other components
+        window.dispatchEvent(new CustomEvent('organization-refresh'));
       } else {
         const errorText = await response.text();
         toast({

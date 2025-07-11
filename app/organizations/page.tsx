@@ -149,6 +149,8 @@ export default function OrganizationsPage() {
           description: 'Organization deleted successfully',
         });
         setOrganizations((prev) => prev.filter((org) => org.id !== organizationId));
+        // Trigger refresh for other components
+        window.dispatchEvent(new CustomEvent('organization-refresh'));
       } else {
         const errorText = await response.text();
         toast({
@@ -192,6 +194,7 @@ export default function OrganizationsPage() {
       });
 
       if (response.ok) {
+        const updatedOrg = await response.json();
         toast({
           type: 'success',
           description: 'Organization updated successfully',
@@ -199,13 +202,16 @@ export default function OrganizationsPage() {
         setOrganizations((prev) =>
           prev.map((org) =>
             org.id === editingOrg.id
-              ? { ...org, name: editName.trim(), description: editDescription.trim() }
+              ? { ...org, name: updatedOrg.name, description: updatedOrg.description }
               : org
           )
         );
         setEditingOrg(null);
         setEditName('');
         setEditDescription('');
+        
+        // Trigger refresh for other components
+        window.dispatchEvent(new CustomEvent('organization-refresh'));
       } else {
         const errorText = await response.text();
         toast({
@@ -287,6 +293,8 @@ export default function OrganizationsPage() {
         setPendingInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
         // Refresh organizations list
         fetchOrganizations();
+        // Trigger refresh for other components
+        window.dispatchEvent(new CustomEvent('organization-refresh'));
       } else {
         const errorText = await response.text();
         toast({
@@ -319,6 +327,8 @@ export default function OrganizationsPage() {
         });
         // Remove the invitation from pending list
         setPendingInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
+        // Trigger refresh for other components
+        window.dispatchEvent(new CustomEvent('organization-refresh'));
       } else {
         const errorText = await response.text();
         toast({

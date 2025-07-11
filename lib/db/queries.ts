@@ -9,6 +9,7 @@ import {
   gt,
   gte,
   inArray,
+  isNull,
   lt,
   sql,
   type SQL,
@@ -1228,6 +1229,8 @@ export async function getPendingInvitations(
         and(
           eq(organizationInvitation.email, email),
           gt(organizationInvitation.expiresAt, new Date()),
+          isNull(organizationInvitation.acceptedAt),
+          isNull(organizationInvitation.rejectedAt),
         ),
       )
       .orderBy(desc(organizationInvitation.createdAt));
@@ -1250,11 +1253,14 @@ export async function deleteInvitation(
 ): Promise<void> {
   try {
     const result = await db
-      .delete(organizationInvitation)
+      .update(organizationInvitation)
+      .set({ rejectedAt: new Date() })
       .where(
         and(
           eq(organizationInvitation.id, invitationId),
           eq(organizationInvitation.email, userEmail),
+          isNull(organizationInvitation.acceptedAt),
+          isNull(organizationInvitation.rejectedAt),
         ),
       )
       .returning();
@@ -1262,7 +1268,7 @@ export async function deleteInvitation(
     if (result.length === 0) {
       throw new ChatSDKError(
         'forbidden:auth',
-        'Invitation not found or unauthorized',
+        'Invitation not found, unauthorized, or already processed',
       );
     }
   } catch (error) {
@@ -1272,6 +1278,81 @@ export async function deleteInvitation(
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to delete invitation',
+    );
+  }
+}
+
+export async function updateOrganization({
+  id,
+  name,
+  description,
+  userId,
+}: {
+  id: string;
+  name: string;
+  description?: string;
+  userId: string;
+}): Promise<Organization> {
+  try {
+    // Check if user is the owner or admin of the organization
+    const [membership] = await db
+      .select()
+      .from(organizationMember)
+      .where(
+        and(
+          eq(organizationMember.organizationId, id),
+          eq(organizationMember.userId, userId),
+        ),
+      )
+      .limit(1);
+
+    if (!membership) {
+      throw new ChatSDKError(
+        'forbidden:auth',
+        'You are not a member of this organization',
+      );
+    }
+
+    if (membership.role !== 'owner' && membership.role !== 'admin') {
+      throw new ChatSDKError(
+        'forbidden:auth',
+        'You do not have permission to update this organization',
+      );
+    }
+
+    // Update the organization
+    const [updatedOrganization] = await db
+      .update(organization)
+      .set({
+        name,
+        description,
+        updatedAt: new Date(),
+      })
+      .where(eq(organization.id, id))
+      .returning();
+
+    if (!updatedOrganization) {
+      throw new ChatSDKError(
+        'bad_request:database',
+        'Organization not found',
+      );
+    }
+
+    return updatedOrganization;
+  } catch (error) {
+    console.error('Database error in updateOrganization:', error);
+    if (error instanceof ChatSDKError) {
+      throw error;
+    }
+    if (error instanceof Error && error.message.includes('unique constraint')) {
+      throw new ChatSDKError(
+        'bad_request:database',
+        'Organization name already exists',
+      );
+    }
+    throw new ChatSDKError(
+      'bad_request:database',
+      `Failed to update organization: ${error instanceof Error ? error.message : 'Unknown error'}`,
     );
   }
 }

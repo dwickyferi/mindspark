@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ChevronUp, Building2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ChevronUp, Building2, Check, Plus, User as UserIcon } from 'lucide-react';
 import Image from 'next/image';
 import type { User } from 'next-auth';
 import { signOut, useSession } from 'next-auth/react';
@@ -13,6 +13,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -24,23 +28,22 @@ import { useRouter } from 'next/navigation';
 import { toast } from './toast';
 import { LoaderIcon } from './icons';
 import { guestRegex } from '@/lib/constants';
+import { usePolling, useRefreshListener } from '@/hooks/use-polling';
 
 export function SidebarUserNav({ user }: { user: User }) {
   const router = useRouter();
   const { data, status } = useSession();
   const { setTheme, resolvedTheme } = useTheme();
   const [invitationCount, setInvitationCount] = useState<number>(0);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [activeOrganization, setActiveOrganization] = useState<any>(null);
+  const [isSwitching, setIsSwitching] = useState(false);
 
   const isGuest = guestRegex.test(data?.user?.email ?? '');
 
-  // Fetch invitation count
-  useEffect(() => {
-    if (user?.email && !isGuest) {
-      fetchInvitationCount();
-    }
-  }, [user?.email, isGuest]);
-
-  const fetchInvitationCount = async () => {
+  const fetchInvitationCount = useCallback(async () => {
+    if (!user?.email || isGuest) return;
+    
     try {
       const response = await fetch('/api/organizations/invitations');
       if (response.ok) {
@@ -50,7 +53,131 @@ export function SidebarUserNav({ user }: { user: User }) {
     } catch (error) {
       console.error('Error fetching invitations:', error);
     }
+  }, [user?.email, isGuest]);
+
+  const fetchOrganizations = useCallback(async () => {
+    if (!user?.email || isGuest) return;
+    
+    try {
+      const response = await fetch('/api/organizations');
+      if (response.ok) {
+        const data = await response.json();
+        setOrganizations(data);
+        
+        // Find the active organization
+        const activeOrg = data.find((org: any) => org.isActive);
+        if (activeOrg) {
+          setActiveOrganization(activeOrg);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching organizations:', error);
+    }
+  }, [user?.email, isGuest]);
+
+  const handleOrganizationSwitch = async (organizationId: string) => {
+    if (organizationId === 'personal') {
+      // Handle personal mode - clear active organization states
+      const updatedOrgs = organizations.map(org => ({
+        ...org,
+        isActive: false
+      }));
+      setOrganizations(updatedOrgs);
+      setActiveOrganization({ id: 'personal', name: 'Personal', isActive: true });
+      
+      // Trigger refresh for other components
+      window.dispatchEvent(new CustomEvent('organization-refresh'));
+      
+      toast({
+        type: 'success',
+        description: 'Switched to Personal mode',
+      });
+      return;
+    }
+
+    setIsSwitching(true);
+    try {
+      const response = await fetch('/api/organizations/switch', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ organizationId }),
+      });
+
+      if (response.ok) {
+        // Update the organizations array to reflect the new active state
+        const updatedOrgs = organizations.map(org => ({
+          ...org,
+          isActive: org.id === organizationId
+        }));
+        setOrganizations(updatedOrgs);
+        
+        const newActiveOrg = updatedOrgs.find(org => org.id === organizationId);
+        if (newActiveOrg) {
+          setActiveOrganization(newActiveOrg);
+          
+          // Trigger refresh for other components
+          window.dispatchEvent(new CustomEvent('organization-refresh'));
+          
+          toast({
+            type: 'success',
+            description: `Switched to ${newActiveOrg.name}`,
+          });
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('Organization switch failed:', errorText);
+        
+        let errorMessage = 'Failed to switch organization';
+        
+        if (response.status === 401) {
+          errorMessage = 'You are not authorized to perform this action';
+        } else if (response.status === 403) {
+          errorMessage = 'You are not a member of this organization';
+        } else if (errorText && errorText !== 'Failed to switch organization') {
+          errorMessage = errorText;
+        }
+        
+        toast({
+          type: 'error',
+          description: errorMessage,
+        });
+      }
+    } catch (error) {
+      console.error('Error switching organization:', error);
+      
+      let errorMessage = 'Failed to switch organization';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      toast({
+        type: 'error',
+        description: errorMessage,
+      });
+    } finally {
+      setIsSwitching(false);
+    }
   };
+
+  // Initial fetch and polling
+  usePolling(fetchInvitationCount, {
+    enabled: !isGuest && !!user?.email,
+    interval: 30000, // 30 seconds
+  });
+
+  usePolling(fetchOrganizations, {
+    enabled: !isGuest && !!user?.email,
+    interval: 30000, // 30 seconds
+  });
+
+  // Listen for manual refresh triggers
+  useRefreshListener(fetchInvitationCount);
+  useRefreshListener(fetchOrganizations);
 
   return (
     <SidebarMenu>
@@ -93,23 +220,97 @@ export function SidebarUserNav({ user }: { user: User }) {
             side="top"
             className="w-[--radix-popper-anchor-width]"
           >
-            <DropdownMenuItem
-              data-testid="user-nav-item-organization"
-              className="cursor-pointer"
-              onSelect={() => router.push('/organizations')}
-            >
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center">
-                  <Building2 className="mr-2 h-4 w-4" />
-                  Organizations
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger
+                data-testid="user-nav-item-organization"
+                className="cursor-pointer"
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center">
+                    <Building2 className="mr-2 h-4 w-4" />
+                    Organizations
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {invitationCount > 0 && (
+                      <Badge variant="destructive" className="h-5 min-w-[20px] text-xs">
+                        {invitationCount}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                {invitationCount > 0 && (
-                  <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] text-xs">
-                    {invitationCount}
-                  </Badge>
-                )}
-              </div>
-            </DropdownMenuItem>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent className="w-[250px]">
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onSelect={() => router.push('/organizations')}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Manage Organizations
+                    {invitationCount > 0 && (
+                      <Badge variant="destructive" className="ml-auto h-5 min-w-[20px] text-xs">
+                        {invitationCount}
+                      </Badge>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  
+                  {/* Personal Option */}
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onSelect={() => handleOrganizationSwitch('personal')}
+                    disabled={isSwitching}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center">
+                        <UserIcon className="mr-2 h-4 w-4" />
+                        Personal
+                      </div>
+                      {isSwitching && (!activeOrganization || activeOrganization.id === 'personal') ? (
+                        <div className="animate-spin">
+                          <LoaderIcon size={16} />
+                        </div>
+                      ) : (
+                        (!activeOrganization || activeOrganization.id === 'personal') && (
+                          <Check className="h-4 w-4" />
+                        )
+                      )}
+                    </div>
+                  </DropdownMenuItem>
+                  
+                  {/* Organizations List */}
+                  {organizations.map((org) => (
+                    <DropdownMenuItem
+                      key={org.id}
+                      className="cursor-pointer"
+                      onSelect={() => handleOrganizationSwitch(org.id)}
+                      disabled={isSwitching}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center">
+                          <Building2 className="mr-2 h-4 w-4" />
+                          <span>{org.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {org.memberCount} members
+                          </span>
+                          {isSwitching && org.id === activeOrganization?.id ? (
+                            <div className="animate-spin">
+                              <LoaderIcon size={16} />
+                            </div>
+                          ) : (
+                            (org.isActive || activeOrganization?.id === org.id) && (
+                              <Check className="h-4 w-4" />
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               data-testid="user-nav-item-theme"
