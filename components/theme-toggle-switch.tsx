@@ -48,11 +48,11 @@ export function ThemeToggleSwitch({
       }}
       className={cn(
         'relative inline-flex items-center rounded-full transition-all duration-300 ease-in-out',
-        'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2',
+        'focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 dark:focus:ring-offset-slate-800',
         'hover:shadow-lg active:scale-95',
         sizes.track,
         isDark 
-          ? 'bg-gradient-to-r from-accent-primary to-accent-secondary shadow-[0_0_25px_rgba(221,0,255,0.8)] hover:shadow-[0_0_35px_rgba(221,0,255,1)]' 
+          ? 'bg-gradient-to-r from-accent-primary to-accent-secondary shadow-[0_0_20px_rgba(221,0,255,0.6)] hover:shadow-[0_0_30px_rgba(221,0,255,0.8)]' 
           : 'bg-gradient-to-r from-slate-300 to-slate-400 shadow-[0_0_8px_rgba(0,0,0,0.15)] hover:shadow-[0_0_12px_rgba(0,0,0,0.25)]'
       )}
       aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
@@ -73,10 +73,10 @@ export function ThemeToggleSwitch({
       <div
         className={cn(
           'relative flex items-center justify-center rounded-full transition-all duration-300 ease-in-out',
-          'shadow-lg transform z-10',
+          'shadow-lg z-10',
           isDark 
-            ? 'bg-gray-900 shadow-[0_0_18px_rgba(0,255,255,0.6)] border border-cyan-400/30' 
-            : 'bg-white shadow-[0_0_8px_rgba(0,0,0,0.1)]',
+            ? 'bg-slate-900 shadow-[0_0_15px_rgba(0,255,255,0.5)] border border-cyan-400/30' 
+            : 'bg-white shadow-[0_0_8px_rgba(0,0,0,0.1)] border border-slate-200',
           sizes.thumb,
           isDark ? 'translate-x-4' : 'translate-x-0.5'
         )}
@@ -85,7 +85,7 @@ export function ThemeToggleSwitch({
         {isDark ? (
           <Moon 
             className={cn(
-              'text-cyan-300 transition-all duration-300 drop-shadow-[0_0_12px_rgba(0,255,255,0.9)]',
+              'text-cyan-300 transition-all duration-300 drop-shadow-[0_0_8px_rgba(0,255,255,0.7)]',
               sizes.icon
             )}
             fill="currentColor"
@@ -93,7 +93,7 @@ export function ThemeToggleSwitch({
         ) : (
           <Sun 
             className={cn(
-              'text-yellow-500 transition-all duration-300 drop-shadow-[0_0_8px_rgba(255,193,7,0.7)]',
+              'text-yellow-500 transition-all duration-300 drop-shadow-[0_0_6px_rgba(255,193,7,0.6)]',
               sizes.icon
             )}
           />

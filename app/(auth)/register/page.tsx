@@ -87,8 +87,8 @@ export default function Page() {
         )}>
           {/* Header */}
           <div className="text-center space-y-4">
-            <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-gradient-to-r from-accent-primary to-accent-secondary shadow-lg ring-1 ring-white/20">
-              <Sparkles className="size-8 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] brightness-110" />
+            <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-gradient-to-r from-accent-primary to-accent-secondary ring-1 ring-black/20 dark:ring-white/20">
+              <Sparkles className="size-8 text-black dark:text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] brightness-110" />
             </div>
             <div className="space-y-2">
               <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
@@ -128,7 +128,7 @@ export default function Page() {
                   "inline-flex items-center gap-1 font-semibold",
                   "bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text ",
                   "hover:from-accent-primary/80 hover:to-accent-secondary/80",
-                  "transition-all duration-200"
+                  "transition-all duration-200 underline"
                 )}
               >
                 Sign in
