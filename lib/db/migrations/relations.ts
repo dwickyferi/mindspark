@@ -1,32 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { users, orders, orderItems, products, user, suggestion, document, chat, message, messageV2, stream, vote, voteV2 } from "./schema";
-
-export const ordersRelations = relations(orders, ({one, many}) => ({
-	user: one(users, {
-		fields: [orders.userId],
-		references: [users.id]
-	}),
-	orderItems: many(orderItems),
-}));
-
-export const usersRelations = relations(users, ({many}) => ({
-	orders: many(orders),
-}));
-
-export const orderItemsRelations = relations(orderItems, ({one}) => ({
-	order: one(orders, {
-		fields: [orderItems.orderId],
-		references: [orders.id]
-	}),
-	product: one(products, {
-		fields: [orderItems.productId],
-		references: [products.id]
-	}),
-}));
-
-export const productsRelations = relations(products, ({many}) => ({
-	orderItems: many(orderItems),
-}));
+import { user, suggestion, document, chat, message, messageV2, stream, organization, organizationChat, organizationInvitation, organizationMember, userOrganizationContext, vote, voteV2 } from "./schema";
 
 export const suggestionRelations = relations(suggestion, ({one}) => ({
 	user: one(user, {
@@ -42,6 +15,16 @@ export const suggestionRelations = relations(suggestion, ({one}) => ({
 export const userRelations = relations(user, ({many}) => ({
 	suggestions: many(suggestion),
 	chats: many(chat),
+	organizations: many(organization),
+	organizationChats: many(organizationChat),
+	organizationInvitations: many(organizationInvitation),
+	organizationMembers_userId: many(organizationMember, {
+		relationName: "organizationMember_userId_user_id"
+	}),
+	organizationMembers_invitedBy: many(organizationMember, {
+		relationName: "organizationMember_invitedBy_user_id"
+	}),
+	userOrganizationContexts: many(userOrganizationContext),
 	documents: many(document),
 }));
 
@@ -85,6 +68,67 @@ export const streamRelations = relations(stream, ({one}) => ({
 	chat: one(chat, {
 		fields: [stream.chatId],
 		references: [chat.id]
+	}),
+}));
+
+export const organizationRelations = relations(organization, ({one, many}) => ({
+	user: one(user, {
+		fields: [organization.ownerId],
+		references: [user.id]
+	}),
+	organizationChats: many(organizationChat),
+	organizationInvitations: many(organizationInvitation),
+	organizationMembers: many(organizationMember),
+	userOrganizationContexts: many(userOrganizationContext),
+}));
+
+export const organizationChatRelations = relations(organizationChat, ({one}) => ({
+	user: one(user, {
+		fields: [organizationChat.userId],
+		references: [user.id]
+	}),
+	organization: one(organization, {
+		fields: [organizationChat.organizationId],
+		references: [organization.id]
+	}),
+}));
+
+export const organizationInvitationRelations = relations(organizationInvitation, ({one}) => ({
+	organization: one(organization, {
+		fields: [organizationInvitation.organizationId],
+		references: [organization.id]
+	}),
+	user: one(user, {
+		fields: [organizationInvitation.invitedBy],
+		references: [user.id]
+	}),
+}));
+
+export const organizationMemberRelations = relations(organizationMember, ({one}) => ({
+	organization: one(organization, {
+		fields: [organizationMember.organizationId],
+		references: [organization.id]
+	}),
+	user_userId: one(user, {
+		fields: [organizationMember.userId],
+		references: [user.id],
+		relationName: "organizationMember_userId_user_id"
+	}),
+	user_invitedBy: one(user, {
+		fields: [organizationMember.invitedBy],
+		references: [user.id],
+		relationName: "organizationMember_invitedBy_user_id"
+	}),
+}));
+
+export const userOrganizationContextRelations = relations(userOrganizationContext, ({one}) => ({
+	user: one(user, {
+		fields: [userOrganizationContext.userId],
+		references: [user.id]
+	}),
+	organization: one(organization, {
+		fields: [userOrganizationContext.activeOrganizationId],
+		references: [organization.id]
 	}),
 }));
 

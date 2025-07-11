@@ -1,100 +1,14 @@
-import { pgTable, index, unique, serial, varchar, integer, timestamp, foreignKey, numeric, text, boolean, uuid, json, primaryKey } from "drizzle-orm/pg-core"
+import { pgTable, uuid, varchar, foreignKey, timestamp, text, boolean, json, unique, primaryKey } from "drizzle-orm/pg-core"
   import { sql } from "drizzle-orm"
 
 
 
 
-export const users = pgTable("users", {
-	id: serial().primaryKey().notNull(),
-	username: varchar({ length: 80 }).notNull(),
-	email: varchar({ length: 120 }).notNull(),
-	firstName: varchar("first_name", { length: 50 }).notNull(),
-	lastName: varchar("last_name", { length: 50 }).notNull(),
-	age: integer(),
-	city: varchar({ length: 100 }),
-	createdAt: timestamp("created_at", { mode: 'string' }),
-	updatedAt: timestamp("updated_at", { mode: 'string' }),
-},
-(table) => {
-	return {
-		idxUserEmail: index("idx_user_email").using("btree", table.email.asc().nullsLast()),
-		idxUserUsername: index("idx_user_username").using("btree", table.username.asc().nullsLast()),
-		usersUsernameKey: unique("users_username_key").on(table.username),
-		usersEmailKey: unique("users_email_key").on(table.email),
-	}
-});
-
-export const orders = pgTable("orders", {
-	id: serial().primaryKey().notNull(),
-	userId: integer("user_id").notNull(),
-	totalAmount: numeric("total_amount", { precision: 10, scale:  2 }).notNull(),
-	status: varchar({ length: 50 }),
-	orderDate: timestamp("order_date", { mode: 'string' }),
-	shippingAddress: text("shipping_address"),
-	createdAt: timestamp("created_at", { mode: 'string' }),
-	updatedAt: timestamp("updated_at", { mode: 'string' }),
-},
-(table) => {
-	return {
-		idxOrderDate: index("idx_order_date").using("btree", table.orderDate.asc().nullsLast()),
-		idxOrderStatus: index("idx_order_status").using("btree", table.status.asc().nullsLast()),
-		idxOrderUserId: index("idx_order_user_id").using("btree", table.userId.asc().nullsLast()),
-		ordersUserIdFkey: foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "orders_user_id_fkey"
-		}),
-	}
-});
-
-export const orderItems = pgTable("order_items", {
-	id: serial().primaryKey().notNull(),
-	orderId: integer("order_id").notNull(),
-	productId: integer("product_id").notNull(),
-	quantity: integer().notNull(),
-	price: numeric({ precision: 10, scale:  2 }).notNull(),
-},
-(table) => {
-	return {
-		idxOrderItemOrderId: index("idx_order_item_order_id").using("btree", table.orderId.asc().nullsLast()),
-		idxOrderItemProductId: index("idx_order_item_product_id").using("btree", table.productId.asc().nullsLast()),
-		orderItemsOrderIdFkey: foreignKey({
-			columns: [table.orderId],
-			foreignColumns: [orders.id],
-			name: "order_items_order_id_fkey"
-		}),
-		orderItemsProductIdFkey: foreignKey({
-			columns: [table.productId],
-			foreignColumns: [products.id],
-			name: "order_items_product_id_fkey"
-		}),
-	}
-});
-
-export const products = pgTable("products", {
-	id: serial().primaryKey().notNull(),
-	name: varchar({ length: 200 }).notNull(),
-	description: text(),
-	price: numeric({ precision: 10, scale:  2 }).notNull(),
-	category: varchar({ length: 100 }).notNull(),
-	stockQuantity: integer("stock_quantity"),
-	sku: varchar({ length: 100 }).notNull(),
-	isActive: boolean("is_active"),
-	createdAt: timestamp("created_at", { mode: 'string' }),
-	updatedAt: timestamp("updated_at", { mode: 'string' }),
-},
-(table) => {
-	return {
-		idxProductCategory: index("idx_product_category").using("btree", table.category.asc().nullsLast()),
-		idxProductSku: index("idx_product_sku").using("btree", table.sku.asc().nullsLast()),
-		productsSkuKey: unique("products_sku_key").on(table.sku),
-	}
-});
-
 export const user = pgTable("User", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	email: varchar({ length: 64 }).notNull(),
 	password: varchar({ length: 64 }),
+	name: varchar({ length: 100 }),
 });
 
 export const suggestion = pgTable("Suggestion", {
@@ -187,6 +101,125 @@ export const stream = pgTable("Stream", {
 			foreignColumns: [chat.id],
 			name: "Stream_chatId_Chat_id_fk"
 		}),
+	}
+});
+
+export const organization = pgTable("Organization", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	createdAt: timestamp({ mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().notNull(),
+	ownerId: uuid().notNull(),
+},
+(table) => {
+	return {
+		organizationOwnerIdUserIdFk: foreignKey({
+			columns: [table.ownerId],
+			foreignColumns: [user.id],
+			name: "Organization_ownerId_User_id_fk"
+		}),
+		organizationNameUnique: unique("Organization_name_unique").on(table.name),
+	}
+});
+
+export const organizationChat = pgTable("OrganizationChat", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	createdAt: timestamp({ mode: 'string' }).notNull(),
+	title: text().notNull(),
+	userId: uuid().notNull(),
+	organizationId: uuid().notNull(),
+	visibility: varchar().default('organization').notNull(),
+},
+(table) => {
+	return {
+		organizationChatUserIdUserIdFk: foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "OrganizationChat_userId_User_id_fk"
+		}),
+		organizationChatOrganizationIdOrganizationIdFk: foreignKey({
+			columns: [table.organizationId],
+			foreignColumns: [organization.id],
+			name: "OrganizationChat_organizationId_Organization_id_fk"
+		}).onDelete("cascade"),
+	}
+});
+
+export const organizationInvitation = pgTable("OrganizationInvitation", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	organizationId: uuid().notNull(),
+	email: varchar({ length: 255 }).notNull(),
+	role: varchar().default('member').notNull(),
+	token: varchar({ length: 255 }).notNull(),
+	invitedBy: uuid().notNull(),
+	createdAt: timestamp({ mode: 'string' }).defaultNow().notNull(),
+	expiresAt: timestamp({ mode: 'string' }).notNull(),
+	acceptedAt: timestamp({ mode: 'string' }),
+	rejectedAt: timestamp({ mode: 'string' }),
+},
+(table) => {
+	return {
+		organizationInvitationOrganizationIdOrganizationIdFk: foreignKey({
+			columns: [table.organizationId],
+			foreignColumns: [organization.id],
+			name: "OrganizationInvitation_organizationId_Organization_id_fk"
+		}).onDelete("cascade"),
+		organizationInvitationInvitedByUserIdFk: foreignKey({
+			columns: [table.invitedBy],
+			foreignColumns: [user.id],
+			name: "OrganizationInvitation_invitedBy_User_id_fk"
+		}),
+		organizationInvitationTokenUnique: unique("OrganizationInvitation_token_unique").on(table.token),
+	}
+});
+
+export const organizationMember = pgTable("OrganizationMember", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	organizationId: uuid().notNull(),
+	userId: uuid().notNull(),
+	role: varchar().default('member').notNull(),
+	joinedAt: timestamp({ mode: 'string' }).defaultNow().notNull(),
+	invitedBy: uuid(),
+},
+(table) => {
+	return {
+		organizationMemberOrganizationIdOrganizationIdFk: foreignKey({
+			columns: [table.organizationId],
+			foreignColumns: [organization.id],
+			name: "OrganizationMember_organizationId_Organization_id_fk"
+		}).onDelete("cascade"),
+		organizationMemberUserIdUserIdFk: foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "OrganizationMember_userId_User_id_fk"
+		}).onDelete("cascade"),
+		organizationMemberInvitedByUserIdFk: foreignKey({
+			columns: [table.invitedBy],
+			foreignColumns: [user.id],
+			name: "OrganizationMember_invitedBy_User_id_fk"
+		}),
+		organizationMemberOrganizationIdUserIdUnique: unique("OrganizationMember_organizationId_userId_unique").on(table.organizationId, table.userId),
+	}
+});
+
+export const userOrganizationContext = pgTable("UserOrganizationContext", {
+	userId: uuid().primaryKey().notNull(),
+	activeOrganizationId: uuid(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().notNull(),
+},
+(table) => {
+	return {
+		userOrganizationContextUserIdUserIdFk: foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "UserOrganizationContext_userId_User_id_fk"
+		}).onDelete("cascade"),
+		userOrganizationContextActiveOrganizationIdOrganizationIdFk: foreignKey({
+			columns: [table.activeOrganizationId],
+			foreignColumns: [organization.id],
+			name: "UserOrganizationContext_activeOrganizationId_Organization_id_fk"
+		}).onDelete("set null"),
 	}
 });
 
