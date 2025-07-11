@@ -5,7 +5,6 @@ import { ChevronUp, Building2, Check, Plus, User as UserIcon } from 'lucide-reac
 import Image from 'next/image';
 import type { User } from 'next-auth';
 import { signOut, useSession } from 'next-auth/react';
-import { useTheme } from 'next-themes';
 
 import {
   DropdownMenu,
@@ -29,11 +28,11 @@ import { toast } from './toast';
 import { LoaderIcon } from './icons';
 import { guestRegex } from '@/lib/constants';
 import { usePolling, useRefreshListener } from '@/hooks/use-polling';
+import { ThemeToggleSwitch } from './theme-toggle-switch';
 
 export function SidebarUserNav({ user }: { user: User }) {
   const router = useRouter();
   const { data, status } = useSession();
-  const { setTheme, resolvedTheme } = useTheme();
   const [invitationCount, setInvitationCount] = useState<number>(0);
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [activeOrganization, setActiveOrganization] = useState<any>(null);
@@ -232,7 +231,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                   </div>
                   <div className="flex items-center gap-2">
                     {invitationCount > 0 && (
-                      <Badge variant="destructive" className="h-5 min-w-[20px] text-xs">
+                      <Badge variant="destructive" className="h-5 min-w-[20px] text-xs bg-accent-alert text-white shadow-[0_0_10px_rgba(255,255,0,0.5)]">
                         {invitationCount}
                       </Badge>
                     )}
@@ -248,7 +247,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                     <Plus className="mr-2 h-4 w-4" />
                     Manage Organizations
                     {invitationCount > 0 && (
-                      <Badge variant="destructive" className="ml-auto h-5 min-w-[20px] text-xs">
+                      <Badge variant="destructive" className="ml-auto h-5 min-w-[20px] text-xs bg-accent-alert text-white shadow-[0_0_10px_rgba(255,255,0,0.5)]">
                         {invitationCount}
                       </Badge>
                     )}
@@ -272,7 +271,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                         </div>
                       ) : (
                         (!activeOrganization || activeOrganization.id === 'personal') && (
-                          <Check className="h-4 w-4" />
+                          <Check className="h-4 w-4 text-accent-primary" />
                         )
                       )}
                     </div>
@@ -301,7 +300,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                             </div>
                           ) : (
                             (org.isActive || activeOrganization?.id === org.id) && (
-                              <Check className="h-4 w-4" />
+                              <Check className="h-4 w-4 text-accent-primary" />
                             )
                           )}
                         </div>
@@ -314,10 +313,10 @@ export function SidebarUserNav({ user }: { user: User }) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               data-testid="user-nav-item-theme"
-              className="cursor-pointer"
-              onSelect={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              className="cursor-pointer hover:bg-accent-primary/10 p-3"
+              onSelect={(e) => e.preventDefault()}
             >
-              {`Toggle ${resolvedTheme === 'light' ? 'dark' : 'light'} mode`}
+              <ThemeToggleSwitch size="sm" layout="justify-between" />
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
