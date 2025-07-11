@@ -1212,3 +1212,66 @@ export async function getUserActiveOrganization({
     );
   }
 }
+
+export async function getPendingInvitations(
+  email: string,
+): Promise<Array<OrganizationInvitation & { organization: Organization }>> {
+  try {
+    const invitations = await db
+      .select()
+      .from(organizationInvitation)
+      .innerJoin(
+        organization,
+        eq(organizationInvitation.organizationId, organization.id),
+      )
+      .where(
+        and(
+          eq(organizationInvitation.email, email),
+          gt(organizationInvitation.expiresAt, new Date()),
+        ),
+      )
+      .orderBy(desc(organizationInvitation.createdAt));
+
+    return invitations.map((row) => ({
+      ...row.OrganizationInvitation,
+      organization: row.Organization,
+    }));
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get pending invitations',
+    );
+  }
+}
+
+export async function deleteInvitation(
+  invitationId: string,
+  userEmail: string,
+): Promise<void> {
+  try {
+    const result = await db
+      .delete(organizationInvitation)
+      .where(
+        and(
+          eq(organizationInvitation.id, invitationId),
+          eq(organizationInvitation.email, userEmail),
+        ),
+      )
+      .returning();
+
+    if (result.length === 0) {
+      throw new ChatSDKError(
+        'forbidden:auth',
+        'Invitation not found or unauthorized',
+      );
+    }
+  } catch (error) {
+    if (error instanceof ChatSDKError) {
+      throw error;
+    }
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to delete invitation',
+    );
+  }
+}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { ChevronUp, Building2 } from 'lucide-react';
 import Image from 'next/image';
 import type { User } from 'next-auth';
@@ -13,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -27,8 +29,28 @@ export function SidebarUserNav({ user }: { user: User }) {
   const router = useRouter();
   const { data, status } = useSession();
   const { setTheme, resolvedTheme } = useTheme();
+  const [invitationCount, setInvitationCount] = useState<number>(0);
 
   const isGuest = guestRegex.test(data?.user?.email ?? '');
+
+  // Fetch invitation count
+  useEffect(() => {
+    if (user?.email && !isGuest) {
+      fetchInvitationCount();
+    }
+  }, [user?.email, isGuest]);
+
+  const fetchInvitationCount = async () => {
+    try {
+      const response = await fetch('/api/organizations/invitations');
+      if (response.ok) {
+        const invitations = await response.json();
+        setInvitationCount(invitations.length);
+      }
+    } catch (error) {
+      console.error('Error fetching invitations:', error);
+    }
+  };
 
   return (
     <SidebarMenu>
@@ -76,8 +98,17 @@ export function SidebarUserNav({ user }: { user: User }) {
               className="cursor-pointer"
               onSelect={() => router.push('/organizations')}
             >
-              <Building2 className="mr-2 h-4 w-4" />
-              Organizations
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center">
+                  <Building2 className="mr-2 h-4 w-4" />
+                  Organizations
+                </div>
+                {invitationCount > 0 && (
+                  <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] text-xs">
+                    {invitationCount}
+                  </Badge>
+                )}
+              </div>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

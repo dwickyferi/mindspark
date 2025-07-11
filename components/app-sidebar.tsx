@@ -3,6 +3,7 @@
 import type { User } from 'next-auth';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 import { PlusIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
@@ -43,10 +44,17 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               onClick={() => {
                 setOpenMobile(false);
               }}
-              className="flex flex-row gap-3 items-center"
+              className="flex flex-row gap-1 items-center"
             >
-              <span className="text-lg font-semibold px-2 hover:bg-muted rounded-md cursor-pointer">
-                Chatbot
+              <Image
+                src="/images/mind-spark.png"
+                alt="MindSpark Logo"
+                width={26}
+                height={26}
+                className="rounded-sm"
+              />
+              <span className="text-lg font-semibold pr-2 hover:bg-muted rounded-md cursor-pointer">
+                MindSpark
               </span>
             </Link>
             <Tooltip>

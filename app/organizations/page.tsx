@@ -41,6 +41,9 @@ import {
   SettingsIcon,
   TrashIcon,
   PlusIcon,
+  MailIcon,
+  CheckIcon,
+  XIcon,
 } from 'lucide-react';
 import { toast } from '@/components/toast';
 
@@ -54,9 +57,25 @@ interface Organization {
   ownerId: string;
 }
 
+interface PendingInvitation {
+  id: string;
+  organizationId: string;
+  email: string;
+  role: string;
+  token: string;
+  expiresAt: string;
+  createdAt: string;
+  organization: {
+    id: string;
+    name: string;
+    description?: string;
+  };
+}
+
 export default function OrganizationsPage() {
   const router = useRouter();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   
@@ -72,8 +91,12 @@ export default function OrganizationsPage() {
   const [memberRole, setMemberRole] = useState<'admin' | 'member'>('member');
   const [inviting, setInviting] = useState(false);
 
+  // Invitation handling state
+  const [processingInvitation, setProcessingInvitation] = useState<string | null>(null);
+
   useEffect(() => {
     fetchOrganizations();
+    fetchPendingInvitations();
   }, []);
 
   const fetchOrganizations = async () => {
@@ -96,6 +119,20 @@ export default function OrganizationsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPendingInvitations = async () => {
+    try {
+      const response = await fetch('/api/organizations/invitations');
+      if (response.ok) {
+        const data = await response.json();
+        setPendingInvitations(data);
+      } else {
+        console.error('Failed to fetch pending invitations');
+      }
+    } catch (error) {
+      console.error('Error fetching pending invitations:', error);
     }
   };
 
@@ -230,6 +267,76 @@ export default function OrganizationsPage() {
     }
   };
 
+  const handleAcceptInvitation = async (invitationId: string, token: string) => {
+    setProcessingInvitation(invitationId);
+    try {
+      const response = await fetch('/api/organizations/invitations/accept', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      if (response.ok) {
+        toast({
+          type: 'success',
+          description: 'Invitation accepted successfully',
+        });
+        // Remove the invitation from pending list
+        setPendingInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
+        // Refresh organizations list
+        fetchOrganizations();
+      } else {
+        const errorText = await response.text();
+        toast({
+          type: 'error',
+          description: errorText || 'Failed to accept invitation',
+        });
+      }
+    } catch (error) {
+      console.error('Error accepting invitation:', error);
+      toast({
+        type: 'error',
+        description: 'Failed to accept invitation',
+      });
+    } finally {
+      setProcessingInvitation(null);
+    }
+  };
+
+  const handleDeclineInvitation = async (invitationId: string) => {
+    setProcessingInvitation(invitationId);
+    try {
+      const response = await fetch(`/api/organizations/invitations/${invitationId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast({
+          type: 'success',
+          description: 'Invitation declined',
+        });
+        // Remove the invitation from pending list
+        setPendingInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
+      } else {
+        const errorText = await response.text();
+        toast({
+          type: 'error',
+          description: errorText || 'Failed to decline invitation',
+        });
+      }
+    } catch (error) {
+      console.error('Error declining invitation:', error);
+      toast({
+        type: 'error',
+        description: 'Failed to decline invitation',
+      });
+    } finally {
+      setProcessingInvitation(null);
+    }
+  };
+
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'owner':
@@ -273,6 +380,67 @@ export default function OrganizationsPage() {
             Create Organization
           </Button>
         </div>
+
+        {/* Pending Invitations Section */}
+        {pendingInvitations.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <MailIcon className="h-5 w-5 mr-2" />
+                Pending Invitations ({pendingInvitations.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {pendingInvitations.map((invitation) => (
+                  <div
+                    key={invitation.id}
+                    className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <BuildingIcon className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <p className="font-medium text-blue-900 dark:text-blue-100">
+                          {invitation.organization.name}
+                        </p>
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                          Invited as {invitation.role} • 
+                          {' '}Expires {new Date(invitation.expiresAt).toLocaleDateString()}
+                        </p>
+                        {invitation.organization.description && (
+                          <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                            {invitation.organization.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleAcceptInvitation(invitation.id, invitation.token)}
+                        disabled={processingInvitation === invitation.id}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckIcon className="h-4 w-4 mr-1" />
+                        {processingInvitation === invitation.id ? 'Accepting...' : 'Accept'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeclineInvitation(invitation.id)}
+                        disabled={processingInvitation === invitation.id}
+                        className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
+                      >
+                        <XIcon className="h-4 w-4 mr-1" />
+                        Decline
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="space-y-4">
           {organizations.map((org) => (

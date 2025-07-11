@@ -7,9 +7,13 @@ import './globals.css';
 import { SessionProvider } from 'next-auth/react';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://chat.vercel.ai'),
-  title: 'Next.js Chatbot Template',
-  description: 'Next.js chatbot template using the AI SDK.',
+  title: 'MindSpark',
+  description: 'MindSpark is an AI chatbot platform that helps you build and deploy AI chatbots with ease.',
+  icons: {
+    icon: '/images/mind-spark.png',
+    shortcut: '/images/mind-spark.png',
+    apple: '/images/mind-spark.png',
+  },
 };
 
 export const viewport = {
