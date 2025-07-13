@@ -79,7 +79,7 @@ export function Chat({
       },
     }),
     onData: (dataPart) => {
-      setDataStream((ds) => (ds ? [...ds, dataPart as any] : [dataPart as any]));
+      setDataStream((ds) => (ds ? [...ds, dataPart as any] : []));
     },
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey));
@@ -128,7 +128,7 @@ export function Chat({
 
   return (
     <>
-      <div className="flex flex-col min-w-0 h-full bg-background">
+      <div className="flex flex-col min-w-0 h-dvh bg-background">
         <ChatHeader
           chatId={id}
           selectedModelId={initialChatModel}
