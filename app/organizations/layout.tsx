@@ -26,11 +26,9 @@ export default async function OrganizationsLayout({
         <SidebarProvider defaultOpen={!isCollapsed}>
           <AppSidebar user={session?.user} />
           <SidebarInset>
-            <div className="h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4 md:p-6 lg:p-4">
-              <div className="h-full max-w-none">
-                <div className="chat-card bg-white dark:bg-slate-950 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden h-full">
-                  {children}
-                </div>
+            <div className="h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+              <div className="h-full w-full">
+                {children}
               </div>
             </div>
           </SidebarInset>
