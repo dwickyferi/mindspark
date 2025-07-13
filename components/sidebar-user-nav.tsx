@@ -184,33 +184,39 @@ export function SidebarUserNav({ user }: { user: User }) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             {status === 'loading' ? (
-              <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent bg-background data-[state=open]:text-sidebar-accent-foreground h-10 justify-between">
-                <div className="flex flex-row gap-2">
-                  <div className="size-6 bg-zinc-500/30 rounded-full animate-pulse" />
-                  <span className="bg-zinc-500/30 text-transparent rounded-md animate-pulse">
-                    Loading auth status
-                  </span>
+              <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent bg-background data-[state=open]:text-sidebar-accent-foreground h-auto py-2 justify-between">
+                <div className="flex flex-row gap-3 items-center flex-1">
+                  <div className="size-8 bg-zinc-500/30 rounded-full animate-pulse shrink-0" />
+                  <div className="flex flex-col gap-1 flex-1 min-w-0">
+                    <div className="h-3.5 bg-zinc-500/30 rounded-md animate-pulse w-20" />
+                    <div className="h-3 bg-zinc-500/30 rounded-md animate-pulse w-32" />
+                  </div>
                 </div>
-                <div className="animate-spin text-zinc-500">
+                <div className="animate-spin text-zinc-500 shrink-0">
                   <LoaderIcon />
                 </div>
               </SidebarMenuButton>
             ) : (
               <SidebarMenuButton
                 data-testid="user-nav-button"
-                className="data-[state=open]:bg-sidebar-accent bg-background data-[state=open]:text-sidebar-accent-foreground h-10"
+                className="data-[state=open]:bg-sidebar-accent bg-background data-[state=open]:text-sidebar-accent-foreground h-auto py-2"
               >
                 <Image
                   src={`https://avatar.vercel.sh/${user.email}`}
                   alt={user.email ?? 'User Avatar'}
-                  width={24}
-                  height={24}
+                  width={32}
+                  height={32}
                   className="rounded-full"
                 />
-                <span data-testid="user-email" className="truncate">
-                  {isGuest ? 'Guest' : user?.email}
-                </span>
-                <ChevronUp className="ml-auto" />
+                <div className="flex flex-col items-start flex-1 min-w-0">
+                  <span data-testid="user-name" className="font-medium text-sm truncate w-full text-left">
+                    {isGuest ? 'Guest User' : user?.name || user?.email?.split('@')[0] || 'User'}
+                  </span>
+                  <span data-testid="user-email" className="text-xs text-muted-foreground truncate w-full text-left">
+                    {isGuest ? 'guest@example.com' : user?.email}
+                  </span>
+                </div>
+                <ChevronUp className="ml-auto shrink-0" />
               </SidebarMenuButton>
             )}
           </DropdownMenuTrigger>
