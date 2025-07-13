@@ -26,7 +26,6 @@ import {
 import { useRouter } from 'next/navigation';
 import { toast } from './toast';
 import { LoaderIcon } from './icons';
-import { guestRegex } from '@/lib/constants';
 import { usePolling, useRefreshListener } from '@/hooks/use-polling';
 import { ThemeToggleSwitch } from './theme-toggle-switch';
 
@@ -38,10 +37,8 @@ export function SidebarUserNav({ user }: { user: User }) {
   const [activeOrganization, setActiveOrganization] = useState<any>(null);
   const [isSwitching, setIsSwitching] = useState(false);
 
-  const isGuest = guestRegex.test(data?.user?.email ?? '');
-
   const fetchInvitationCount = useCallback(async () => {
-    if (!user?.email || isGuest) return;
+    if (!user?.email) return;
     
     try {
       const response = await fetch('/api/organizations/invitations');
@@ -52,10 +49,10 @@ export function SidebarUserNav({ user }: { user: User }) {
     } catch (error) {
       console.error('Error fetching invitations:', error);
     }
-  }, [user?.email, isGuest]);
+  }, [user?.email]);
 
   const fetchOrganizations = useCallback(async () => {
-    if (!user?.email || isGuest) return;
+    if (!user?.email) return;
     
     try {
       const response = await fetch('/api/organizations');
@@ -72,7 +69,7 @@ export function SidebarUserNav({ user }: { user: User }) {
     } catch (error) {
       console.error('Error fetching organizations:', error);
     }
-  }, [user?.email, isGuest]);
+  }, [user?.email]);
 
   const handleOrganizationSwitch = async (organizationId: string) => {
     if (organizationId === 'personal') {
@@ -165,12 +162,12 @@ export function SidebarUserNav({ user }: { user: User }) {
 
   // Initial fetch and polling
   usePolling(fetchInvitationCount, {
-    enabled: !isGuest && !!user?.email,
+    enabled: !!user?.email,
     interval: 30000, // 30 seconds
   });
 
   usePolling(fetchOrganizations, {
-    enabled: !isGuest && !!user?.email,
+    enabled: !!user?.email,
     interval: 30000, // 30 seconds
   });
 
@@ -210,10 +207,10 @@ export function SidebarUserNav({ user }: { user: User }) {
                 />
                 <div className="flex flex-col items-start flex-1 min-w-0">
                   <span data-testid="user-name" className="font-medium text-sm truncate w-full text-left">
-                    {isGuest ? 'Guest User' : user?.name || user?.email?.split('@')[0] || 'User'}
+                    {user?.name || user?.email?.split('@')[0] || 'User'}
                   </span>
                   <span data-testid="user-email" className="text-xs text-muted-foreground truncate w-full text-left">
-                    {isGuest ? 'guest@example.com' : user?.email}
+                    {user?.email}
                   </span>
                 </div>
                 <ChevronUp className="ml-auto shrink-0" />
@@ -340,16 +337,12 @@ export function SidebarUserNav({ user }: { user: User }) {
                     return;
                   }
 
-                  if (isGuest) {
-                    router.push('/login');
-                  } else {
-                    signOut({
-                      redirectTo: '/',
-                    });
-                  }
+                  signOut({
+                    redirectTo: '/',
+                  });
                 }}
               >
-                {isGuest ? 'Login to your account' : 'Sign out'}
+                Sign out
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>
