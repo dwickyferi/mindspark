@@ -7,7 +7,7 @@ import './globals.css';
 import { SessionProvider } from 'next-auth/react';
 
 export const metadata: Metadata = {
-  title: 'MindSpark',
+  title: 'MindSpark - Assistant AI for your data',
   description: 'MindSpark is an AI chatbot platform that helps you build and deploy AI chatbots with ease.',
   icons: {
     icon: '/images/mind-spark.png',
