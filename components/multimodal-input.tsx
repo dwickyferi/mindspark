@@ -16,7 +16,7 @@ import {
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
-import { ArrowUpIcon, PaperclipIcon, StopIcon, GlobeIcon, TerminalIcon } from './icons';
+import { ArrowUpIcon, PaperclipIcon, StopIcon, GlobeIcon, TerminalIcon, ChartIcon } from './icons';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -183,6 +183,13 @@ function PureMultimodalInput({
       name: 'Web Search',
       description: 'Search the web for information',
       icon: <GlobeIcon size={14} />,
+      category: 'built-in',
+    },
+    {
+      id: 'charts',
+      name: 'Charts',
+      description: 'Create interactive charts and visualizations',
+      icon: <ChartIcon size={14} />,
       category: 'built-in',
     },
     {

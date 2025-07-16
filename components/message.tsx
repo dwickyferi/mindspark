@@ -9,6 +9,7 @@ import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 import { PreviewAttachment } from './preview-attachment';
 import { Weather } from './weather';
+import { Charts } from './charts';
 import { WebSearchLoading, WebSearchResults, WebExtractLoading, WebExtractResults } from './web-search';
 import equal from 'fast-deep-equal';
 import { cn, sanitizeText } from '@/lib/utils';
@@ -182,6 +183,40 @@ const PurePreviewMessage = ({
                   return (
                     <div key={toolCallId}>
                       <Weather weatherAtLocation={output} />
+                    </div>
+                  );
+                }
+              }
+
+              if (type === 'tool-createChart') {
+                const { toolCallId, state } = part;
+
+                if (state === 'input-available') {
+                  const { input } = part;
+                  return (
+                    <div key={toolCallId} className="skeleton">
+                      <Charts {...input} />
+                    </div>
+                  );
+                }
+
+                if (state === 'output-available') {
+                  const { output } = part;
+
+                  if ('error' in output) {
+                    return (
+                      <div
+                        key={toolCallId}
+                        className="text-red-500 p-2 border rounded"
+                      >
+                        Error: {String(output.error)}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={toolCallId}>
+                      <Charts {...output} />
                     </div>
                   );
                 }
