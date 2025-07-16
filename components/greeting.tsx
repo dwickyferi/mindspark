@@ -143,7 +143,7 @@ export const Greeting = ({ userName }: GreetingProps) => {
             transition={{ delay: 1.2, duration: 0.6 }}
             className="text-sm md:text-base text-gray-500 dark:text-gray-400 font-normal"
           >
-            Ask me anything, and let's explore together ✨
+            Ask me anything, and let&apos;s explore together ✨
           </motion.p>
         </motion.div>
 

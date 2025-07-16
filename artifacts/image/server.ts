@@ -4,12 +4,21 @@ import { experimental_generateImage } from 'ai';
 
 export const imageDocumentHandler = createDocumentHandler<'image'>({
   kind: 'image',
-  onCreateDocument: async ({ title, dataStream }) => {
+  onCreateDocument: async ({ title, contextText, dataStream }) => {
     let draftContent = '';
+
+    const prompt = contextText
+      ? `${title}
+
+Context from previous conversation:
+${contextText}
+
+Use this context to inform your image generation and maintain consistency with the conversation.`
+      : title;
 
     const { image } = await experimental_generateImage({
       model: myProvider.imageModel('small-model'),
-      prompt: title,
+      prompt,
       n: 1,
     });
 
@@ -23,12 +32,21 @@ export const imageDocumentHandler = createDocumentHandler<'image'>({
 
     return draftContent;
   },
-  onUpdateDocument: async ({ description, dataStream }) => {
+  onUpdateDocument: async ({ description, contextText, dataStream }) => {
     let draftContent = '';
+
+    const prompt = contextText
+      ? `${description}
+
+Context from previous conversation:
+${contextText}
+
+Use this context to inform your image updates and maintain consistency with the conversation.`
+      : description;
 
     const { image } = await experimental_generateImage({
       model: myProvider.imageModel('small-model'),
-      prompt: description,
+      prompt,
       n: 1,
     });
 

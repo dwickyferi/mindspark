@@ -114,3 +114,56 @@ export function getTextFromMessage(message: ChatMessage): string {
     .map((part) => part.text)
     .join('');
 }
+
+/**
+ * Generates contextText from historical chat messages for use in artifacts
+ * @param messages - Array of chat messages
+ * @param maxLength - Maximum length of contextText (default: 3000)
+ * @returns Concatenated text from historical messages
+ */
+export function generateContextText(
+  messages: ChatMessage[],
+  maxLength: number = 3000,
+): string {
+  if (!messages || messages.length === 0) {
+    return '';
+  }
+
+  // Filter out the last message (current) and tool calls
+  const historicalMessages = messages.slice(0, -1);
+  
+  let contextText = '';
+  
+  // Process messages from most recent to oldest
+  for (let i = historicalMessages.length - 1; i >= 0; i--) {
+    const message = historicalMessages[i];
+    
+    // Skip if no parts
+    if (!message.parts || message.parts.length === 0) continue;
+    
+    // Extract text content from message parts
+    let messageText = '';
+    
+    for (const part of message.parts) {
+      if (part.type === 'text') {
+        messageText += part.text + ' ';
+      }
+    }
+    
+    // Skip empty messages
+    if (!messageText.trim()) continue;
+    
+    // Add role prefix for clarity
+    const rolePrefix = message.role === 'user' ? 'User: ' : 'Assistant: ';
+    const formattedMessage = `${rolePrefix}${messageText.trim()}\n\n`;
+    
+    // Check if adding this message would exceed max length
+    if (contextText.length + formattedMessage.length > maxLength) {
+      break;
+    }
+    
+    contextText = formattedMessage + contextText;
+  }
+  
+  return contextText.trim();
+}

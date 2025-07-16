@@ -90,7 +90,7 @@ export const codeArtifact = new Artifact<'code', Metadata>({
       }));
     }
   },
-  content: ({ metadata, setMetadata, ...props }) => {
+  content: ({ metadata, setMetadata, contextText, ...props }) => {
     return (
       <>
         <div className="px-1">

@@ -45,6 +45,7 @@ export type CustomUIDataTypes = {
   id: string;
   title: string;
   kind: ArtifactKind;
+  contextText: string;
   clear: null;
   finish: null;
 };

@@ -77,11 +77,13 @@ export async function POST(request: Request) {
     const {
       id,
       message,
+      contextText,
       selectedChatModel,
       selectedVisibilityType,
     }: {
       id: string;
       message: ChatMessage;
+      contextText?: string;
       selectedChatModel: ChatModel['id'];
       selectedVisibilityType: VisibilityType;
     } = requestBody;
@@ -173,8 +175,8 @@ export async function POST(request: Request) {
             getWeather,
             webSearch,
             webExtract,
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
+            createDocument: createDocument({ session, dataStream, contextText }),
+            updateDocument: updateDocument({ session, dataStream, contextText }),
             requestSuggestions: requestSuggestions({
               session,
               dataStream,

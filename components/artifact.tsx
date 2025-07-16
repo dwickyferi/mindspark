@@ -43,6 +43,7 @@ export interface UIArtifact {
   documentId: string;
   kind: ArtifactKind;
   content: string;
+  contextText?: string;
   isVisible: boolean;
   status: 'streaming' | 'idle';
   boundingBox: {
@@ -456,6 +457,7 @@ function PureArtifact({
                     ? artifact.content
                     : getDocumentContentById(currentVersionIndex)
                 }
+                contextText={artifact.contextText}
                 mode={mode}
                 status={artifact.status}
                 currentVersionIndex={currentVersionIndex}

@@ -20,6 +20,7 @@ export interface SaveDocumentProps {
 export interface CreateDocumentCallbackProps {
   id: string;
   title: string;
+  contextText?: string;
   dataStream: UIMessageStreamWriter<ChatMessage>;
   session: Session;
 }
@@ -27,6 +28,7 @@ export interface CreateDocumentCallbackProps {
 export interface UpdateDocumentCallbackProps {
   document: Document;
   description: string;
+  contextText?: string;
   dataStream: UIMessageStreamWriter<ChatMessage>;
   session: Session;
 }
@@ -48,6 +50,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
       const draftContent = await config.onCreateDocument({
         id: args.id,
         title: args.title,
+        contextText: args.contextText,
         dataStream: args.dataStream,
         session: args.session,
       });
@@ -68,6 +71,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
       const draftContent = await config.onUpdateDocument({
         document: args.document,
         description: args.description,
+        contextText: args.contextText,
         dataStream: args.dataStream,
         session: args.session,
       });

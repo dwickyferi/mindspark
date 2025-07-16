@@ -10,6 +10,7 @@ import 'react-data-grid/lib/styles.css';
 
 type SheetEditorProps = {
   content: string;
+  contextText?: string;
   saveContent: (content: string, isCurrentVersion: boolean) => void;
   status: string;
   isCurrentVersion: boolean;
@@ -21,6 +22,7 @@ const MIN_COLS = 26;
 
 const PureSpreadsheetEditor = ({
   content,
+  contextText,
   saveContent,
   status,
   isCurrentVersion,
