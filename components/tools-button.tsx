@@ -34,7 +34,10 @@ const builtInTools: Tool[] = [
     description: 'Search the web for information',
     icon: <GlobeIcon size={14} />,
     category: 'built-in',
-  },
+  }
+];
+
+const mcpTools: Tool[] = [
   {
     id: 'code-execution',
     name: 'Code Execution',
@@ -48,23 +51,6 @@ const builtInTools: Tool[] = [
     description: 'Generate text content',
     icon: <MessageIcon size={14} />,
     category: 'built-in',
-  },
-];
-
-const githubTools: Tool[] = [
-  {
-    id: 'github-search',
-    name: 'GitHub Search',
-    description: 'Search GitHub repositories and code',
-    icon: <SparklesIcon size={14} />,
-    category: 'github',
-  },
-  {
-    id: 'github-issues',
-    name: 'GitHub Issues',
-    description: 'Manage GitHub issues',
-    icon: <MessageIcon size={14} />,
-    category: 'github',
   },
 ];
 
@@ -121,21 +107,22 @@ export function ToolsButton({ onToolSelect, disabled = false, className }: Tools
         
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
-            GitHub Tools
+            MCP Tools
           </DropdownMenuLabel>
-          {githubTools.map((tool) => (
-            <DropdownMenuItem
-              key={tool.id}
-              className="cursor-pointer flex items-center gap-2 py-2"
-              onClick={() => handleToolSelect(tool)}
-            >
-              {tool.icon}
-              <div className="flex flex-col">
-                <span className="font-medium">{tool.name}</span>
-                <span className="text-xs text-muted-foreground">{tool.description}</span>
-              </div>
-            </DropdownMenuItem>
-          ))}
+            {mcpTools.map((tool) => (
+                <DropdownMenuItem
+                key={tool.id}
+                className="cursor-pointer flex items-center gap-2 py-2"
+                onClick={() => handleToolSelect(tool)}
+                >
+                {tool.icon}
+                <div className="flex flex-col">
+                    <span className="font-medium">{tool.name}</span>
+                    <span className="text-xs text-muted-foreground">{tool.description}</span>
+                </div>
+                </DropdownMenuItem>
+            ))}
+          
         </DropdownMenuGroup>
 
         <DropdownMenuSeparator />

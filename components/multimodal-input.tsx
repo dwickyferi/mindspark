@@ -186,25 +186,11 @@ function PureMultimodalInput({
       category: 'built-in',
     },
     {
-      id: 'code-execution',
-      name: 'Code Execution',
-      description: 'Execute code snippets',
+      id: 'mcp-tools',
+      name: 'MCP Tools',
+      description: 'Coming soon',
       icon: <TerminalIcon size={14} />,
-      category: 'built-in',
-    },
-    {
-      id: 'github-search',
-      name: 'GitHub Search',
-      description: 'Search GitHub repositories',
-      icon: <ArrowUpIcon size={14} />,
-      category: 'github',
-    },
-    {
-      id: 'github-issues',
-      name: 'GitHub Issues',
-      description: 'Access GitHub issues',
-      icon: <ArrowUpIcon size={14} />,
-      category: 'github',
+      category: 'external',
     },
   ];
 
