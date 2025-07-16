@@ -16,7 +16,7 @@ import {
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
-import { ArrowUpIcon, PaperclipIcon, StopIcon } from './icons';
+import { ArrowUpIcon, PaperclipIcon, StopIcon, GlobeIcon, TerminalIcon } from './icons';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -28,6 +28,15 @@ import { ArrowDown } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
 import type { Attachment, ChatMessage } from '@/lib/types';
+import { ToolsButton } from './tools-button';
+
+interface Tool {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  category: 'built-in' | 'github' | 'external';
+}
 
 function PureMultimodalInput({
   chatId,
@@ -101,33 +110,148 @@ function PureMultimodalInput({
   }, [input, setLocalStorageInput]);
 
   const handleInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(event.target.value);
+    const value = event.target.value;
+    setInput(value);
     adjustHeight();
+
+    // Check for @-mentions
+    const cursorPosition = event.target.selectionStart;
+    const textBeforeCursor = value.substring(0, cursorPosition);
+    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+    
+    if (mentionMatch) {
+      const query = mentionMatch[1];
+      setMentionQuery(query);
+      setShowMentionSuggestions(true);
+      
+      // Position the suggestions dropdown
+      const textarea = event.target;
+      const style = window.getComputedStyle(textarea);
+      const lineHeight = parseInt(style.lineHeight) || 20;
+      const rect = textarea.getBoundingClientRect();
+      
+      setMentionPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+      });
+    } else {
+      setShowMentionSuggestions(false);
+      setMentionQuery('');
+    }
+  };
+
+  const handleMentionSelect = (tool: Tool) => {
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    const cursorPosition = textarea.selectionStart;
+    const textBeforeCursor = input.substring(0, cursorPosition);
+    const textAfterCursor = input.substring(cursorPosition);
+    
+    // Replace the @mention with the tool name
+    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+    if (mentionMatch) {
+      const newText = textBeforeCursor.replace(/@(\w*)$/, `@${tool.name} `) + textAfterCursor;
+      setInput(newText);
+      
+      // Add to selected tools
+      handleToolSelect(tool);
+      
+      // Close suggestions
+      setShowMentionSuggestions(false);
+      setMentionQuery('');
+      
+      // Focus back on textarea
+      setTimeout(() => {
+        textarea.focus();
+        const newCursorPosition = textBeforeCursor.replace(/@(\w*)$/, `@${tool.name} `).length;
+        textarea.setSelectionRange(newCursorPosition, newCursorPosition);
+      }, 0);
+    }
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
+  const [selectedTools, setSelectedTools] = useState<Tool[]>([]);
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
+  const [mentionQuery, setMentionQuery] = useState('');
+
+  const availableTools: Tool[] = [
+    {
+      id: 'web-search',
+      name: 'Web Search',
+      description: 'Search the web for information',
+      icon: <GlobeIcon size={14} />,
+      category: 'built-in',
+    },
+    {
+      id: 'code-execution',
+      name: 'Code Execution',
+      description: 'Execute code snippets',
+      icon: <TerminalIcon size={14} />,
+      category: 'built-in',
+    },
+    {
+      id: 'github-search',
+      name: 'GitHub Search',
+      description: 'Search GitHub repositories',
+      icon: <ArrowUpIcon size={14} />,
+      category: 'github',
+    },
+    {
+      id: 'github-issues',
+      name: 'GitHub Issues',
+      description: 'Access GitHub issues',
+      icon: <ArrowUpIcon size={14} />,
+      category: 'github',
+    },
+  ];
+
+  const handleToolSelect = (tool: Tool) => {
+    setSelectedTools((prev) => {
+      if (prev.find((t) => t.id === tool.id)) {
+        return prev; // Tool already selected
+      }
+      return [...prev, tool];
+    });
+  };
+
+  const handleToolRemove = (toolId: string) => {
+    setSelectedTools((prev) => prev.filter((t) => t.id !== toolId));
+  };
 
   const submitForm = useCallback(() => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
+    const messageParts = [
+      ...attachments.map((attachment) => ({
+        type: 'file' as const,
+        url: attachment.url,
+        name: attachment.name,
+        mediaType: attachment.contentType,
+      })),
+      {
+        type: 'text' as const,
+        text: input,
+      },
+    ];
+
+    // Add selected tools to the message if any
+    if (selectedTools.length > 0) {
+      messageParts.push({
+        type: 'text' as const,
+        text: `\n\nSelected tools: ${selectedTools.map(tool => tool.name).join(', ')}`,
+      });
+    }
+
     sendMessage({
       role: 'user',
-      parts: [
-        ...attachments.map((attachment) => ({
-          type: 'file' as const,
-          url: attachment.url,
-          name: attachment.name,
-          mediaType: attachment.contentType,
-        })),
-        {
-          type: 'text',
-          text: input,
-        },
-      ],
+      parts: messageParts,
     });
 
     setAttachments([]);
+    setSelectedTools([]);
     setLocalStorageInput('');
     resetHeight();
     setInput('');
@@ -276,6 +400,8 @@ function PureMultimodalInput({
         </div>
       )}
 
+
+
       <Textarea
         data-testid="multimodal-input"
         ref={textareaRef}
@@ -302,11 +428,92 @@ function PureMultimodalInput({
               submitForm();
             }
           }
+          
+          // Handle arrow keys for mention suggestions
+          if (showMentionSuggestions) {
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              // TODO: Add proper keyboard navigation for mention suggestions
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              setShowMentionSuggestions(false);
+              setMentionQuery('');
+            }
+          }
         }}
       />
 
-      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
-        <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+      {showMentionSuggestions && (
+        <div
+          className="absolute z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-40 overflow-y-auto min-w-48"
+          style={{
+            top: mentionPosition.top,
+            left: mentionPosition.left,
+          }}
+        >
+          {availableTools
+            .filter(tool => 
+              tool.name.toLowerCase().includes(mentionQuery.toLowerCase()) ||
+              tool.description.toLowerCase().includes(mentionQuery.toLowerCase())
+            )
+            .map(tool => (
+              <button
+                key={tool.id}
+                onClick={() => handleMentionSelect(tool)}
+                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              >
+                {tool.icon}
+                <div>
+                  <div className="text-sm font-medium">{tool.name}</div>
+                  <div className="text-xs text-gray-500">{tool.description}</div>
+                </div>
+              </button>
+            ))}
+        </div>
+      )}
+
+      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start items-center">
+        {/* <AttachmentsButton fileInputRef={fileInputRef} status={status} /> */}
+        <ToolsButton
+          onToolSelect={handleToolSelect}
+          disabled={status !== 'ready'}
+          className="ml-1"
+        />
+        
+        {selectedTools.length > 0 && (
+          <>
+            <div className="mx-2 h-6 w-px bg-border"></div>
+            <div className="flex flex-row gap-2 overflow-x-scroll items-center">
+              {selectedTools.map((tool) => (
+                <div
+                  key={tool.id}
+                  className="flex items-center gap-2 px-3 py-1 text-primary rounded-full text-sm border border-blue-400 bg-white"
+                >
+                  {tool.icon}
+                  <span>{tool.name}</span>
+                  <button
+                    onClick={() => handleToolRemove(tool.id)}
+                    className="hover:bg-primary/10 rounded-full p-0.5 transition-colors"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M18 6 6 18" />
+                      <path d="M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
