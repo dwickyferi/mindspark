@@ -22,6 +22,8 @@ import { useAutoResume } from '@/hooks/use-auto-resume';
 import { ChatSDKError } from '@/lib/errors';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
+import { useArtifact } from '@/hooks/use-artifact';
+import { initialArtifactData } from '@/hooks/use-artifact';
 
 export function Chat({
   id,
@@ -47,8 +49,14 @@ export function Chat({
 
   const { mutate } = useSWRConfig();
   const { setDataStream } = useDataStream();
+  const { setArtifact } = useArtifact();
 
   const [input, setInput] = useState<string>('');
+
+  // Reset artifact state when chatId changes
+  useEffect(() => {
+    setArtifact(initialArtifactData);
+  }, [id, setArtifact]);
 
   const {
     messages,
