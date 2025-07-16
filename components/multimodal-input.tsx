@@ -468,7 +468,7 @@ function PureMultimodalInput({
         
         {selectedTools.length > 0 && (
           <>
-            <div className="mx-2 h-6 w-px bg-border"></div>
+            <div className="mx-2 h-6 w-px bg-border dark:bg-white"></div>
             <div className="flex flex-row gap-2 overflow-x-scroll items-center">
               {selectedTools.map((tool) => (
                 <div
