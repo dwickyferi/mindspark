@@ -473,7 +473,7 @@ function PureMultimodalInput({
               {selectedTools.map((tool) => (
                 <div
                   key={tool.id}
-                  className="flex items-center gap-2 px-3 py-1 text-primary rounded-full text-sm border border-blue-400 bg-white"
+                  className="flex items-center gap-2 px-3 py-1 text-primary rounded-full text-sm border border-blue-400 bg-white dark:bg-transparent"
                 >
                   {tool.icon}
                   <span>{tool.name}</span>
