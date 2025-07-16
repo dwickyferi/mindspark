@@ -48,8 +48,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 <Image
                   src="/images/mind-spark.png"
                   alt="MindSpark Logo"
-                  width={26}
-                  height={26}
+                  width={30}
+                  height={30}
                   className="rounded-sm transition-transform group-hover:scale-105"
                 />
                 <span className="text-lg font-semibold pr-2 hover:bg-muted rounded-md cursor-pointer transition-colors">

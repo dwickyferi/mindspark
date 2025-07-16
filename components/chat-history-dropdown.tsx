@@ -224,7 +224,10 @@ export function ChatHistoryDropdown({ user, isCollapsed = false }: ChatHistoryDr
         aria-expanded={isOpen}
         aria-label="Toggle chat history"
       >
-        <span className="text-sm font-medium">Chat History</span>
+        <div className="flex items-center gap-2">
+          <ClockRewind size={16} />
+          <span className="text-sm font-medium">Chat History</span>
+        </div>
         <div className={cn('transition-transform duration-200', isOpen && 'rotate-180')}>
           <ChevronDownIcon size={16} />
         </div>
