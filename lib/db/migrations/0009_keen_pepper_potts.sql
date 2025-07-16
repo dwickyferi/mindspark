@@ -1,0 +1,2 @@
+-- Column "name" already exists, this migration was applied via push
+-- ALTER TABLE "User" ADD COLUMN "name" varchar(100);

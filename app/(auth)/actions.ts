@@ -11,6 +11,12 @@ const authFormSchema = z.object({
   password: z.string().min(6),
 });
 
+const registerFormSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name must be less than 100 characters').trim(),
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
 export interface LoginActionState {
   status: 'idle' | 'in_progress' | 'success' | 'failed' | 'invalid_data';
 }
@@ -49,6 +55,11 @@ export interface RegisterActionState {
     | 'failed'
     | 'user_exists'
     | 'invalid_data';
+  errors?: {
+    name?: string[];
+    email?: string[];
+    password?: string[];
+  };
 }
 
 export const register = async (
@@ -56,7 +67,8 @@ export const register = async (
   formData: FormData,
 ): Promise<RegisterActionState> => {
   try {
-    const validatedData = authFormSchema.parse({
+    const validatedData = registerFormSchema.parse({
+      name: formData.get('name'),
       email: formData.get('email'),
       password: formData.get('password'),
     });
@@ -66,7 +78,7 @@ export const register = async (
     if (user) {
       return { status: 'user_exists' } as RegisterActionState;
     }
-    await createUser(validatedData.email, validatedData.password);
+    await createUser(validatedData.email, validatedData.password, validatedData.name);
     await signIn('credentials', {
       email: validatedData.email,
       password: validatedData.password,
@@ -76,7 +88,10 @@ export const register = async (
     return { status: 'success' };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { status: 'invalid_data' };
+      return { 
+        status: 'invalid_data',
+        errors: error.flatten().fieldErrors
+      };
     }
 
     return { status: 'failed' };
