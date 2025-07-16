@@ -9,6 +9,7 @@ import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 import { PreviewAttachment } from './preview-attachment';
 import { Weather } from './weather';
+import { WebSearchLoading, WebSearchResults, WebExtractLoading, WebExtractResults } from './web-search';
 import equal from 'fast-deep-equal';
 import { cn, sanitizeText } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -302,6 +303,81 @@ const PurePreviewMessage = ({
                         type="request-suggestions"
                         result={output}
                         isReadonly={isReadonly}
+                      />
+                    </div>
+                  );
+                }
+              }
+
+              if (type === 'tool-webSearch') {
+                const { toolCallId, state } = part;
+
+                if (state === 'input-available') {
+                  return (
+                    <div key={toolCallId}>
+                      <WebSearchLoading />
+                    </div>
+                  );
+                }
+
+                if (state === 'output-available') {
+                  const { output } = part;
+
+                  if ('error' in output) {
+                    return (
+                      <div
+                        key={toolCallId}
+                        className="text-red-500 p-2 border rounded"
+                      >
+                        Error: {String(output.error)}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={toolCallId}>
+                      <WebSearchResults
+                        results={output.results}
+                        images={output.images}
+                        query={output.query}
+                        summary={output.summary}
+                        follow_up_questions={output.follow_up_questions}
+                      />
+                    </div>
+                  );
+                }
+              }
+
+              if (type === 'tool-webExtract') {
+                const { toolCallId, state } = part;
+
+                if (state === 'input-available') {
+                  return (
+                    <div key={toolCallId}>
+                      <WebExtractLoading />
+                    </div>
+                  );
+                }
+
+                if (state === 'output-available') {
+                  const { output } = part;
+
+                  if ('error' in output) {
+                    return (
+                      <div
+                        key={toolCallId}
+                        className="text-red-500 p-2 border rounded"
+                      >
+                        Error: {String(output.error)}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={toolCallId}>
+                      <WebExtractResults
+                        extracted_content={output.extracted_content}
+                        summary={output.summary}
                       />
                     </div>
                   );

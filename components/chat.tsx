@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { ChatHeader } from '@/components/chat-header';
 import type { Vote } from '@/lib/db/schema';
-import { fetcher, fetchWithErrorHandlers, generateUUID } from '@/lib/utils';
+import { fetcher, fetchWithErrorHandlers, generateUUID, generateContextText } from '@/lib/utils';
 import { Artifact } from './artifact';
 import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';
@@ -22,6 +22,8 @@ import { useAutoResume } from '@/hooks/use-auto-resume';
 import { ChatSDKError } from '@/lib/errors';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
+import { useArtifact } from '@/hooks/use-artifact';
+import { initialArtifactData } from '@/hooks/use-artifact';
 
 export function Chat({
   id,
@@ -47,8 +49,14 @@ export function Chat({
 
   const { mutate } = useSWRConfig();
   const { setDataStream } = useDataStream();
+  const { setArtifact } = useArtifact();
 
   const [input, setInput] = useState<string>('');
+
+  // Reset artifact state when chatId changes
+  useEffect(() => {
+    setArtifact(initialArtifactData);
+  }, [id, setArtifact]);
 
   const {
     messages,
@@ -67,10 +75,12 @@ export function Chat({
       api: '/api/chat',
       fetch: fetchWithErrorHandlers,
       prepareSendMessagesRequest({ messages, id, body }) {
+        const contextText = generateContextText(messages);
         return {
           body: {
             id,
             message: messages.at(-1),
+            contextText,
             selectedChatModel: initialChatModel,
             selectedVisibilityType: visibilityType,
             ...body,
@@ -146,6 +156,7 @@ export function Chat({
           regenerate={regenerate}
           isReadonly={isReadonly}
           isArtifactVisible={isArtifactVisible}
+          session={session}
         />
 
         <form className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">

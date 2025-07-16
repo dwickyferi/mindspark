@@ -5,13 +5,21 @@ import { updateDocumentPrompt } from '@/lib/ai/prompts';
 
 export const textDocumentHandler = createDocumentHandler<'text'>({
   kind: 'text',
-  onCreateDocument: async ({ title, dataStream }) => {
+  onCreateDocument: async ({ title, contextText, dataStream }) => {
     let draftContent = '';
+
+    const systemPrompt = contextText
+      ? `Write about the given topic. Markdown is supported. Use headings wherever appropriate.
+
+Context from previous conversation:
+${contextText}
+
+Use this context to inform your writing and maintain consistency with the conversation.`
+      : 'Write about the given topic. Markdown is supported. Use headings wherever appropriate.';
 
     const { fullStream } = streamText({
       model: myProvider.languageModel('artifact-model'),
-      system:
-        'Write about the given topic. Markdown is supported. Use headings wherever appropriate.',
+      system: systemPrompt,
       experimental_transform: smoothStream({ chunking: 'word' }),
       prompt: title,
     });
@@ -34,12 +42,21 @@ export const textDocumentHandler = createDocumentHandler<'text'>({
 
     return draftContent;
   },
-  onUpdateDocument: async ({ document, description, dataStream }) => {
+  onUpdateDocument: async ({ document, description, contextText, dataStream }) => {
     let draftContent = '';
+
+    const systemPrompt = contextText
+      ? `${updateDocumentPrompt(document.content, 'text')}
+
+Context from previous conversation:
+${contextText}
+
+Use this context to inform your updates and maintain consistency with the conversation.`
+      : updateDocumentPrompt(document.content, 'text');
 
     const { fullStream } = streamText({
       model: myProvider.languageModel('artifact-model'),
-      system: updateDocumentPrompt(document.content, 'text'),
+      system: systemPrompt,
       experimental_transform: smoothStream({ chunking: 'word' }),
       prompt: description,
       providerOptions: {

@@ -8,9 +8,10 @@ import type { ChatMessage } from '@/lib/types';
 interface UpdateDocumentProps {
   session: Session;
   dataStream: UIMessageStreamWriter<ChatMessage>;
+  contextText?: string;
 }
 
-export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
+export const updateDocument = ({ session, dataStream, contextText }: UpdateDocumentProps) =>
   tool({
     description: 'Update a document with the given description.',
     inputSchema: z.object({
@@ -34,6 +35,14 @@ export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
         transient: true,
       });
 
+      if (contextText) {
+        dataStream.write({
+          type: 'data-contextText',
+          data: contextText,
+          transient: true,
+        });
+      }
+
       const documentHandler = documentHandlersByArtifactKind.find(
         (documentHandlerByArtifactKind) =>
           documentHandlerByArtifactKind.kind === document.kind,
@@ -46,6 +55,7 @@ export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
       await documentHandler.onUpdateDocument({
         document,
         description,
+        contextText,
         dataStream,
         session,
       });

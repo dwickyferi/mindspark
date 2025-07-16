@@ -57,6 +57,13 @@ export function DataStreamHandler() {
               status: 'streaming',
             };
 
+          case 'data-contextText':
+            return {
+              ...draftArtifact,
+              contextText: delta.data,
+              status: 'streaming',
+            };
+
           case 'data-clear':
             return {
               ...draftArtifact,

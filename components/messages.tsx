@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { useMessages } from '@/hooks/use-messages';
 import type { ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
+import type { Session } from 'next-auth';
 
 interface MessagesProps {
   chatId: string;
@@ -18,6 +19,7 @@ interface MessagesProps {
   regenerate: UseChatHelpers<ChatMessage>['regenerate'];
   isReadonly: boolean;
   isArtifactVisible: boolean;
+  session: Session;
 }
 
 function PureMessages({
@@ -28,6 +30,7 @@ function PureMessages({
   setMessages,
   regenerate,
   isReadonly,
+  session,
 }: MessagesProps) {
   const {
     containerRef: messagesContainerRef,
@@ -47,7 +50,7 @@ function PureMessages({
       ref={messagesContainerRef}
       className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 pb-24 md:pb-32 relative"
     >
-      {messages.length === 0 && <Greeting />}
+      {messages.length === 0 && <Greeting userName={session?.user?.name || ''} />}
 
       {messages.map((message, index) => (
         <PreviewMessage
@@ -90,6 +93,7 @@ export const Messages = memo(PureMessages, (prevProps, nextProps) => {
   if (prevProps.messages.length !== nextProps.messages.length) return false;
   if (!equal(prevProps.messages, nextProps.messages)) return false;
   if (!equal(prevProps.votes, nextProps.votes)) return false;
+  if (prevProps.session?.user?.name !== nextProps.session?.user?.name) return false;
 
   return false;
 });

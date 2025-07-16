@@ -57,6 +57,7 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
     mode,
     status,
     content,
+    contextText,
     isCurrentVersion,
     currentVersionIndex,
     onSaveContent,

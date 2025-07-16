@@ -4,6 +4,7 @@ import cn from 'classnames';
 interface ImageEditorProps {
   title: string;
   content: string;
+  contextText?: string;
   isCurrentVersion: boolean;
   currentVersionIndex: number;
   status: string;
@@ -13,6 +14,7 @@ interface ImageEditorProps {
 export function ImageEditor({
   title,
   content,
+  contextText,
   status,
   isInline,
 }: ImageEditorProps) {

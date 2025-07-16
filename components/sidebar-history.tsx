@@ -239,7 +239,7 @@ export function SidebarHistory({
                 if (searchQuery.trim() && filteredChats.length === 0) {
                   return (
                     <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                      No chats found matching "{searchQuery}"
+                      No chats found matching &quot;{searchQuery}&quot;
                     </div>
                   );
                 }

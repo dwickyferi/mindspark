@@ -11,9 +11,10 @@ import type { ChatMessage } from '@/lib/types';
 interface CreateDocumentProps {
   session: Session;
   dataStream: UIMessageStreamWriter<ChatMessage>;
+  contextText?: string;
 }
 
-export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
+export const createDocument = ({ session, dataStream, contextText }: CreateDocumentProps) =>
   tool({
     description:
       'Create a document for a writing or content creation activities. This tool will call other functions that will generate the contents of the document based on the title and kind.',
@@ -42,6 +43,14 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
         transient: true,
       });
 
+      if (contextText) {
+        dataStream.write({
+          type: 'data-contextText',
+          data: contextText,
+          transient: true,
+        });
+      }
+
       dataStream.write({
         type: 'data-clear',
         data: null,
@@ -60,6 +69,7 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
       await documentHandler.onCreateDocument({
         id,
         title,
+        contextText,
         dataStream,
         session,
       });
