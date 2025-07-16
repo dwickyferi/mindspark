@@ -48,70 +48,9 @@ export interface ChartProps {
   width?: number;
   height?: number;
   className?: string;
+  isLoading?: boolean;
+  animationDuration?: number;
 }
-
-const SAMPLE_LINE_DATA: ChartData = {
-  categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-  series: [
-    {
-      name: 'Sales',
-      data: [120, 200, 150, 80, 70, 110],
-      type: 'line'
-    },
-    {
-      name: 'Profit',
-      data: [20, 30, 25, 10, 15, 20],
-      type: 'line'
-    }
-  ]
-};
-
-const SAMPLE_BAR_DATA: ChartData = {
-  categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-  series: [
-    {
-      name: 'Website',
-      data: [10, 52, 200, 334, 390, 330, 220],
-      type: 'bar'
-    },
-    {
-      name: 'Mobile',
-      data: [20, 82, 191, 234, 290, 330, 310],
-      type: 'bar'
-    }
-  ]
-};
-
-const SAMPLE_PIE_DATA: ChartData = {
-  data: [
-    { name: 'Chrome', value: 58.5 },
-    { name: 'Firefox', value: 13.2 },
-    { name: 'Safari', value: 9.1 },
-    { name: 'Edge', value: 8.7 },
-    { name: 'Others', value: 10.5 }
-  ]
-};
-
-const SAMPLE_SCATTER_DATA: ChartData = {
-  series: [
-    {
-      name: 'Dataset 1',
-      data: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
-      type: 'scatter'
-    }
-  ]
-};
-
-const SAMPLE_AREA_DATA: ChartData = {
-  categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-  series: [
-    {
-      name: 'Revenue',
-      data: [1200, 1900, 3000, 5000, 3500, 4200],
-      type: 'area'
-    }
-  ]
-};
 
 export function Charts({ 
   title = 'Chart Example', 
@@ -119,7 +58,9 @@ export function Charts({
   type = 'line', 
   width = 500, 
   height = 300, 
-  className = '' 
+  className = '',
+  isLoading = false,
+  animationDuration = 1000,
 }: ChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<echarts.ECharts | null>(null);
@@ -127,22 +68,32 @@ export function Charts({
   const [currentData, setCurrentData] = useState<ChartData>(data);
   const { theme } = useTheme();
 
-  // Sample data for demonstration
-  const getSampleData = (chartType: string): ChartData => {
-    switch (chartType) {
-      case 'line':
-        return SAMPLE_LINE_DATA;
-      case 'bar':
-        return SAMPLE_BAR_DATA;
-      case 'pie':
-        return SAMPLE_PIE_DATA;
-      case 'scatter':
-        return SAMPLE_SCATTER_DATA;
-      case 'area':
-        return SAMPLE_AREA_DATA;
-      default:
-        return SAMPLE_LINE_DATA;
-    }
+  // Add a loading pulse animation wrapper
+  const LoadingWrapper = ({ children }: { children: React.ReactNode }) => {
+    if (!isLoading) return <>{children}</>;
+    
+    return (
+      <div className="relative">
+        {/* Enhanced loading overlay for AI thinking phase */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-blue-500/20 to-blue-500/10 animate-pulse rounded-lg z-10" />
+        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-blue-500/5 to-transparent animate-pulse rounded-lg z-10" style={{ animationDelay: '0.5s' }} />
+        
+        {/* Loading indicator */}
+        <div className="absolute top-4 right-4 flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 z-20 bg-white/80 dark:bg-gray-800/80 px-3 py-1 rounded-full backdrop-blur-sm">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+          </div>
+          <span className="font-medium">AI is thinking...</span>
+        </div>
+        
+        {/* Dimmed content during loading */}
+        <div className={isLoading ? 'opacity-50 pointer-events-none' : ''}>
+          {children}
+        </div>
+      </div>
+    );
   };
 
   const generateChartOption = useCallback((data: ChartData, chartType: string, isDark: boolean) => {
@@ -337,7 +288,7 @@ export function Charts({
 
   const handleTypeChange = (newType: 'line' | 'bar' | 'pie' | 'scatter' | 'area') => {
     setCurrentType(newType);
-    setCurrentData(getSampleData(newType));
+    // Keep the original data from AI, just change the chart type
   };
 
   return (
