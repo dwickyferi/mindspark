@@ -195,7 +195,7 @@ const PurePreviewMessage = ({
                   const { input } = part;
                   return (
                     <div key={toolCallId} className="skeleton">
-                      <Charts {...input} />
+                      <Charts {...input} isLoading={true} />
                     </div>
                   );
                 }
@@ -216,7 +216,7 @@ const PurePreviewMessage = ({
 
                   return (
                     <div key={toolCallId}>
-                      <Charts {...output} />
+                      <Charts {...output} isLoading={false} />
                     </div>
                   );
                 }

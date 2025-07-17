@@ -5,7 +5,14 @@ import type { Session } from 'next-auth';
 
 const createChartSchema = z.object({
   title: z.string().describe('The title of the chart'),
-  type: z.enum(['line', 'bar', 'pie', 'scatter', 'area']).describe('The type of chart to create'),
+  type: z.enum(['line', 'bar', 'pie', 'scatter', 'area']).describe(
+    'The type of chart to create. Choose based on data characteristics: ' +
+    '- line: for time series, trends, or continuous data over time ' +
+    '- bar: for comparing categories, rankings, or discrete data ' +
+    '- pie: for showing parts of a whole, percentages, or proportions ' +
+    '- scatter: for showing relationships between two variables or correlation ' +
+    '- area: for showing cumulative data, volumes, or stacked quantities over time'
+  ),
   data: z.union([
     // For pie charts
     z.object({
@@ -32,7 +39,13 @@ export const createChart = ({
   session: Session;
 }) => {
   return tool({
-    description: 'Create interactive charts and visualizations with various chart types including line, bar, pie, scatter, and area charts.',
+    description: 'Create interactive charts and visualizations. Analyze the user data and choose the most appropriate chart type: ' +
+      '• Line charts: for time series, trends, continuous data over time ' +
+      '• Bar charts: for comparing categories, rankings, discrete comparisons ' +
+      '• Pie charts: for parts of a whole, percentages, proportional data ' +
+      '• Scatter plots: for relationships between variables, correlations ' +
+      '• Area charts: for cumulative data, volumes, stacked quantities over time. ' +
+      'If user doesn\'t specify chart type, analyze their data and choose the most suitable visualization.',
     inputSchema: createChartSchema,
     execute: async ({ title, type, data, description }) => {
       const id = generateUUID();
