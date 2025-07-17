@@ -24,7 +24,7 @@ import { SuggestedActions } from './suggested-actions';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown } from 'lucide-react';
+import { ArrowDown, Search, Target } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
 import type { Attachment, ChatMessage } from '@/lib/types';
@@ -186,6 +186,13 @@ function PureMultimodalInput({
       category: 'built-in',
     },
     {
+      id: 'deep-research',
+      name: 'Deep Research',
+      description: 'Conduct comprehensive research analysis',
+      icon: <Target size={14} />,
+      category: 'built-in',
+    },
+    {
       id: 'charts',
       name: 'Charts',
       description: 'Create interactive charts and visualizations',
@@ -230,12 +237,26 @@ function PureMultimodalInput({
       },
     ];
 
-    // Add selected tools to the message if any
+    // Handle selected tools
     if (selectedTools.length > 0) {
-      messageParts.push({
-        type: 'text' as const,
-        text: `\n\nSelected tools: ${selectedTools.map(tool => tool.name).join(', ')}`,
-      });
+      const hasDeepResearch = selectedTools.find(tool => tool.id === 'deep-research');
+      const otherTools = selectedTools.filter(tool => tool.id !== 'deep-research');
+      
+      if (hasDeepResearch) {
+        // For deep research, modify the input to trigger the tool
+        const baseText = input.trim();
+        messageParts[messageParts.length - 1] = {
+          type: 'text' as const,
+          text: baseText + (baseText ? '\n\n' : '') + 'Please conduct a comprehensive deep research analysis on this topic.',
+        };
+      }
+      
+      if (otherTools.length > 0) {
+        messageParts.push({
+          type: 'text' as const,
+          text: `\n\nSelected tools: ${otherTools.map(tool => tool.name).join(', ')}`,
+        });
+      }
     }
 
     sendMessage({

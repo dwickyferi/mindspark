@@ -11,6 +11,7 @@ import { PreviewAttachment } from './preview-attachment';
 import { Weather } from './weather';
 import { Charts } from './charts';
 import { WebSearchLoading, WebSearchResults, WebExtractLoading, WebExtractResults } from './web-search';
+import { DeepResearchResults } from './deep-research';
 import equal from 'fast-deep-equal';
 import { cn, sanitizeText } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -413,6 +414,55 @@ const PurePreviewMessage = ({
                       <WebExtractResults
                         extracted_content={output.extracted_content}
                         summary={output.summary}
+                      />
+                    </div>
+                  );
+                }
+              }
+
+              if (type === 'tool-deepResearch') {
+                const { toolCallId, state } = part;
+
+                if (state === 'input-available') {
+                  return (
+                    <div key={toolCallId}>
+                      <div className="p-4 border rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                          <span className="text-sm font-medium">Conducting deep research...</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Analyzing multiple sources and generating comprehensive insights
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (state === 'output-available') {
+                  const { output } = part;
+
+                  if ('error' in output) {
+                    return (
+                      <div
+                        key={toolCallId}
+                        className="text-red-500 p-2 border rounded"
+                      >
+                        Error: {String(output.error)}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={toolCallId}>
+                      <DeepResearchResults
+                        researchId={output.research_id}
+                        query={output.original_query}
+                        analysis={output.comprehensive_report}
+                        keyLearnings={output.key_learnings}
+                        recommendations={output.recommendations}
+                        citations={output.citations}
+                        metadata={output.research_metadata}
                       />
                     </div>
                   );
