@@ -4,6 +4,8 @@ import type { createDocument } from './ai/tools/create-document';
 import type { updateDocument } from './ai/tools/update-document';
 import type { requestSuggestions } from './ai/tools/request-suggestions';
 import type { webSearch, webExtract } from './ai/tools/web-search';
+import type { createChart } from './ai/tools/create-chart';
+import type { deepResearch } from './ai/tools/deep-research/tool';
 import type { InferUITool, UIMessage } from 'ai';
 
 import type { ArtifactKind } from '@/components/artifact';
@@ -25,6 +27,8 @@ type requestSuggestionsTool = InferUITool<
 >;
 type webSearchTool = InferUITool<typeof webSearch>;
 type webExtractTool = InferUITool<typeof webExtract>;
+type createChartTool = InferUITool<ReturnType<typeof createChart>>;
+type deepResearchTool = InferUITool<typeof deepResearch>;
 
 export type ChatTools = {
   getWeather: weatherTool;
@@ -33,6 +37,8 @@ export type ChatTools = {
   requestSuggestions: requestSuggestionsTool;
   webSearch: webSearchTool;
   webExtract: webExtractTool;
+  createChart: createChartTool;
+  deepResearch: deepResearchTool;
 };
 
 export type CustomUIDataTypes = {

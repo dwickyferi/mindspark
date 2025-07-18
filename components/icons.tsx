@@ -848,3 +848,88 @@ export const SummarizeIcon = ({ size = 16 }: { size?: number }) => (
     />
   </svg>
 );
+
+export const BarChartIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    height={size}
+    strokeLinejoin="round"
+    viewBox="0 0 16 16"
+    width={size}
+    style={{ color: 'currentcolor' }}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M1 1v11.75A2.25 2.25 0 0 0 3.25 15H15v-1.5H3.25a.75.75 0 0 1-.75-.75V1H1ZM6.5 4v9h2V4h-2ZM4 7v6h2V7H4Zm6-1v7h2V6h-2Zm4 2v5h2V8h-2Z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
+export const PieChartIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    height={size}
+    strokeLinejoin="round"
+    viewBox="0 0 16 16"
+    width={size}
+    style={{ color: 'currentcolor' }}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1ZM2.5 8a5.5 5.5 0 0 1 11 0v.5H8V2.5A5.5 5.5 0 0 1 2.5 8Z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
+export const ScatterChartIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    height={size}
+    strokeLinejoin="round"
+    viewBox="0 0 16 16"
+    width={size}
+    style={{ color: 'currentcolor' }}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M1 1v11.75A2.25 2.25 0 0 0 3.25 15H15v-1.5H3.25a.75.75 0 0 1-.75-.75V1H1ZM4.5 6a1 1 0 1 1 2 0 1 1 0 0 1-2 0ZM8 9a1 1 0 1 0 0 2 1 1 0 0 0 0-2ZM10.5 5a1 1 0 1 1 2 0 1 1 0 0 1-2 0ZM6 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2ZM12.5 8a1 1 0 1 1 2 0 1 1 0 0 1-2 0Z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
+export const AreaChartIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    height={size}
+    strokeLinejoin="round"
+    viewBox="0 0 16 16"
+    width={size}
+    style={{ color: 'currentcolor' }}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M1 1v11.75A2.25 2.25 0 0 0 3.25 15H15v-1.5H3.25a.75.75 0 0 1-.75-.75V1H1ZM3 12.5V7l2.5 2.5L8 7l2.5 2.5L13 7v5.5H3Z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
+export const ChartIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    height={size}
+    strokeLinejoin="round"
+    viewBox="0 0 16 16"
+    width={size}
+    style={{ color: 'currentcolor' }}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M1 1v11.75A2.25 2.25 0 0 0 3.25 15H15v-1.5H3.25a.75.75 0 0 1-.75-.75V1H1Zm13.297 5.013.513-.547-1.094-1.026-.513.547-3.22 3.434-2.276-2.275a1 1 0 0 0-1.414 0L4.22 8.22l-.53.53 1.06 1.06.53-.53L7 7.56l2.287 2.287a1 1 0 0 0 1.437-.023l3.573-3.811Z"
+      clipRule="evenodd"
+    />
+  </svg>
+);

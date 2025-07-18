@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
-import { PlusIcon, SparklesIcon, TerminalIcon, GlobeIcon, MessageIcon } from './icons';
+import { PlusIcon, SparklesIcon, TerminalIcon, GlobeIcon, MessageIcon, ChartIcon } from './icons';
+import { Target } from 'lucide-react';
 
 interface Tool {
   id: string;
@@ -33,6 +34,20 @@ const builtInTools: Tool[] = [
     name: 'Web Search',
     description: 'Search the web for information',
     icon: <GlobeIcon size={14} />,
+    category: 'built-in',
+  },
+  {
+    id: 'deep-research',
+    name: 'Deep Research',
+    description: 'Conduct comprehensive research analysis',
+    icon: <Target size={14} />,
+    category: 'built-in',
+  },
+  {
+    id: 'charts',
+    name: 'Charts',
+    description: 'Create interactive charts and visualizations',
+    icon: <ChartIcon size={14} />,
     category: 'built-in',
   }
 ];
