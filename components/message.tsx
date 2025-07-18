@@ -22,6 +22,7 @@ import { MessageReasoning } from './message-reasoning';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import type { ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
+import { SelectedToolsBadge, extractToolsFromMessage, cleanMessageText } from './selected-tools-badge';
 
 // Type narrowing is handled by TypeScript's control flow analysis
 // The AI SDK provides proper discriminated unions for tool calls
@@ -50,6 +51,9 @@ const PurePreviewMessage = ({
   const attachmentsFromMessage = message.parts.filter(
     (part) => part.type === 'file',
   );
+
+  // Extract selected tools from message parts
+  const selectedTools = extractToolsFromMessage(message.parts);
 
   useDataStream();
 
@@ -117,7 +121,19 @@ const PurePreviewMessage = ({
               }
 
               if (type === 'text') {
+                // Skip rendering parts that contain only tool metadata
+                if (part.text?.includes('<!--SELECTED_TOOLS:') && part.text?.trim().match(/^<!--SELECTED_TOOLS:.*-->$/)) {
+                  return null;
+                }
+
                 if (mode === 'view') {
+                  const cleanedText = cleanMessageText(part.text);
+                  
+                  // Skip rendering if text is empty after cleaning
+                  if (!cleanedText) {
+                    return null;
+                  }
+
                   return (
                     <div key={key} className="flex flex-row gap-2 items-start">
                       {message.role === 'user' && !isReadonly && (
@@ -145,7 +161,11 @@ const PurePreviewMessage = ({
                             message.role === 'user',
                         })}
                       >
-                        <Markdown>{sanitizeText(part.text)}</Markdown>
+                        {/* Show selected tools badge for user messages */}
+                        {message.role === 'user' && selectedTools.length > 0 && (
+                          <SelectedToolsBadge tools={selectedTools} />
+                        )}
+                        <Markdown>{sanitizeText(cleanedText)}</Markdown>
                       </div>
                     </div>
                   );

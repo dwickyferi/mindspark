@@ -46,6 +46,10 @@ export function PureMessageActions({
                   ?.filter((part) => part.type === 'text')
                   .map((part) => part.text)
                   .join('\n')
+                  .replace(/<!--SELECTED_TOOLS:.*?-->/g, '')
+                  .replace(/\[User has requested deep research analysis on this topic\]/g, '')
+                  .replace(/\[User has requested deep research analysis\]/g, '')
+                  .replace(/\n\n$/, '') // Remove trailing newlines
                   .trim();
 
                 if (!textFromParts) {

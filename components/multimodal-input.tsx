@@ -239,24 +239,26 @@ function PureMultimodalInput({
 
     // Handle selected tools
     if (selectedTools.length > 0) {
+      // For deep research, we need to modify the message to indicate the user wants deep research
       const hasDeepResearch = selectedTools.find(tool => tool.id === 'deep-research');
-      const otherTools = selectedTools.filter(tool => tool.id !== 'deep-research');
-      
       if (hasDeepResearch) {
-        // For deep research, modify the input to trigger the tool
+        // Modify the original message to include a hint for the AI to use deep research
         const baseText = input.trim();
+        const researchInstruction = baseText 
+          ? `${baseText}\n\n[User has requested deep research analysis on this topic]`
+          : '[User has requested deep research analysis]';
+        
         messageParts[messageParts.length - 1] = {
           type: 'text' as const,
-          text: baseText + (baseText ? '\n\n' : '') + 'Please conduct a comprehensive deep research analysis on this topic.',
+          text: researchInstruction,
         };
       }
-      
-      if (otherTools.length > 0) {
-        messageParts.push({
-          type: 'text' as const,
-          text: `\n\nSelected tools: ${otherTools.map(tool => tool.name).join(', ')}`,
-        });
-      }
+
+      // Store selected tools as metadata in the message for UI display
+      messageParts.push({
+        type: 'text' as const,
+        text: `<!--SELECTED_TOOLS:${JSON.stringify(selectedTools)}-->`,
+      });
     }
 
     sendMessage({

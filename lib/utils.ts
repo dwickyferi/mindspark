@@ -112,7 +112,12 @@ export function getTextFromMessage(message: ChatMessage): string {
   return message.parts
     .filter((part) => part.type === 'text')
     .map((part) => part.text)
-    .join('');
+    .join('')
+    .replace(/<!--SELECTED_TOOLS:.*?-->/g, '')
+    .replace(/\[User has requested deep research analysis on this topic\]/g, '')
+    .replace(/\[User has requested deep research analysis\]/g, '')
+    .replace(/\n\n$/, '') // Remove trailing newlines
+    .trim();
 }
 
 /**
