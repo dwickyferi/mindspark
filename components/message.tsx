@@ -12,6 +12,7 @@ import { Weather } from './weather';
 import { Charts } from './charts';
 import { WebSearchLoading, WebSearchResults, WebExtractLoading, WebExtractResults } from './web-search';
 import { DeepResearchResults } from './deep-research';
+import { ResearchProgressStream } from './research-progress-stream';
 import equal from 'fast-deep-equal';
 import { cn, sanitizeText } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -55,7 +56,12 @@ const PurePreviewMessage = ({
   // Extract selected tools from message parts
   const selectedTools = extractToolsFromMessage(message.parts);
 
-  useDataStream();
+  const { dataStream } = useDataStream();
+
+  // Check if this message contains deep research
+  const hasDeepResearch = message.parts.some(
+    (part) => part.type === 'tool-deepResearch'
+  );
 
   return (
     <AnimatePresence>
@@ -104,6 +110,16 @@ const PurePreviewMessage = ({
                   />
                 ))}
               </div>
+            )}
+
+            {/* Research Process Visualization */}
+            {hasDeepResearch && (
+              <ResearchProgressStream
+                messageId={message.id}
+                onComplete={(steps) => {
+                  console.log('Research completed:', steps);
+                }}
+              />
             )}
 
             {message.parts?.map((part, index) => {
@@ -186,6 +202,11 @@ const PurePreviewMessage = ({
                     </div>
                   );
                 }
+              }
+
+              // Handle research step data parts - don't render them as they're handled by ResearchProcess component
+              if (type === 'data-researchStep') {
+                return null;
               }
 
               if (type === 'tool-getWeather') {

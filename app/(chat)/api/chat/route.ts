@@ -25,7 +25,7 @@ import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
 import { webSearch, webExtract } from '@/lib/ai/tools/web-search';
 import { createChart } from '@/lib/ai/tools/create-chart';
-import { deepResearch } from '@/lib/ai/tools/deep-research/tool';
+import { createDeepResearchTool, deepResearch } from '@/lib/ai/tools/deep-research/tool';
 import { isProductionEnvironment } from '@/lib/constants';
 import { myProvider } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
@@ -186,7 +186,7 @@ export async function POST(request: Request) {
               dataStream,
             }),
             createChart: createChart({ session }),
-            deepResearch,
+            deepResearch: createDeepResearchTool({ dataStream }),
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
