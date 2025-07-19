@@ -6,7 +6,6 @@ let openRouter: any;
 try {
   openRouter = createOpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY,
-    baseURL: 'https://openrouter.ai/api/v1',
   });
   console.log('OpenRouter provider initialized successfully');
 } catch (error) {
@@ -45,19 +44,19 @@ export const chatModels: Array<ChatModel> = [
     supportsTools: true,
   },
   {
-    id: 'deepseek/deepseek-chat',
-    name: 'DeepSeek Chat',
-    description: 'DeepSeek Chat model',
-    provider: 'openrouter',
-    modelId: 'deepseek/deepseek-chat',
-    supportsTools: true,
-  },
-  {
     id: "anthropic/claude-sonnet-4",
     name: "Claude Sonnet 4",
     description: "Anthropic's Claude Sonnet 4 model",
     provider: 'openrouter',
     modelId: 'anthropic/claude-sonnet-4',
+    supportsTools: true,
+  },
+  {
+    id: "x-ai/grok-3-mini",
+    name: "Grok 3 Mini",
+    description: "Grok 3 Mini model by X AI",
+    provider: 'openrouter',
+    modelId: 'x-ai/grok-3-mini',
     supportsTools: true,
   }
 ];
@@ -91,6 +90,7 @@ export const getModelProvider = (id: string) => {
           throw new Error('OpenRouter provider failed to initialize');
         }
         console.log(`Creating OpenRouter model: ${model.modelId}`);
+        // Use .chat() method for OpenRouter as per AI SDK v5 syntax
         return openRouter(model.modelId);
       default:
         throw new Error(`Provider ${model.provider} not supported`);
