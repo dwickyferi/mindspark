@@ -285,7 +285,7 @@ export default function OrganizationDetailPage({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <MailIcon className="h-5 w-5 mr-2" />
+                <MailIcon className="size-5 mr-2" />
                 Invite Members
               </CardTitle>
             </CardHeader>
@@ -330,14 +330,14 @@ export default function OrganizationDetailPage({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <UsersIcon className="h-5 w-5 mr-2" />
+                <UsersIcon className="size-5 mr-2" />
                 Members ({members.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               {members.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  <UsersIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <UsersIcon className="size-12 mx-auto mb-4 text-gray-300" />
                   <p>No members found</p>
                   <p className="text-sm">Invite members to get started</p>
                 </div>
@@ -349,7 +349,7 @@ export default function OrganizationDetailPage({
                       className="flex items-center justify-between p-4 border rounded-lg"
                     >
                       <div className="flex items-center space-x-3">
-                        <UserCheckIcon className="h-8 w-8 text-gray-400" />
+                        <UserCheckIcon className="size-8 text-gray-400" />
                         <div>
                           <p className="font-medium">{member.email}</p>
                           <p className="text-sm text-gray-500">
@@ -386,7 +386,7 @@ export default function OrganizationDetailPage({
                                   className="text-red-600 hover:text-red-700"
                                   disabled={updatingMember === member.userId}
                                 >
-                                  <TrashIcon className="h-4 w-4" />
+                                  <TrashIcon className="size-4" />
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>

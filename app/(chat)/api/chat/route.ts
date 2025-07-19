@@ -25,10 +25,11 @@ import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
 import { webSearch, webExtract } from '@/lib/ai/tools/web-search';
 import { createChart } from '@/lib/ai/tools/create-chart';
-import { deepResearch } from '@/lib/ai/tools/deep-research/tool';
+import { createDeepResearchTool, deepResearch } from '@/lib/ai/tools/deep-research/tool';
 import { isProductionEnvironment } from '@/lib/constants';
 import { myProvider } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
+import { modelSupportsTools, isReasoningModel } from '@/lib/ai/models';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
 import { geolocation } from '@vercel/functions';
 import {
@@ -162,9 +163,9 @@ export async function POST(request: Request) {
           messages: convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
           experimental_activeTools:
-            selectedChatModel === 'gpt-4.1-reasoning'
-              ? []
-              : [
+            // ✨ Use centralized model configuration for tools support
+            modelSupportsTools(selectedChatModel)
+              ? [
                   'getWeather',
                   'webSearch',
                   'webExtract',
@@ -173,7 +174,8 @@ export async function POST(request: Request) {
                   'requestSuggestions',
                   'createChart',
                   'deepResearch',
-                ],
+                ]
+              : [],
           experimental_transform: smoothStream({ chunking: 'word' }),
           tools: {
             getWeather,
@@ -186,7 +188,7 @@ export async function POST(request: Request) {
               dataStream,
             }),
             createChart: createChart({ session }),
-            deepResearch,
+            deepResearch: createDeepResearchTool({ dataStream }),
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,

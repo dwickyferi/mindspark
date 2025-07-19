@@ -81,7 +81,7 @@ function InvitationPageContent() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 p-3 rounded-full bg-blue-100 dark:bg-blue-900">
-            <BuildingIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+            <BuildingIcon className="size-8 text-blue-600 dark:text-blue-400" />
           </div>
           <CardTitle className="text-2xl">Organization Invitation</CardTitle>
           <p className="text-gray-600 dark:text-gray-400">
@@ -92,7 +92,7 @@ function InvitationPageContent() {
           {accepted ? (
             <div className="text-center">
               <div className="mx-auto mb-4 p-3 rounded-full bg-green-100 dark:bg-green-900">
-                <CheckIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
+                <CheckIcon className="size-8 text-green-600 dark:text-green-400" />
               </div>
               <p className="text-green-600 dark:text-green-400 font-medium">
                 Invitation accepted successfully!

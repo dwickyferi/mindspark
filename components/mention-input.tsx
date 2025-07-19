@@ -262,7 +262,7 @@ export function MentionBadge({
       <Button
         variant="ghost"
         size="sm"
-        className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+        className="size-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
         onClick={onRemove}
       >
         <CrossSmallIcon size={10} />

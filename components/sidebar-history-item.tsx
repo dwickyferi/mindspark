@@ -56,7 +56,7 @@ const PureChatItem = ({
         >
           <span className={isCollapsed ? 'sr-only' : 'truncate'}>{chat.title}</span>
           {isCollapsed && (
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-sidebar-accent text-sidebar-accent-foreground">
+            <div className="flex size-6 items-center justify-center rounded bg-sidebar-accent text-sidebar-accent-foreground">
               <span className="text-xs font-medium">
                 {chat.title.charAt(0).toUpperCase()}
               </span>

@@ -12,6 +12,8 @@ import { Weather } from './weather';
 import { Charts } from './charts';
 import { WebSearchLoading, WebSearchResults, WebExtractLoading, WebExtractResults } from './web-search';
 import { DeepResearchResults } from './deep-research';
+import { ResearchProgressStream } from './research-progress-stream';
+import { ResearchProcess } from './research-process';
 import equal from 'fast-deep-equal';
 import { cn, sanitizeText } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -22,6 +24,7 @@ import { MessageReasoning } from './message-reasoning';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import type { ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
+import { SelectedToolsBadge, extractToolsFromMessage, cleanMessageText } from './selected-tools-badge';
 
 // Type narrowing is handled by TypeScript's control flow analysis
 // The AI SDK provides proper discriminated unions for tool calls
@@ -51,7 +54,18 @@ const PurePreviewMessage = ({
     (part) => part.type === 'file',
   );
 
-  useDataStream();
+  // Extract selected tools from message parts
+  console.log('🔍 Message component - message.parts:', message.parts);
+  console.log('🔍 Message component - message.role:', message.role);
+  const selectedTools = extractToolsFromMessage(message.parts);
+  console.log('🔍 Message component - extracted selectedTools:', selectedTools);
+
+  const { dataStream } = useDataStream();
+
+  // Check if this message contains deep research
+  const hasDeepResearch = message.parts.some(
+    (part) => part.type === 'tool-deepResearch'
+  );
 
   return (
     <AnimatePresence>
@@ -102,6 +116,55 @@ const PurePreviewMessage = ({
               </div>
             )}
 
+            {/* Research Process Visualization */}
+            {hasDeepResearch && (() => {
+              // Check if research is completed with persisted steps
+              const completedResearchPart = message.parts?.find(part => 
+                part.type === 'tool-deepResearch' && 
+                'state' in part &&
+                part.state === 'output-available' && 
+                'output' in part &&
+                part.output &&
+                !('error' in part.output) &&
+                'research_steps' in part.output
+              );
+
+              // If we have completed research with persisted steps, show those
+              if (completedResearchPart && 'output' in completedResearchPart && completedResearchPart.output && !('error' in completedResearchPart.output)) {
+                const output = completedResearchPart.output as any;
+                
+                return (
+                  <div className="mb-4">
+                    <ResearchProcess
+                      steps={output.research_steps?.map((step: any) => ({
+                        id: step.id,
+                        type: step.type,
+                        title: step.title,
+                        description: step.description,
+                        status: step.status,
+                        details: step.details,
+                        progress: step.progress,
+                        timestamp: new Date(step.timestamp),
+                        metadata: step.metadata,
+                      })) || []}
+                      isCompleted={true}
+                      totalDuration={output.research_metadata?.duration_ms}
+                    />
+                  </div>
+                );
+              }
+
+              // Otherwise, show the live stream (for active research)
+              return (
+                <ResearchProgressStream
+                  messageId={message.id}
+                  onComplete={(steps) => {
+                    console.log('Research completed:', steps);
+                  }}
+                />
+              );
+            })()}
+
             {message.parts?.map((part, index) => {
               const { type } = part;
               const key = `message-${message.id}-part-${index}`;
@@ -117,7 +180,19 @@ const PurePreviewMessage = ({
               }
 
               if (type === 'text') {
+                // Skip rendering parts that contain only tool metadata
+                if (part.text?.includes('<!--SELECTED_TOOLS:') && part.text?.trim().match(/^<!--SELECTED_TOOLS:.*-->$/)) {
+                  return null;
+                }
+
                 if (mode === 'view') {
+                  const cleanedText = cleanMessageText(part.text);
+                  
+                  // Skip rendering if text is empty after cleaning
+                  if (!cleanedText) {
+                    return null;
+                  }
+
                   return (
                     <div key={key} className="flex flex-row gap-2 items-start">
                       {message.role === 'user' && !isReadonly && (
@@ -145,7 +220,11 @@ const PurePreviewMessage = ({
                             message.role === 'user',
                         })}
                       >
-                        <Markdown>{sanitizeText(part.text)}</Markdown>
+                        {/* Show selected tools badge for user messages */}
+                        {message.role === 'user' && selectedTools.length > 0 && (
+                          <SelectedToolsBadge tools={selectedTools} />
+                        )}
+                        <Markdown>{sanitizeText(cleanedText)}</Markdown>
                       </div>
                     </div>
                   );
@@ -166,6 +245,11 @@ const PurePreviewMessage = ({
                     </div>
                   );
                 }
+              }
+
+              // Handle research step data parts - don't render them as they're handled by ResearchProcess component
+              if (type === 'data-researchStep') {
+                return null;
               }
 
               if (type === 'tool-getWeather') {
@@ -428,7 +512,7 @@ const PurePreviewMessage = ({
                     <div key={toolCallId}>
                       <div className="p-4 border rounded-lg bg-muted/50">
                         <div className="flex items-center gap-2 mb-2">
-                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                          <div className="size-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                           <span className="text-sm font-medium">Conducting deep research...</span>
                         </div>
                         <p className="text-sm text-muted-foreground">

@@ -1,5 +1,6 @@
 import type { UserType } from '@/app/(auth)/auth';
 import type { ChatModel } from './models';
+import { chatModelIds } from './models';
 
 interface Entitlements {
   maxMessagesPerDay: number;
@@ -12,7 +13,8 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
    */
   regular: {
     maxMessagesPerDay: 100,
-    availableChatModelIds: ['gpt-4.1', 'gpt-4.1-reasoning'],
+    // ✨ Automatically includes all available models from centralized config
+    availableChatModelIds: chatModelIds,
   },
 
   /*

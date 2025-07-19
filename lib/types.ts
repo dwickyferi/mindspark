@@ -54,6 +54,24 @@ export type CustomUIDataTypes = {
   contextText: string;
   clear: null;
   finish: null;
+  researchStep: {
+    id: string;
+    type: 'strategy' | 'search' | 'analyze' | 'synthesize' | 'report';
+    title: string;
+    description: string;
+    status: 'pending' | 'in-progress' | 'completed' | 'failed';
+    details?: string;
+    progress?: number;
+    timestamp?: string;
+    metadata?: {
+      queryCount?: number;
+      sourceCount?: number;
+      depth?: number;
+      breadth?: number;
+      learningCount?: number;
+      duration?: number;
+    };
+  };
 };
 
 export type ChatMessage = UIMessage<

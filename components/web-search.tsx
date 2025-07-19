@@ -168,7 +168,7 @@ export const WebExtractLoading = memo(() => (
   <Card className="w-full max-w-2xl">
     <CardHeader>
       <div className="flex items-center gap-2">
-        <ExternalLink className="h-5 w-5 text-green-600" />
+        <ExternalLink className="size-5 text-green-600" />
         <CardTitle className="text-sm">Extracting content...</CardTitle>
       </div>
     </CardHeader>

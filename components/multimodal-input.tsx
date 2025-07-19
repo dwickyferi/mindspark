@@ -173,9 +173,15 @@ function PureMultimodalInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
   const [selectedTools, setSelectedTools] = useState<Tool[]>([]);
+  const selectedToolsRef = useRef<Tool[]>([]);
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
   const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
   const [mentionQuery, setMentionQuery] = useState('');
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedToolsRef.current = selectedTools;
+  }, [selectedTools]);
 
   const availableTools: Tool[] = [
     {
@@ -224,6 +230,11 @@ function PureMultimodalInput({
   const submitForm = useCallback(() => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
+    // Use ref to get current selectedTools and avoid stale closure
+    const currentSelectedTools = selectedToolsRef.current;
+    console.log('🚀 submitForm called - currentSelectedTools from ref:', currentSelectedTools);
+    console.log('🚀 submitForm called - selectedTools from state:', selectedTools);
+
     const messageParts = [
       ...attachments.map((attachment) => ({
         type: 'file' as const,
@@ -238,26 +249,52 @@ function PureMultimodalInput({
     ];
 
     // Handle selected tools
-    if (selectedTools.length > 0) {
-      const hasDeepResearch = selectedTools.find(tool => tool.id === 'deep-research');
-      const otherTools = selectedTools.filter(tool => tool.id !== 'deep-research');
+    if (currentSelectedTools.length > 0) {
+      console.log('🚀 Processing currentSelectedTools:', currentSelectedTools);
       
+      // Store selected tools as metadata in the message for UI display
+      // Only serialize essential data, not React components
+      const toolsData = currentSelectedTools.map(tool => ({
+        id: tool.id,
+        name: tool.name,
+        description: tool.description,
+        category: tool.category
+      }));
+      const toolsMetadata = `<!--SELECTED_TOOLS:${JSON.stringify(toolsData)}-->`;
+      console.log('🚀 Generated toolsMetadata:', toolsMetadata);
+      
+      // For deep research, we need to modify the message to indicate the user wants deep research
+      const hasDeepResearch = currentSelectedTools.find(tool => tool.id === 'deep-research');
       if (hasDeepResearch) {
-        // For deep research, modify the input to trigger the tool
+        // Modify the original message to include a hint for the AI to use deep research
         const baseText = input.trim();
+        const researchInstruction = baseText 
+          ? `${baseText}\n\n[User has requested deep research analysis on this topic]`
+          : '[User has requested deep research analysis]';
+        
+        // Append tools metadata to the research instruction
+        const finalText = `${researchInstruction}\n${toolsMetadata}`;
+        console.log('🚀 Final text with deep research:', finalText);
+        
         messageParts[messageParts.length - 1] = {
           type: 'text' as const,
-          text: baseText + (baseText ? '\n\n' : '') + 'Please conduct a comprehensive deep research analysis on this topic.',
+          text: finalText,
+        };
+      } else {
+        // Append tools metadata to the original text
+        const finalText = `${input}\n${toolsMetadata}`;
+        console.log('🚀 Final text without deep research:', finalText);
+        
+        messageParts[messageParts.length - 1] = {
+          type: 'text' as const,
+          text: finalText,
         };
       }
-      
-      if (otherTools.length > 0) {
-        messageParts.push({
-          type: 'text' as const,
-          text: `\n\nSelected tools: ${otherTools.map(tool => tool.name).join(', ')}`,
-        });
-      }
+    } else {
+      console.log('🚀 No currentSelectedTools to process');
     }
+
+    console.log('🚀 Final messageParts:', messageParts);
 
     sendMessage({
       role: 'user',
@@ -266,6 +303,7 @@ function PureMultimodalInput({
 
     setAttachments([]);
     setSelectedTools([]);
+    selectedToolsRef.current = []; // Also clear the ref
     setLocalStorageInput('');
     resetHeight();
     setInput('');
@@ -282,6 +320,7 @@ function PureMultimodalInput({
     setLocalStorageInput,
     width,
     chatId,
+    // Remove selectedTools from dependencies since we're using ref
   ]);
 
   const uploadFile = async (file: File) => {
@@ -531,7 +570,7 @@ function PureMultimodalInput({
       </div>
 
       <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
-        {status === 'submitted' ? (
+        {status === 'streaming' ? (
           <StopButton stop={stop} setMessages={setMessages} />
         ) : (
           <SendButton

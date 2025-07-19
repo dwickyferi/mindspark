@@ -12,23 +12,27 @@ import {
 } from './models.test';
 import { isTestEnvironment } from '../constants';
 import { openai } from '@ai-sdk/openai';
+import { chatModels, getModelProvider } from './models';
 
-// const openai = createOpenAI({
-//   baseURL: 'https://ai.sumopod.com/v1',
-//   apiKey: 'sk-aSO4YpEYT50um_5P0ntNPw',
-// });
+// Dynamically create language models from centralized config
+const createLanguageModels = () => {
+  const models: Record<string, any> = {};
+  
+  // Add chat models from centralized config
+  chatModels.forEach(model => {
+    models[model.id] = getModelProvider(model.id);
+  });
+  
+  // Add special purpose models
+  models['title-model'] = openai('gpt-4.1');
+  models['artifact-model'] = openai('gpt-4.1');
+
+  return models;
+};
 
 export const myProvider = customProvider({
-      languageModels: {
-        'gpt-4.1':openai('gpt-4.1'),
-        'gpt-4.1-reasoning': wrapLanguageModel({
-          model: xai('grok-3-mini-beta'),
-          middleware: extractReasoningMiddleware({ tagName: 'think' }),
-        }),
-        'title-model': openai('gpt-4.1'),
-        'artifact-model': openai('gpt-4.1'),
-      },
-      imageModels: {
-        'small-model': xai.imageModel('grok-2-image'),
-      },
-    });
+  languageModels: createLanguageModels(),
+  imageModels: {
+    'small-model': xai.imageModel('grok-2-image'),
+  },
+});

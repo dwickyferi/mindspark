@@ -24,7 +24,7 @@ export async function createAuthenticatedContext({
 }: {
   browser: Browser;
   name: string;
-  chatModel?: 'gpt-4.1' | 'gpt-4.1-reasoning';
+  chatModel?: 'gpt-4.1' | 'moonshotai/kimi-k2:free';
 }): Promise<UserContext> {
   const directory = path.join(__dirname, '../playwright/.sessions');
 
