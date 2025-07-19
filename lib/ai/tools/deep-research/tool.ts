@@ -1,7 +1,7 @@
 import { tool, type UIMessageStreamWriter } from 'ai';
 import { z } from 'zod';
 import { generateObject } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { getModelProvider } from '@/lib/ai/models';
 import { 
   ResearchProgress, 
   ResearchResult, 
@@ -559,7 +559,7 @@ async function generateFinalReport({
                       '3-5 pages';
 
   const res = await generateObject({
-    model: openai('gpt-4o'),
+    model: getModelProvider('gpt-4.1'),
     system: systemPrompt(),
     prompt: `Generate a comprehensive research report based on the following deep research findings:
 
@@ -608,7 +608,7 @@ Create a ${reportLength} ${outputFormat} that:
 // Generate actionable recommendations
 async function generateResearchRecommendations(query: string, learnings: string[]) {
   const res = await generateObject({
-    model: openai('gpt-4o'),
+    model: getModelProvider('gpt-4.1'),
     system: systemPrompt(),
     prompt: `Based on the research findings for "${query}", generate specific, actionable recommendations:
 

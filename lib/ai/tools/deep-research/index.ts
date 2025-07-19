@@ -1,7 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { generateObject } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { getModelProvider } from '@/lib/ai/models';
 import { compact } from 'lodash-es';
 
 export interface ResearchProgress {
@@ -51,10 +51,11 @@ async function generateNextStepQueries({
   numQueries?: number;
   learnings?: string[];
 }) {
-  const res = await generateObject({
-    model: openai('gpt-4o'),
-    system: systemPrompt(),
-    prompt: `Given the following prompt from the user, generate a list of search queries to research the topic comprehensively. Return a maximum of ${numQueries} queries, but feel free to return less if the original prompt is clear. Make sure each query is unique and builds on previous research: <prompt>${query}</prompt>
+  try {
+    const res = await generateObject({
+      model: getModelProvider('gpt-4.1'),
+      system: systemPrompt(),
+      prompt: `Given the following prompt from the user, generate a list of search queries to research the topic comprehensively. Return a maximum of ${numQueries} queries, but feel free to return less if the original prompt is clear. Make sure each query is unique and builds on previous research: <prompt>${query}</prompt>
 
 ${
       learnings.length > 0
@@ -95,6 +96,22 @@ Generate both the search queries AND the research strategy.`,
       expectedOutcomes: 'Detailed insights and actionable findings',
     },
   };
+  } catch (error) {
+    console.error('❌ Error in generateNextStepQueries:', error);
+    
+    // Fallback response when AI generation fails
+    return {
+      queries: [{
+        query: query,
+        researchGoal: `Research the topic: ${query}`,
+        priority: 5
+      }],
+      strategy: {
+        approach: `Comprehensive research on: ${query}`,
+        expectedOutcomes: 'Detailed insights and actionable findings',
+      },
+    };
+  }
 }
 
 // Process search results and extract key learnings
@@ -125,7 +142,7 @@ async function processSerpResult({
 
   try {
     const res = await generateObject({
-      model: openai('gpt-4o'),
+      model: getModelProvider('gpt-4.1'),
       system: systemPrompt(),
       prompt: `Given the following search results for the query "${query}", extract key learnings and insights. Each learning should be detailed, specific, and include relevant facts, figures, or quotes when available.
 
