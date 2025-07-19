@@ -55,7 +55,10 @@ const PurePreviewMessage = ({
   );
 
   // Extract selected tools from message parts
+  console.log('🔍 Message component - message.parts:', message.parts);
+  console.log('🔍 Message component - message.role:', message.role);
   const selectedTools = extractToolsFromMessage(message.parts);
+  console.log('🔍 Message component - extracted selectedTools:', selectedTools);
 
   const { dataStream } = useDataStream();
 

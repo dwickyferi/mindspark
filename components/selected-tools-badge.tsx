@@ -44,23 +44,38 @@ export function SelectedToolsBadge({ tools }: SelectedToolsBadgeProps) {
 
 // Utility function to extract tools from message parts
 export function extractToolsFromMessage(parts: any[]): Tool[] {
+  console.log('🔍 extractToolsFromMessage called with parts:', parts);
+  
   for (const part of parts) {
+    console.log('🔍 Checking part:', part);
     if (part.type === 'text' && part.text?.includes('<!--SELECTED_TOOLS:')) {
+      console.log('✅ Found tools metadata in text:', part.text);
+      
       const match = part.text.match(/<!--SELECTED_TOOLS:(.+?)-->/);
       if (match) {
         try {
-          const tools = JSON.parse(match[1]);
-          // Restore icon components for tools
-          return tools.map((tool: any) => ({
-            ...tool,
-            icon: toolIconMap[tool.id] || tool.icon,
+          const toolsData = JSON.parse(match[1]);
+          console.log('✅ Parsed tools data:', toolsData);
+          
+          // Reconstruct tools with proper icons
+          const restoredTools = toolsData.map((toolData: any) => ({
+            id: toolData.id,
+            name: toolData.name,
+            description: toolData.description,
+            category: toolData.category,
+            icon: toolIconMap[toolData.id], // Always use the icon map
           }));
+          
+          console.log('✅ Restored tools:', restoredTools);
+          return restoredTools;
         } catch (e) {
-          console.error('Error parsing selected tools:', e);
+          console.error('❌ Error parsing selected tools:', e);
         }
       }
     }
   }
+  
+  console.log('❌ No tools found, returning empty array');
   return [];
 }
 

@@ -52,6 +52,14 @@ export const chatModels: Array<ChatModel> = [
     modelId: 'deepseek/deepseek-chat',
     supportsTools: true,
   },
+  {
+    id: "anthropic/claude-sonnet-4",
+    name: "Claude Sonnet 4",
+    description: "Anthropic's Claude Sonnet 4 model",
+    provider: 'openrouter',
+    modelId: 'anthropic/claude-sonnet-4',
+    supportsTools: true,
+  }
 ];
 
 // Derived values - automatically generated from the models array
