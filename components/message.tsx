@@ -13,6 +13,7 @@ import { Charts } from './charts';
 import { WebSearchLoading, WebSearchResults, WebExtractLoading, WebExtractResults } from './web-search';
 import { DeepResearchResults } from './deep-research';
 import { ResearchProgressStream } from './research-progress-stream';
+import { ResearchProcess } from './research-process';
 import equal from 'fast-deep-equal';
 import { cn, sanitizeText } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -113,14 +114,53 @@ const PurePreviewMessage = ({
             )}
 
             {/* Research Process Visualization */}
-            {hasDeepResearch && (
-              <ResearchProgressStream
-                messageId={message.id}
-                onComplete={(steps) => {
-                  console.log('Research completed:', steps);
-                }}
-              />
-            )}
+            {hasDeepResearch && (() => {
+              // Check if research is completed with persisted steps
+              const completedResearchPart = message.parts?.find(part => 
+                part.type === 'tool-deepResearch' && 
+                'state' in part &&
+                part.state === 'output-available' && 
+                'output' in part &&
+                part.output &&
+                !('error' in part.output) &&
+                'research_steps' in part.output
+              );
+
+              // If we have completed research with persisted steps, show those
+              if (completedResearchPart && 'output' in completedResearchPart && completedResearchPart.output && !('error' in completedResearchPart.output)) {
+                const output = completedResearchPart.output as any;
+                
+                return (
+                  <div className="mb-4">
+                    <ResearchProcess
+                      steps={output.research_steps?.map((step: any) => ({
+                        id: step.id,
+                        type: step.type,
+                        title: step.title,
+                        description: step.description,
+                        status: step.status,
+                        details: step.details,
+                        progress: step.progress,
+                        timestamp: new Date(step.timestamp),
+                        metadata: step.metadata,
+                      })) || []}
+                      isCompleted={true}
+                      totalDuration={output.research_metadata?.duration_ms}
+                    />
+                  </div>
+                );
+              }
+
+              // Otherwise, show the live stream (for active research)
+              return (
+                <ResearchProgressStream
+                  messageId={message.id}
+                  onComplete={(steps) => {
+                    console.log('Research completed:', steps);
+                  }}
+                />
+              );
+            })()}
 
             {message.parts?.map((part, index) => {
               const { type } = part;

@@ -54,11 +54,19 @@ async function generateNextStepQueries({
   const res = await generateObject({
     model: openai('gpt-4o'),
     system: systemPrompt(),
-    prompt: `Given the following prompt from the user, generate a list of search queries to research the topic comprehensively. Return a maximum of ${numQueries} queries, but feel free to return less if the original prompt is clear. Make sure each query is unique and builds on previous research: <prompt>${query}</prompt>\n\n${
+    prompt: `Given the following prompt from the user, generate a list of search queries to research the topic comprehensively. Return a maximum of ${numQueries} queries, but feel free to return less if the original prompt is clear. Make sure each query is unique and builds on previous research: <prompt>${query}</prompt>
+
+${
       learnings.length > 0
         ? `Here are some learnings from previous research, use them to generate more specific queries: ${learnings.join('\n')}`
         : 'There are no learnings from previous research yet.'
-    }`,
+    }
+
+IMPORTANT: You must also provide a research strategy that includes:
+1. Overall approach for investigating this topic
+2. Expected outcomes and what we hope to discover
+
+Generate both the search queries AND the research strategy.`,
     schema: z.object({
       queries: z
         .array(
@@ -82,7 +90,10 @@ async function generateNextStepQueries({
 
   return {
     queries: res.object.queries.slice(0, numQueries),
-    strategy: res.object.researchStrategy,
+    strategy: res.object.researchStrategy || {
+      approach: `Comprehensive research on: ${query}`,
+      expectedOutcomes: 'Detailed insights and actionable findings',
+    },
   };
 }
 
