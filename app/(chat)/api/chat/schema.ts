@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { chatModelIds } from '@/lib/ai/models';
 
 const textPartSchema = z.object({
   type: z.enum(['text']),
@@ -22,7 +23,8 @@ export const postRequestBodySchema = z.object({
     parts: z.array(partSchema),
   }),
   contextText: z.string().optional(),
-  selectedChatModel: z.enum(['gpt-4.1', 'gpt-4.1-reasoning']),
+  // ✨ Automatically uses all models from centralized config
+  selectedChatModel: z.enum(chatModelIds as [string, ...string[]]),
   selectedVisibilityType: z.enum(['public', 'private']),
 });
 
