@@ -93,6 +93,19 @@ export const createDeepResearchTool = (options?: DeepResearchToolOptions) => {
         console.log(`📋 Research strategy: ${strategy.approach}`);
         console.log(`🎯 Initial queries generated: ${initialQueries.length}`);
 
+        // Complete the initialization step
+        dataStream?.write({
+          type: 'data-researchStep',
+          data: {
+            id: 'init',
+            type: 'strategy',
+            title: 'Initialization Complete',
+            description: 'Research parameters and strategy setup completed',
+            status: 'completed',
+            metadata: { depth, breadth },
+          },
+        });
+
         dataStream?.write({
           type: 'data-researchStep',
           data: {
@@ -123,6 +136,23 @@ export const createDeepResearchTool = (options?: DeepResearchToolOptions) => {
               })).queries;
 
           console.log(`📊 Depth ${currentDepth}/${depth}: Processing ${currentQueries.length} queries`);
+
+          // Complete previous analysis step if this is not the first depth
+          if (currentDepth > 1) {
+            dataStream?.write({
+              type: 'data-researchStep',
+              data: {
+                id: `analyze-depth-${currentDepth - 1}`,
+                type: 'analyze',
+                title: `Analysis Complete (Depth ${currentDepth - 1}/${depth})`,
+                description: `Completed analysis for depth ${currentDepth - 1}`,
+                status: 'completed',
+                metadata: { 
+                  depth: currentDepth - 1 
+                },
+              },
+            });
+          }
 
           // Emit search phase step
           dataStream?.write({
@@ -229,6 +259,23 @@ export const createDeepResearchTool = (options?: DeepResearchToolOptions) => {
 
         // Wait for all searches in this depth level to complete
         const searchResults = (await Promise.all(searchPromises)).filter(Boolean);
+        
+        // Complete the search step for this depth
+        dataStream?.write({
+          type: 'data-researchStep',
+          data: {
+            id: `search-depth-${currentDepth}`,
+            type: 'search',
+            title: `Search Complete (Depth ${currentDepth}/${depth})`,
+            description: `Completed ${searchResults.length} searches for depth ${currentDepth}`,
+            status: 'completed',
+            metadata: { 
+              queryCount: currentQueries.length, 
+              depth: currentDepth,
+              breadth: currentQueries.length 
+            },
+          },
+        });
         
         // Emit analysis step
         dataStream?.write({

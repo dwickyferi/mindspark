@@ -85,11 +85,6 @@ export function Charts({
   const chartInstance = useRef<echarts.ECharts | null>(null);
   const { theme } = useTheme();
 
-  // Show loading skeleton when data is being generated
-  if (isLoading) {
-    return <ChartSkeleton height={height} />;
-  }
-
   // Create chart option based on type and data
   const createChartOption = (chartData: ChartData, chartType: string, isDark: boolean) => {
     const commonTheme = {
@@ -217,7 +212,7 @@ export function Charts({
   };
 
   useEffect(() => {
-    if (!chartRef.current || !data) return;
+    if (!chartRef.current || !data || isLoading) return;
 
     // Clean up previous chart
     if (chartInstance.current) {
@@ -240,7 +235,12 @@ export function Charts({
       window.removeEventListener('resize', handleResize);
       chart.dispose();
     };
-  }, [data, type, theme, title]);
+  }, [data, type, theme, title, isLoading, createChartOption]);
+
+  // Show loading skeleton when data is being generated
+  if (isLoading) {
+    return <ChartSkeleton height={height} />;
+  }
 
   return (
     <div className={`flex flex-col gap-4 rounded-2xl p-4 border dark:border-gray-700 bg-white dark:bg-gray-900 ${className}`}>
