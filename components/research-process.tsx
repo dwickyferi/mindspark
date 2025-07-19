@@ -99,7 +99,7 @@ export function ResearchProcess({
   totalDuration,
   onToggleExpand 
 }: ResearchProcessProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(!isCompleted);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
