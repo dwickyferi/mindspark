@@ -143,7 +143,7 @@ export function ChatHistoryDropdown({ user, isCollapsed = false }: ChatHistoryDr
           variant="ghost"
           size="icon"
           className={cn(
-            'h-8 w-8 shrink-0 transition-all duration-200 hover:bg-sidebar-accent min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-[32px]',
+            'size-8 shrink-0 transition-all duration-200 hover:bg-sidebar-accent min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-[32px]',
             'hover:scale-105', // Visual feedback
             (isHovering || isOpen) && 'bg-sidebar-accent text-sidebar-accent-foreground scale-105'
           )}
@@ -243,7 +243,7 @@ export function ChatHistoryDropdown({ user, isCollapsed = false }: ChatHistoryDr
             className="overflow-hidden bg-sidebar"
           >
             {/* Search input for expanded state */}
-            <div className="px-2 py-2">
+            <div className="p-2">
               <Input
                 type="text"
                 placeholder="Search chat history..."

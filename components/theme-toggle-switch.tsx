@@ -23,18 +23,18 @@ export function ThemeToggleSwitch({
   const sizeClasses = {
     sm: {
       track: 'h-5 w-9',
-      thumb: 'h-4 w-4',
-      icon: 'h-3 w-3',
+      thumb: 'size-4',
+      icon: 'size-3',
     },
     md: {
       track: 'h-6 w-11',
-      thumb: 'h-5 w-5',
+      thumb: 'size-5',
       icon: 'h-3.5 w-3.5',
     },
     lg: {
       track: 'h-7 w-12',
-      thumb: 'h-6 w-6',
-      icon: 'h-4 w-4',
+      thumb: 'size-6',
+      icon: 'size-4',
     },
   };
 

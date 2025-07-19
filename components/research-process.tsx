@@ -45,7 +45,7 @@ interface ResearchProcessProps {
 }
 
 const getStepIcon = (type: ResearchStep['type'], status: ResearchStep['status']) => {
-  const iconClass = "h-4 w-4";
+  const iconClass = "size-4";
   
   if (status === 'in-progress') {
     return <Loader2 className={`${iconClass} animate-spin`} />;
@@ -128,9 +128,9 @@ export function ResearchProcess({
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               {isCompleted ? (
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                <CheckCircle2 className="size-5 text-green-500" />
               ) : (
-                <Brain className="h-5 w-5 text-blue-500 animate-pulse" />
+                <Brain className="size-5 text-blue-500 animate-pulse" />
               )}
               <CardTitle className="text-lg font-semibold">
                 {isCompleted ? 'Research Complete' : 'Deep Research in Progress'}
@@ -140,12 +140,12 @@ export function ResearchProcess({
               variant="ghost"
               size="sm"
               onClick={handleToggle}
-              className="h-8 w-8 p-0"
+              className="size-8 p-0"
             >
               {isExpanded ? (
-                <ChevronUp className="h-4 w-4" />
+                <ChevronUp className="size-4" />
               ) : (
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="size-4" />
               )}
             </Button>
           </div>
@@ -197,7 +197,7 @@ export function ResearchProcess({
                     className={`p-3 rounded-lg border transition-all duration-200 ${getStepColor(step.status)}`}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
+                      <div className="shrink-0 mt-0.5">
                         {getStepIcon(step.type, step.status)}
                       </div>
                       
@@ -271,7 +271,7 @@ export function ResearchProcess({
                     className="text-center py-2"
                   >
                     <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="size-4 animate-spin" />
                       Research in progress...
                     </div>
                   </motion.div>

@@ -71,7 +71,7 @@ export function DeepResearchResults({
       <Card className="border-blue-200 bg-blue-50">
         <CardHeader>
           <CardTitle className="text-blue-800 flex items-center gap-2">
-            <CheckCircle className="h-5 w-5" />
+            <CheckCircle className="size-5" />
             Deep Research Complete
           </CardTitle>
           <CardDescription className="text-blue-600">
@@ -79,7 +79,7 @@ export function DeepResearchResults({
           </CardDescription>
           <div className="flex flex-wrap gap-2 mt-2">
             <Badge variant="secondary">
-              <Clock className="h-3 w-3 mr-1" />
+              <Clock className="size-3 mr-1" />
               {formatDuration(metadata.duration_ms)}
             </Badge>
             <Badge variant="secondary">
@@ -101,7 +101,7 @@ export function DeepResearchResults({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-green-600" />
+            <Target className="size-5 text-green-600" />
             Executive Summary
           </CardTitle>
         </CardHeader>
@@ -114,7 +114,7 @@ export function DeepResearchResults({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-purple-600" />
+            <TrendingUp className="size-5 text-purple-600" />
             Main Findings
           </CardTitle>
         </CardHeader>
@@ -122,7 +122,7 @@ export function DeepResearchResults({
           <ul className="space-y-2">
             {analysis.main_findings.slice(0, 5).map((finding, index) => (
               <li key={index} className="flex items-start gap-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <CheckCircle className="size-4 text-green-500 mt-0.5 shrink-0" />
                 <span>{finding}</span>
               </li>
             ))}
@@ -135,7 +135,7 @@ export function DeepResearchResults({
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-blue-600" />
+              <Target className="size-5 text-blue-600" />
               Detailed Analysis
             </CardTitle>
             <Button
@@ -145,9 +145,9 @@ export function DeepResearchResults({
               className="h-8 px-2"
             >
               {showFullReport ? (
-                <ChevronUp className="h-4 w-4" />
+                <ChevronUp className="size-4" />
               ) : (
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="size-4" />
               )}
             </Button>
           </div>
@@ -197,7 +197,7 @@ export function DeepResearchResults({
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
+              <CheckCircle className="size-5 text-green-600" />
               Recommendations
             </CardTitle>
             <Button
@@ -207,9 +207,9 @@ export function DeepResearchResults({
               className="h-8 px-2"
             >
               {showRecommendations ? (
-                <ChevronUp className="h-4 w-4" />
+                <ChevronUp className="size-4" />
               ) : (
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="size-4" />
               )}
             </Button>
           </div>
@@ -264,7 +264,7 @@ export function DeepResearchResults({
                 <ul className="space-y-1">
                   {recommendations.risk_considerations.map((risk, index) => (
                     <li key={index} className="text-sm flex items-start gap-2">
-                      <AlertTriangle className="h-3 w-3 text-amber-500 mt-1 flex-shrink-0" />
+                      <AlertTriangle className="size-3 text-amber-500 mt-1 shrink-0" />
                       <span>{risk}</span>
                     </li>
                   ))}
@@ -295,7 +295,7 @@ export function DeepResearchResults({
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <ExternalLink className="h-5 w-5 text-gray-600" />
+                <ExternalLink className="size-5 text-gray-600" />
                 Sources & Citations ({citations.length})
               </CardTitle>
               <Button
@@ -305,9 +305,9 @@ export function DeepResearchResults({
                 className="h-8 px-2"
               >
                 {showCitations ? (
-                  <ChevronUp className="h-4 w-4" />
+                  <ChevronUp className="size-4" />
                 ) : (
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="size-4" />
                 )}
               </Button>
             </div>
@@ -338,7 +338,7 @@ export function DeepResearchResults({
                         variant="ghost"
                         size="sm"
                         asChild
-                        className="h-8 w-8 p-0 flex-shrink-0"
+                        className="size-8 p-0 shrink-0"
                       >
                         <a
                           href={citation.url}
@@ -346,7 +346,7 @@ export function DeepResearchResults({
                           rel="noopener noreferrer"
                           className="inline-flex items-center justify-center"
                         >
-                          <ExternalLink className="h-3 w-3" />
+                          <ExternalLink className="size-3" />
                         </a>
                       </Button>
                     </div>

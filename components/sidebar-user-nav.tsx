@@ -229,7 +229,7 @@ export function SidebarUserNav({ user }: { user: User }) {
               >
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center">
-                    <Building2 className="mr-2 h-4 w-4" />
+                    <Building2 className="mr-2 size-4" />
                     Organizations
                   </div>
                   <div className="flex items-center gap-2">
@@ -247,7 +247,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                     className="cursor-pointer"
                     onSelect={() => router.push('/organizations')}
                   >
-                    <Plus className="mr-2 h-4 w-4" />
+                    <Plus className="mr-2 size-4" />
                     Manage Organizations
                     {invitationCount > 0 && (
                       <Badge variant="destructive" className="ml-auto h-5 min-w-[20px] text-xs bg-accent-alert text-white shadow-[0_0_10px_rgba(255,255,0,0.5)]">
@@ -265,7 +265,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                   >
                     <div className="flex items-center justify-between w-full">
                       <div className="flex items-center">
-                        <UserIcon className="mr-2 h-4 w-4" />
+                        <UserIcon className="mr-2 size-4" />
                         Personal
                       </div>
                       {isSwitching && (!activeOrganization || activeOrganization.id === 'personal') ? (
@@ -274,7 +274,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                         </div>
                       ) : (
                         (!activeOrganization || activeOrganization.id === 'personal') && (
-                          <Check className="h-4 w-4 text-accent-primary" />
+                          <Check className="size-4 text-accent-primary" />
                         )
                       )}
                     </div>
@@ -290,7 +290,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                     >
                       <div className="flex items-center justify-between w-full">
                         <div className="flex items-center">
-                          <Building2 className="mr-2 h-4 w-4" />
+                          <Building2 className="mr-2 size-4" />
                           <span>{org.name}</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -303,7 +303,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                             </div>
                           ) : (
                             (org.isActive || activeOrganization?.id === org.id) && (
-                              <Check className="h-4 w-4 text-accent-primary" />
+                              <Check className="size-4 text-accent-primary" />
                             )
                           )}
                         </div>

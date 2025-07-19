@@ -124,7 +124,7 @@ export function OrganizationSelector({ onOrganizationChange }: OrganizationSelec
           disabled={isSwitching}
         >
           <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
+            <Building2 className="size-4" />
             <span className="truncate">
               {selectedOrg ? selectedOrg.name : 'Select organization...'}
             </span>
@@ -145,22 +145,22 @@ export function OrganizationSelector({ onOrganizationChange }: OrganizationSelec
             )}
           >
             <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
+              <Building2 className="size-4" />
               <span>{org.name}</span>
             </div>
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <Users className="h-3 w-3" />
+              <Users className="size-3" />
               <span>{org.memberCount}</span>
             </div>
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleCreateOrganization}>
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="mr-2 size-4" />
           Create organization
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleManageOrganizations}>
-          <Building2 className="mr-2 h-4 w-4" />
+          <Building2 className="mr-2 size-4" />
           Manage organizations
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -54,15 +54,15 @@ export function MindSparkShowcase() {
             Status Indicators
           </h3>
           <div className="flex gap-2">
-            <div className={`w-4 h-4 rounded-full ${themeClasses.status.online}`}></div>
+            <div className={`size-4 rounded-full ${themeClasses.status.online}`}></div>
             <span className="text-sm">Online</span>
           </div>
           <div className="flex gap-2">
-            <div className={`w-4 h-4 rounded-full ${themeClasses.status.busy}`}></div>
+            <div className={`size-4 rounded-full ${themeClasses.status.busy}`}></div>
             <span className="text-sm">Busy</span>
           </div>
           <div className="flex gap-2">
-            <div className={`w-4 h-4 rounded-full ${themeClasses.status.offline}`}></div>
+            <div className={`size-4 rounded-full ${themeClasses.status.offline}`}></div>
             <span className="text-sm">Offline</span>
           </div>
         </div>
@@ -102,19 +102,19 @@ export function MindSparkShowcase() {
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center space-y-2">
-            <div className="w-16 h-16 mx-auto rounded-lg bg-accent-primary shadow-lg"></div>
+            <div className="size-16 mx-auto rounded-lg bg-accent-primary shadow-lg"></div>
             <p className="text-sm font-medium">Primary</p>
           </div>
           <div className="text-center space-y-2">
-            <div className="w-16 h-16 mx-auto rounded-lg bg-accent-secondary shadow-lg"></div>
+            <div className="size-16 mx-auto rounded-lg bg-accent-secondary shadow-lg"></div>
             <p className="text-sm font-medium">Secondary</p>
           </div>
           <div className="text-center space-y-2">
-            <div className="w-16 h-16 mx-auto rounded-lg bg-accent-success shadow-lg"></div>
+            <div className="size-16 mx-auto rounded-lg bg-accent-success shadow-lg"></div>
             <p className="text-sm font-medium">Success</p>
           </div>
           <div className="text-center space-y-2">
-            <div className="w-16 h-16 mx-auto rounded-lg bg-accent-alert shadow-lg"></div>
+            <div className="size-16 mx-auto rounded-lg bg-accent-alert shadow-lg"></div>
             <p className="text-sm font-medium">Alert</p>
           </div>
         </div>

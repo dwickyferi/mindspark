@@ -509,7 +509,7 @@ const PurePreviewMessage = ({
                     <div key={toolCallId}>
                       <div className="p-4 border rounded-lg bg-muted/50">
                         <div className="flex items-center gap-2 mb-2">
-                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                          <div className="size-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                           <span className="text-sm font-medium">Conducting deep research...</span>
                         </div>
                         <p className="text-sm text-muted-foreground">

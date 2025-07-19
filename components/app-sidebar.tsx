@@ -86,7 +86,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     variant="ghost"
                     size="icon"
                     onClick={toggleSidebar}
-                    className="h-8 w-8 transition-all duration-200 hover:bg-sidebar-accent min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-[32px]"
+                    className="size-8 transition-all duration-200 hover:bg-sidebar-accent min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-[32px]"
                     aria-label="Collapse Sidebar"
                   >
                     <div className="transition-transform duration-200">
@@ -102,13 +102,13 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       </SidebarHeader>
       
       <SidebarContent className="flex-1 overflow-hidden">
-        <div className="px-2 py-2">
+        <div className="p-2">
           
           <ChatHistoryDropdown user={user} isCollapsed={isCollapsed} />
         </div>
         
         {/* New Chat button - moved to content area for better accessibility */}
-        <div className="px-2 py-2">
+        <div className="p-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -118,7 +118,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   'transition-all duration-200 hover:bg-sidebar-accent min-h-[44px] md:min-h-[32px]',
                   isCollapsed 
                     ? 'w-8 h-8 p-0 min-w-[44px] md:min-w-[32px]' 
-                    : 'w-full justify-start gap-2 px-2 py-2'
+                    : 'w-full justify-start gap-2 p-2'
                 )}
                 aria-label="New Chat"
               >
@@ -146,7 +146,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   variant="ghost"
                   size="icon"
                   onClick={toggleSidebar}
-                  className="h-8 w-8 transition-all duration-200 hover:bg-sidebar-accent min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-[32px]"
+                  className="size-8 transition-all duration-200 hover:bg-sidebar-accent min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-[32px]"
                   aria-label="Expand Sidebar"
                 >
                   <SidebarRightIcon size={16} />
@@ -165,7 +165,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 rounded-full p-0 min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-[32px]"
+                  className="size-8 shrink-0 rounded-full p-0 min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-[32px]"
                   aria-label="User menu"
                 >
                   <Image

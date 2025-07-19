@@ -386,7 +386,7 @@ export default function OrganizationsPage() {
             </p>
           </div>
           <Button onClick={() => router.push('/organizations/new')}>
-            <PlusIcon className="h-4 w-4 mr-2" />
+            <PlusIcon className="size-4 mr-2" />
             Create Organization
           </Button>
         </div>
@@ -396,7 +396,7 @@ export default function OrganizationsPage() {
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <MailIcon className="h-5 w-5 mr-2" />
+                <MailIcon className="size-5 mr-2" />
                 Pending Invitations ({pendingInvitations.length})
               </CardTitle>
             </CardHeader>
@@ -408,7 +408,7 @@ export default function OrganizationsPage() {
                     className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20"
                   >
                     <div className="flex items-center space-x-3">
-                      <BuildingIcon className="h-5 w-5 text-blue-600" />
+                      <BuildingIcon className="size-5 text-blue-600" />
                       <div>
                         <p className="font-medium text-blue-900 dark:text-blue-100">
                           {invitation.organization.name}
@@ -431,7 +431,7 @@ export default function OrganizationsPage() {
                         disabled={processingInvitation === invitation.id}
                         className="bg-green-600 hover:bg-green-700"
                       >
-                        <CheckIcon className="h-4 w-4 mr-1" />
+                        <CheckIcon className="size-4 mr-1" />
                         {processingInvitation === invitation.id ? 'Accepting...' : 'Accept'}
                       </Button>
                       <Button
@@ -441,7 +441,7 @@ export default function OrganizationsPage() {
                         disabled={processingInvitation === invitation.id}
                         className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
                       >
-                        <XIcon className="h-4 w-4 mr-1" />
+                        <XIcon className="size-4 mr-1" />
                         Decline
                       </Button>
                     </div>
@@ -458,7 +458,7 @@ export default function OrganizationsPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <BuildingIcon className="h-6 w-6" />
+                    <BuildingIcon className="size-6" />
                     <div>
                       <CardTitle className="text-lg">{org.name}</CardTitle>
                       {org.description && (
@@ -477,7 +477,7 @@ export default function OrganizationsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 text-sm text-gray-600">
                     <div className="flex items-center space-x-1">
-                      <UsersIcon className="h-4 w-4" />
+                      <UsersIcon className="size-4" />
                       <span>{org.memberCount} members</span>
                     </div>
                     <div>
@@ -490,7 +490,7 @@ export default function OrganizationsPage() {
                       size="sm"
                       onClick={() => router.push(`/organizations/${org.id}`)}
                     >
-                      <SettingsIcon className="h-4 w-4 mr-1" />
+                      <SettingsIcon className="size-4 mr-1" />
                       Manage
                     </Button>
                     {org.role === 'owner' && (
@@ -511,7 +511,7 @@ export default function OrganizationsPage() {
                               size="sm"
                               onClick={() => handleEditOrganization(org)}
                             >
-                              <SettingsIcon className="h-4 w-4 mr-1" />
+                              <SettingsIcon className="size-4 mr-1" />
                               Edit
                             </Button>
                           </DialogTrigger>
@@ -578,7 +578,7 @@ export default function OrganizationsPage() {
                               size="sm"
                               onClick={() => setAddMemberOrgId(org.id)}
                             >
-                              <PlusIcon className="h-4 w-4 mr-1" />
+                              <PlusIcon className="size-4 mr-1" />
                               Add Member
                             </Button>
                           </DialogTrigger>
@@ -643,7 +643,7 @@ export default function OrganizationsPage() {
                               className="text-red-600 hover:text-red-700"
                               disabled={deletingId === org.id}
                             >
-                              <TrashIcon className="h-4 w-4" />
+                              <TrashIcon className="size-4" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -675,13 +675,13 @@ export default function OrganizationsPage() {
           {organizations.length === 0 && (
             <Card>
               <CardContent className="text-center py-12">
-                <BuildingIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <BuildingIcon className="size-12 mx-auto text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Organizations</h3>
                 <p className="text-gray-600 mb-4">
                   Create your first organization to start collaborating with your team
                 </p>
                 <Button onClick={() => router.push('/organizations/new')}>
-                  <PlusIcon className="h-4 w-4 mr-2" />
+                  <PlusIcon className="size-4 mr-2" />
                   Create Organization
                 </Button>
               </CardContent>

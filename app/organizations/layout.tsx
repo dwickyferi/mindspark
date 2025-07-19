@@ -27,7 +27,7 @@ export default async function OrganizationsLayout({
           <AppSidebar user={session?.user} />
           <SidebarInset>
             <div className="h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-              <div className="h-full w-full">
+              <div className="size-full">
                 {children}
               </div>
             </div>
