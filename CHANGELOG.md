@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/dwickyferi/mindspark/compare/v1.0.0...v1.1.0) (2025-07-23)
+
+
+### Features
+
+* adding feature rag ([acf263b](https://github.com/dwickyferi/mindspark/commit/acf263b88f775d673f07e301547586e5f245127b))
+
+
+### Bug Fixes
+
+* issue type ([65f382e](https://github.com/dwickyferi/mindspark/commit/65f382e321fb4c944e56bddb27f0886824f9c9f0))
+
 ## 1.0.0 (2025-07-23)
 
 
