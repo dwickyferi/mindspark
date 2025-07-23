@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Mermaid Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.9.0/dist/mermaid.min.js"></script>
+  </head>
+  <body>
+    <h1>Testing Mermaid Charts</h1>
+
+    <h2>Invalid Line Chart (Your Original):</h2>
+    <div class="mermaid">
+      line title UMK 2025 Kota/Kabupaten di Pulau Jawa (Dari yang Terendah)
+      x-axis Banjarnegara, Wonogiri, Sragen, Cilacap, Semarang, Surabaya, Depok,
+      Bekasi y-axis UMK (Rp) "UMK 2025": 2170475, 2180587, 2182200, 2640248,
+      3454827, 4961753, 5195722, 5690752
+    </div>
+
+    <h2>Valid XY Chart:</h2>
+    <div class="mermaid">
+      xychart-beta title "UMK 2025 Kota/Kabupaten di Pulau Jawa (Dari yang
+      Terendah)" x-axis [Banjarnegara, Wonogiri, Sragen, Cilacap, Semarang,
+      Surabaya, Depok, Bekasi] y-axis "UMK (Rp)" 2000000 --> 6000000 line
+      [2170475, 2180587, 2182200, 2640248, 3454827, 4961753, 5195722, 5690752]
+    </div>
+
+    <script>
+      mermaid.initialize({ startOnLoad: true });
+    </script>
+  </body>
+</html>
