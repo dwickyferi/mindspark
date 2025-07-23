@@ -1,13 +1,7 @@
-<img width="1647" alt="thumbnail" loading="lazy" src="https://github.com/user-attachments/assets/7b0f279a-8771-42a0-b8b6-128b3b1a076c" />
-
 [![MCP Supported](https://img.shields.io/badge/MCP-Supported-00c853)](https://modelcontextprotocol.io/introduction)
 [![Local First](https://img.shields.io/badge/Local-First-blue)](https://localfirstweb.dev/)
-[![Discord](https://img.shields.io/discord/1374047276074537103?label=Discord&logo=discord&color=5865F2)](https://discord.gg/gCRu69Upnp)
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/cgoinglove/better-chatbot&env=BETTER_AUTH_SECRET&env=OPENAI_API_KEY&env=GOOGLE_GENERATIVE_AI_API_KEY&env=ANTHROPIC_API_KEY&envDescription=Learn+more+about+how+to+get+the+API+Keys+for+the+application&envLink=https://github.com/cgoinglove/better-chatbot/blob/main/.env.example&demo-title=better-chatbot&demo-description=An+Open-Source+Chatbot+Template+Built+With+Next.js+and+the+AI+SDK+by+Vercel.&products=[{"type":"integration","protocol":"storage","productSlug":"neon","integrationSlug":"neon"}])
 
 Our goal is to create the best possible chatbot UX — focusing on the joy and intuitiveness users feel when calling and interacting with AI tools.
-
 
 See the experience in action in the [preview](#preview) below!
 
@@ -17,8 +11,8 @@ See the experience in action in the [preview](#preview) below!
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/cgoinglove/better-chatbot.git
-cd better-chatbot
+git clone https://github.com/dwickyferi/mindspark.git
+cd mindspark
 
 # 2. (Optional) Install pnpm if you don't have it
 npm install -g pnpm
@@ -64,19 +58,18 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to get start
   - [Quick Start (Local Version) 🚀](#quick-start-local-version-)
   - [Environment Variables](#environment-variables)
 - [📘 Guides](#-guides)
-    - [🔌 MCP Server Setup \& Tool Testing](#-mcp-server-setup--tool-testing)
-    - [🐳 Docker Hosting Guide](#-docker-hosting-guide)
-    - [▲ Vercel Hosting Guide](#-vercel-hosting-guide)
-    - [🎯 System Prompts \& Chat Customization](#-system-prompts--chat-customization)
-    - [🔐 OAuth Sign-In Setup](#-oauth-sign-in-setup)
-    - [🕵🏿 Adding openAI like providers](#-adding-openai-like-providers)
+  - [🔌 MCP Server Setup \& Tool Testing](#-mcp-server-setup--tool-testing)
+  - [🐳 Docker Hosting Guide](#-docker-hosting-guide)
+  - [▲ Vercel Hosting Guide](#-vercel-hosting-guide)
+  - [🎯 System Prompts \& Chat Customization](#-system-prompts--chat-customization)
+  - [🔐 OAuth Sign-In Setup](#-oauth-sign-in-setup)
+  - [🕵🏿 Adding openAI like providers](#-adding-openai-like-providers)
 - [💡 Tips](#-tips)
-    - [🧠 Agentic Chatbot with Project Instructions](#-agentic-chatbot-with-project-instructions)
-    - [💬 Temporary Chat Windows](#-temporary-chat-windows)
+  - [🧠 Agentic Chatbot with Project Instructions](#-agentic-chatbot-with-project-instructions)
+  - [💬 Temporary Chat Windows](#-temporary-chat-windows)
 - [🗺️ Roadmap](#️-roadmap)
 - [🙌 Contributing](#-contributing)
 - [💬 Join Our Discord](#-join-our-discord)
-
 
 > This project is evolving at lightning speed! ⚡️ We're constantly shipping new features and smashing bugs. **Star this repo** to join the ride and stay in the loop with the latest updates!
 
@@ -95,12 +88,12 @@ Get a feel for the UX — here's a quick look at what's possible.
 Sample prompt:
 
 ```prompt
-1. Use the @tool('web-search') to look up information about “modelcontetprotocol.”  
+1. Use the @tool('web-search') to look up information about “modelcontetprotocol.”
 
 2. Then, using : @mcp("playwright")
-   - navigate Google (https://www.google.com)  
-   - Click the “Login” button  
-   - Enter my email address (neo.cgoing@gmail.com)  
+   - navigate Google (https://www.google.com)
+   - Click the “Login” button
+   - Enter my email address (neo.cgoing@gmail.com)
    - Clock the "Next"  button
    - Close the browser
 ```
@@ -134,21 +127,18 @@ Talk to the assistant naturally, and watch it execute tools in real time.
 
 <img width="1225" alt="image" src="https://github.com/user-attachments/assets/4d56dd25-a94c-4c19-9efa-fd7b5d3d2187" loading="lazy"/>
 
-
 Quickly call tool during chat by typing `@toolname`.
 No need to memorize — just type `@` and pick from the list!
 
 **Tool Selection vs. Mentions (`@`) — When to Use What:**
 
-* **Tool Selection**: Make frequently used tools always available to the LLM across all chats. Great for convenience and maintaining consistent context over time.
-* **Mentions (`@`)**: Temporarily bind only the mentioned tools for that specific response. Since only the mentioned tools are sent to the LLM, this saves tokens and can improve speed and accuracy.
+- **Tool Selection**: Make frequently used tools always available to the LLM across all chats. Great for convenience and maintaining consistent context over time.
+- **Mentions (`@`)**: Temporarily bind only the mentioned tools for that specific response. Since only the mentioned tools are sent to the LLM, this saves tokens and can improve speed and accuracy.
 
 Each method has its own strengths — use them together to balance efficiency and performance.
 
 You can also create **tool presets** by selecting only the MCP servers or tools you need.
 Switch between presets instantly with a click — perfect for organizing tools by task or workflow.
-
-
 
 ### 🧭 Tool Choice Mode
 
@@ -175,6 +165,7 @@ Built-in web search powered by [Tavily API](https://app.tavily.com/home). Search
 - **Easy Setup:** Get your API key with one click at [app.tavily.com](https://app.tavily.com/home)
 
 #### ⚡️ JS Executor
+
 <img width="1225" alt="js-executor-preview" src="https://github.com/user-attachments/assets/24d51665-c500-4c92-89de-7b46216e869f" loading="lazy"/>
 
 It is a simple JS execution tool.
@@ -293,7 +284,7 @@ NOT_ALLOW_ADD_MCP_SERVERS=
 
 ## 📘 Guides
 
-Step-by-step setup guides for running and configuring better-chatbot.
+Step-by-step setup guides for running and configuring mind-spark.
 
 #### [🔌 MCP Server Setup & Tool Testing](./docs/tips-guides/mcp-server-setup-and-tool-testing.md)
 
@@ -334,14 +325,14 @@ Advanced use cases and extra capabilities that enhance your chatbot experience.
 
 ## 🗺️ Roadmap
 
-Planned features coming soon to better-chatbot:
+Planned features coming soon to mind-spark:
 
 - [ ] **File Attach & Image Generation**
 - [ ] **Collaborative Document Editing** (like OpenAI Canvas: user & assistant co-editing)
 - [ ] **RAG (Retrieval-Augmented Generation)**
 - [ ] **Web-based Compute** (with [WebContainers](https://webcontainers.io) integration)
 
-💡 If you have suggestions or need specific features, please create an [issue](https://github.com/cgoinglove/better-chatbot/issues)!
+💡 If you have suggestions or need specific features, please create an [issue](https://github.com/dwickyferi/mindspark/issues)!
 
 ## 🙌 Contributing
 
