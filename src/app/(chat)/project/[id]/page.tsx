@@ -1,7 +1,7 @@
 "use client";
 import { selectProjectByIdAction } from "@/app/api/chat/actions";
 import { appStore } from "@/app/store";
-import { DocumentManager } from "@/components/document-manager";
+import { ProjectKnowledgeSheet } from "@/components/project-knowledge-sheet";
 import { ProjectDropdown } from "@/components/project-dropdown";
 import { ProjectSystemMessagePopup } from "@/components/project-system-message-popup";
 import PromptInput from "@/components/prompt-input";
@@ -197,19 +197,19 @@ export default function ProjectPage() {
               <div className="flex-1">
                 <h3 className="font-medium mb-2 flex items-center gap-2">
                   <FileUp size={18} className="text-muted-foreground" />
-                  Add Files
+                  Knowledge Base
                 </h3>
                 <p className="text-sm text-muted-foreground line-clamp-2">
-                  {t("chatInThisProjectCanAccessFileContents")}
+                  Upload documents to provide context for AI conversations
                 </p>
               </div>
             </div>
-            <DocumentManager projectId={id as string}>
+            <ProjectKnowledgeSheet projectId={id as string}>
               <Button variant="outline" className="w-full">
                 <FileUp className="h-4 w-4 mr-2" />
-                Manage Documents
+                Knowledge Base
               </Button>
-            </DocumentManager>
+            </ProjectKnowledgeSheet>
           </div>
           <FeatureCard
             title="Add Instructions"
