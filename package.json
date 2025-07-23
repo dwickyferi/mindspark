@@ -34,7 +34,7 @@
     "docker-compose:ps": "docker-compose -f docker/compose.yml ps",
     "docker-compose:update": "git pull && docker-compose -f docker/compose.yml up -d --build",
     "docker:pg": "docker run --name mcp-pg -e POSTGRES_PASSWORD=your_password -e POSTGRES_USER=your_username -e POSTGRES_DB=your_database_name -p 5432:5432 -d postgres",
-    "docker:app": "docker build -f docker/Dockerfile -t better-chatbot . && docker run -p 3000:3000 -e NO_HTTPS=1 better-chatbot",
+    "docker:app": "docker build -f docker/Dockerfile -t mind-spark . && docker run -p 3000:3000 -e NO_HTTPS=1 mind-spark",
     "prepare": "husky",
     "check": "pnpm lint:fix && pnpm check-types && pnpm test"
   },
