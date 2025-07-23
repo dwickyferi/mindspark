@@ -65,6 +65,21 @@ function DocumentCard({ document, onDelete }: DocumentCardProps) {
     });
   };
 
+  const getFileTypeLabel = (mimeType: string): string => {
+    const typeMap: Record<string, string> = {
+      "application/pdf": "PDF",
+      "application/msword": "DOC",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+      "text/plain": "TEXT",
+      "text/markdown": "MD",
+      "application/json": "JSON",
+      "text/html": "HTML",
+      "text/csv": "CSV",
+    };
+    
+    return typeMap[mimeType] || mimeType.split("/")[1]?.toUpperCase() || "FILE";
+  };
+
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
@@ -94,7 +109,7 @@ function DocumentCard({ document, onDelete }: DocumentCardProps) {
             </div>
             
             <Badge variant="outline" className="text-xs h-5">
-              {document.mimeType.split("/")[1]?.toUpperCase() || "TEXT"}
+              {getFileTypeLabel(document.mimeType)}
             </Badge>
           </div>
           
@@ -143,6 +158,9 @@ function UploadModal({
       "application/json": [".json"],
       "text/html": [".html"],
       "text/csv": [".csv"],
+      "application/pdf": [".pdf"],
+      "application/msword": [".doc"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
     },
     maxSize: 10 * 1024 * 1024, // 10MB
   });
@@ -157,7 +175,19 @@ function UploadModal({
     setIsUploading(true);
     try {
       const uploadPromises = uploadFiles.map(async (file) => {
-        const content = await file.text();
+        let content: string;
+        
+        // Handle different file types
+        if (file.type === "application/pdf" || 
+            file.type === "application/msword" || 
+            file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+          // For now, show a placeholder for binary files until text extraction is implemented
+          content = `[${file.type.includes('pdf') ? 'PDF' : file.type.includes('word') ? 'DOC/DOCX' : 'BINARY'} File: ${file.name}]\n\nNote: Text extraction for this file type is not yet implemented. The file has been uploaded but its content cannot be processed for RAG functionality.`;
+        } else {
+          // For text-based files, read as text
+          content = await file.text();
+        }
+        
         return addDocumentAction(projectId, {
           name: file.name,
           content,
@@ -196,7 +226,9 @@ function UploadModal({
             Upload Documents
           </DialogTitle>
           <DialogDescription>
-            Upload documents to your project knowledge base. Supported formats: .txt, .md, .json, .html, .csv (max 10MB each)
+            Upload documents to your project knowledge base. Supported formats: .txt, .md, .json, .html, .csv, .pdf, .doc, .docx (max 10MB each)
+            <br />
+            <span className="text-xs text-muted-foreground">Note: PDF, DOC, and DOCX files will be uploaded but text extraction is not yet implemented.</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -219,7 +251,7 @@ function UploadModal({
               <div>
                 <p className="mb-1">Drag & drop files here, or click to select</p>
                 <p className="text-sm text-muted-foreground">
-                  Supports: .txt, .md, .json, .html, .csv (max 10MB each)
+                  Supports: .txt, .md, .json, .html, .csv, .pdf, .doc, .docx (max 10MB each)
                 </p>
               </div>
             )}
