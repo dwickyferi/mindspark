@@ -1,6 +1,7 @@
 "use client";
 import { selectProjectByIdAction } from "@/app/api/chat/actions";
 import { appStore } from "@/app/store";
+import { DocumentManager } from "@/components/document-manager";
 import { ProjectDropdown } from "@/components/project-dropdown";
 import { ProjectSystemMessagePopup } from "@/components/project-system-message-popup";
 import PromptInput from "@/components/prompt-input";
@@ -25,7 +26,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import useSWR, { mutate } from "swr";
 import { Button } from "ui/button";
-import { notImplementedToast } from "ui/shared-toast";
 import { Skeleton } from "ui/skeleton";
 import { useShallow } from "zustand/shallow";
 
@@ -192,12 +192,25 @@ export default function ProjectPage() {
           threadId={threadId}
         />
         <div className="flex my-4 mx-2 gap-4">
-          <FeatureCard
-            title="Add Files"
-            onClick={notImplementedToast}
-            description={t("chatInThisProjectCanAccessFileContents")}
-            icon={<FileUp size={18} className="text-muted-foreground" />}
-          />
+          <div className="flex-1 border rounded-2xl p-4">
+            <div className="flex items-start mb-3">
+              <div className="flex-1">
+                <h3 className="font-medium mb-2 flex items-center gap-2">
+                  <FileUp size={18} className="text-muted-foreground" />
+                  Add Files
+                </h3>
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {t("chatInThisProjectCanAccessFileContents")}
+                </p>
+              </div>
+            </div>
+            <DocumentManager projectId={id as string}>
+              <Button variant="outline" className="w-full">
+                <FileUp className="h-4 w-4 mr-2" />
+                Manage Documents
+              </Button>
+            </DocumentManager>
+          </div>
           <FeatureCard
             title="Add Instructions"
             description={

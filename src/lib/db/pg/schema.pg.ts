@@ -12,6 +12,8 @@ import {
   unique,
   varchar,
   index,
+  integer,
+  real,
 } from "drizzle-orm/pg-core";
 import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
 
@@ -218,6 +220,46 @@ export const WorkflowEdgeSchema = pgTable("workflow_edge", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// RAG-related schemas
+export const DocumentSchema = pgTable("document", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => ProjectSchema.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => UserSchema.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  content: text("content").notNull(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size").notNull(),
+  metadata: json("metadata").default({}),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const DocumentChunkSchema = pgTable(
+  "document_chunk",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => DocumentSchema.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => ProjectSchema.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    embedding: text("embedding").array(), // Store as text array for now
+    chunkIndex: integer("chunk_index").notNull(),
+    metadata: json("metadata").default({}),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("document_chunk_document_id_idx").on(table.documentId),
+    index("document_chunk_project_id_idx").on(table.projectId),
+  ]
+);
+
 export type McpServerEntity = typeof McpServerSchema.$inferSelect;
 export type ChatThreadEntity = typeof ChatThreadSchema.$inferSelect;
 export type ChatMessageEntity = typeof ChatMessageSchema.$inferSelect;
@@ -227,3 +269,5 @@ export type ToolCustomizationEntity =
   typeof McpToolCustomizationSchema.$inferSelect;
 export type McpServerCustomizationEntity =
   typeof McpServerCustomizationSchema.$inferSelect;
+export type DocumentEntity = typeof DocumentSchema.$inferSelect;
+export type DocumentChunkEntity = typeof DocumentChunkSchema.$inferSelect;

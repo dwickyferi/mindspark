@@ -44,10 +44,12 @@ import {
 import { useTranslations } from "next-intl";
 import { Think } from "ui/think";
 import { useGenerateThreadTitle } from "@/hooks/queries/use-generate-thread-title";
+import { RagDocumentsSidebar } from "./rag-documents-sidebar";
 
 type Props = {
   threadId: string;
   initialMessages: Array<UIMessage>;
+  projectId?: string;
   selectedChatModel?: string;
   slots?: {
     emptySlot?: ReactNode;
@@ -55,7 +57,7 @@ type Props = {
   };
 };
 
-export default function ChatBot({ threadId, initialMessages, slots }: Props) {
+export default function ChatBot({ threadId, initialMessages, projectId, slots }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [
@@ -66,6 +68,7 @@ export default function ChatBot({ threadId, initialMessages, slots }: Props) {
     allowedMcpServers,
     threadList,
     threadMentions,
+    currentProjectId,
   ] = appStore(
     useShallow((state) => [
       state.mutate,
@@ -75,6 +78,7 @@ export default function ChatBot({ threadId, initialMessages, slots }: Props) {
       state.allowedMcpServers,
       state.threadList,
       state.threadMentions,
+      state.currentProjectId,
     ]),
   );
 
@@ -238,6 +242,14 @@ export default function ChatBot({ threadId, initialMessages, slots }: Props) {
   }, [threadId]);
 
   useEffect(() => {
+    console.log('ChatBot debug:', { 
+      threadProjectId: projectId, 
+      currentProjectId: currentProjectId,
+      finalProjectId: projectId || currentProjectId 
+    });
+  }, [projectId, currentProjectId]);
+
+  useEffect(() => {
     if (isInitialThreadEntry)
       containerRef.current?.scrollTo({
         top: containerRef.current?.scrollHeight,
@@ -345,6 +357,7 @@ export default function ChatBot({ threadId, initialMessages, slots }: Props) {
         onClose={() => setIsDeleteThreadPopupOpen(false)}
         open={isDeleteThreadPopupOpen}
       />
+      <RagDocumentsSidebar projectId={projectId || currentProjectId || undefined} />
     </div>
   );
 }

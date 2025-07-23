@@ -8,11 +8,8 @@ export function SWRConfigProvider({
   children: React.ReactNode;
 }) {
   useEffect(() => {
-    console.log(
-      "%c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█\n█▄█ █▄▄  █   █  █▄▄ █▀▄\n\n%c⛓️ Just a Mind Spark\nhttps://github.com/cgoinglove/better-chatbot",
-      "color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff;",
-      "color: #888; font-size: 12px;",
-    );
+    // This effect runs once when the component mounts
+    // It can be used for any global setup or configuration
   }, []);
   return (
     <SWRConfig

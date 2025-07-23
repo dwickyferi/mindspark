@@ -21,6 +21,7 @@ import {
   buildProjectInstructionsSystemPrompt,
   buildUserSystemPrompt,
   buildToolCallUnsupportedModelSystemPrompt,
+  buildRAGSystemPrompt,
   mentionPrompt,
 } from "lib/ai/prompts";
 import { chatApiSchemaRequestBodySchema } from "app-types/chat";
@@ -50,6 +51,7 @@ import { colorize } from "consola/utils";
 import { isVercelAIWorkflowTool } from "app-types/workflow";
 import { objectFlow } from "lib/utils";
 import { APP_DEFAULT_TOOL_KIT } from "lib/ai/tools/tool-kit";
+import { ragService } from "lib/ai/rag/service";
 
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Chat API: `),
@@ -196,9 +198,34 @@ export async function POST(request: Request) {
           .map((v) => filterMcpServerCustomizations(MCP_TOOLS!, v))
           .orElse({});
 
+        // RAG context retrieval for project-based conversations
+        let ragContext = "";
+        if (thread?.projectId && isLastMessageUserMessage) {
+          try {
+            const userMessage = message.parts
+              ?.filter(part => part.type === 'text')
+              ?.map(part => part.text)
+              ?.join(' ') || '';
+            
+            if (userMessage.trim()) {
+              const results = await ragService.searchRelevantContent(
+                thread.projectId,
+                userMessage,
+                5, // limit
+                0.3 // threshold
+              );
+              ragContext = ragService.formatContextForRAG(results);
+            }
+          } catch (error) {
+            logger.error(`RAG search failed: ${error}`);
+            // Continue without RAG context if search fails
+          }
+        }
+
         const systemPrompt = mergeSystemPrompt(
           buildUserSystemPrompt(session.user, userPreferences),
           buildProjectInstructionsSystemPrompt(thread?.instructions),
+          buildRAGSystemPrompt(ragContext),
           buildMcpServerCustomizationsSystemPrompt(mcpServerCustomizations),
           mentions.length > 0 && mentionPrompt,
           isToolCallUnsupportedModel(model) &&

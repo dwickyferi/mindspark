@@ -136,6 +136,21 @@ ${instructions.systemPrompt.trim()}
 </project_instructions>`.trim();
 };
 
+export const buildRAGSystemPrompt = (ragContext?: string) => {
+  if (!ragContext?.trim()) return undefined;
+
+  return `
+### Project Knowledge Base ###
+<knowledge_base>
+- You have access to relevant information from the project's knowledge base below.
+- Use this information to provide accurate, contextual responses.
+- Always prioritize information from the knowledge base when it's relevant to the user's query.
+- If asked about something not covered in the knowledge base, acknowledge that and provide your general knowledge.
+
+${ragContext.trim()}
+</knowledge_base>`.trim();
+};
+
 export const SUMMARIZE_PROMPT = `\n
 You are an expert AI assistant specialized in summarizing and extracting project requirements. 
 Read the following chat history and generate a concise, professional system instruction for a new AI assistant continuing this project. 
