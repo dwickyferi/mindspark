@@ -12,7 +12,7 @@ const UpdateDocumentSchema = z.object({
 // GET /api/project/[projectId]/documents/[documentId] - Get a specific document
 export async function GET(
   request: NextRequest,
-  { params }: { params: { projectId: string; documentId: string } }
+  { params }: { params: Promise<{ projectId: string; documentId: string }> }
 ) {
   try {
     const session = await getSession();
@@ -20,7 +20,8 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const document = await ragService.getDocument(params.documentId);
+    const { projectId: _projectId, documentId } = await params;
+    const document = await ragService.getDocument(documentId);
     if (!document) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
@@ -43,7 +44,7 @@ export async function GET(
 // PUT /api/project/[projectId]/documents/[documentId] - Update a document
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { projectId: string; documentId: string } }
+  { params }: { params: Promise<{ projectId: string; documentId: string }> }
 ) {
   try {
     const session = await getSession();
@@ -51,8 +52,9 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { projectId: _projectId, documentId } = await params;
     // Check if document exists and user owns it
-    const existingDocument = await ragService.getDocument(params.documentId);
+    const existingDocument = await ragService.getDocument(documentId);
     if (!existingDocument) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
@@ -64,7 +66,7 @@ export async function PUT(
     const body = await request.json();
     const updates = UpdateDocumentSchema.parse(body);
 
-    const document = await ragService.updateDocument(params.documentId, updates);
+    const document = await ragService.updateDocument(documentId, updates);
     return NextResponse.json(document);
   } catch (error) {
     console.error("Error updating document:", error);
@@ -86,7 +88,7 @@ export async function PUT(
 // DELETE /api/project/[projectId]/documents/[documentId] - Delete a document
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { projectId: string; documentId: string } }
+  { params }: { params: Promise<{ projectId: string; documentId: string }> }
 ) {
   try {
     const session = await getSession();
@@ -94,8 +96,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { projectId: _projectId, documentId } = await params;
     // Check if document exists and user owns it
-    const existingDocument = await ragService.getDocument(params.documentId);
+    const existingDocument = await ragService.getDocument(documentId);
     if (!existingDocument) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
@@ -104,7 +107,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await ragService.deleteDocument(params.documentId);
+    await ragService.deleteDocument(documentId);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting document:", error);

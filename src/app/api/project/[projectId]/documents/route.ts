@@ -6,7 +6,7 @@ import { getSession } from "auth/server";
 // GET /api/project/[projectId]/documents - Get all documents for a project
 export async function GET(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const session = await getSession();
@@ -14,7 +14,8 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const documents = await ragService.getDocumentsByProject(params.projectId);
+    const { projectId } = await params;
+    const documents = await ragService.getDocumentsByProject(projectId);
     return NextResponse.json(documents);
   } catch (error) {
     console.error("Error fetching documents:", error);
@@ -28,7 +29,7 @@ export async function GET(
 // POST /api/project/[projectId]/documents - Add a new document
 export async function POST(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const session = await getSession();
@@ -36,11 +37,12 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { projectId } = await params;
     const body = await request.json();
     const documentData = DocumentUploadSchema.parse(body);
 
     const document = await ragService.addDocument(
-      params.projectId,
+      projectId,
       session.user.id,
       documentData
     );

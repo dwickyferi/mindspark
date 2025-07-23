@@ -5,7 +5,7 @@ import { getSession } from "auth/server";
 // POST /api/project/[projectId]/search - Search for relevant content in project documents
 export async function POST(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const session = await getSession();
@@ -13,6 +13,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { projectId } = await params;
     const { query, limit = 5, threshold = 0.3 } = await request.json();
 
     if (!query || typeof query !== "string" || query.trim().length === 0) {
@@ -23,7 +24,7 @@ export async function POST(
     }
 
     const results = await ragService.searchRelevantContent(
-      params.projectId,
+      projectId,
       query.trim(),
       Math.min(Math.max(Number(limit) || 5, 1), 20), // Limit between 1-20
       Math.min(Math.max(Number(threshold) || 0.3, 0), 1) // Threshold between 0-1

@@ -13,7 +13,6 @@ import {
   varchar,
   index,
   integer,
-  real,
 } from "drizzle-orm/pg-core";
 import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
 
