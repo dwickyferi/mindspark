@@ -9,11 +9,11 @@ on:
   workflow_dispatch:
 
 jobs:
-
   release-container:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      issues: write
       packages: write
       attestations: write
       id-token: write
