@@ -3,12 +3,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "next/navigation";
 import useSWR, { mutate } from "swr";
-import { 
-  FileText, 
-  Youtube, 
+import {
+  FileText,
+  SquarePlay,
   Globe,
-  Search, 
-  Plus, 
+  Search,
+  Plus,
   ArrowLeft,
   Upload,
   Clock,
@@ -17,7 +17,7 @@ import {
   Calendar,
   Grid3X3,
   List,
-  Trash2
+  Trash2,
 } from "lucide-react";
 import { Button } from "ui/button";
 import { Input } from "ui/input";
@@ -25,15 +25,35 @@ import { Badge } from "ui/badge";
 import { Card, CardContent } from "ui/card";
 import { Checkbox } from "ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "ui/select";
 import { cn } from "lib/utils";
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
 
-import { getDocumentsAction, addDocumentAction, addWebPageAction, deleteDocumentAction } from "@/app/api/rag/actions";
-import { selectProjectByIdAction, updateProjectAction } from "@/app/api/chat/actions";
+import {
+  getDocumentsAction,
+  addDocumentAction,
+  addWebPageAction,
+  deleteDocumentAction,
+} from "@/app/api/rag/actions";
+import {
+  selectProjectByIdAction,
+  updateProjectAction,
+} from "@/app/api/chat/actions";
 import { Document } from "app-types/rag";
 import { useDropzone } from "react-dropzone";
 import { YouTubeUpload } from "@/components/youtube-upload";
@@ -52,7 +72,9 @@ export default function KnowledgeManagementPage() {
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [sortBy, setSortBy] = useState<SortOption>("date");
-  const [filterType, setFilterType] = useState<"all" | "file" | "youtube" | "web">("all");
+  const [filterType, setFilterType] = useState<
+    "all" | "file" | "youtube" | "web"
+  >("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUpdatingSelection, setIsUpdatingSelection] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
@@ -61,15 +83,16 @@ export default function KnowledgeManagementPage() {
   // Data fetching
   const { data: documents = [], isLoading: documentsLoading } = useSWR(
     projectId ? `documents-${projectId}` : null,
-    () => projectId ? getDocumentsAction(projectId) : Promise.resolve([]),
+    () => (projectId ? getDocumentsAction(projectId) : Promise.resolve([])),
     {
       refreshInterval: 5000,
-    }
+    },
   );
 
   const { data: project, mutate: mutateProject } = useSWR(
     projectId ? `project-${projectId}` : null,
-    () => projectId ? selectProjectByIdAction(projectId) : Promise.resolve(null)
+    () =>
+      projectId ? selectProjectByIdAction(projectId) : Promise.resolve(null),
   );
 
   // Initialize selected documents
@@ -82,9 +105,13 @@ export default function KnowledgeManagementPage() {
   // Filter and sort documents
   const filteredAndSortedDocuments = useMemo(() => {
     const filtered = documents.filter((doc) => {
-      const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (doc.youtubeChannelName?.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesType = filterType === "all" || doc.documentType === filterType;
+      const matchesSearch =
+        doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        doc.youtubeChannelName
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase());
+      const matchesType =
+        filterType === "all" || doc.documentType === filterType;
       return matchesSearch && matchesType;
     });
 
@@ -94,7 +121,9 @@ export default function KnowledgeManagementPage() {
         case "name":
           return a.name.localeCompare(b.name);
         case "date":
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
         case "size":
           return b.size - a.size;
         case "type":
@@ -109,10 +138,16 @@ export default function KnowledgeManagementPage() {
 
   // Group documents by type for the Smart Tags style view
   const documentsByType = useMemo(() => {
-    const fileDocuments = filteredAndSortedDocuments.filter(doc => doc.documentType === "file");
-    const youtubeDocuments = filteredAndSortedDocuments.filter(doc => doc.documentType === "youtube");
-    const webDocuments = filteredAndSortedDocuments.filter(doc => doc.documentType === "web");
-    
+    const fileDocuments = filteredAndSortedDocuments.filter(
+      (doc) => doc.documentType === "file",
+    );
+    const youtubeDocuments = filteredAndSortedDocuments.filter(
+      (doc) => doc.documentType === "youtube",
+    );
+    const webDocuments = filteredAndSortedDocuments.filter(
+      (doc) => doc.documentType === "web",
+    );
+
     return {
       files: fileDocuments,
       youtube: youtubeDocuments,
@@ -124,21 +159,27 @@ export default function KnowledgeManagementPage() {
   const stats = useMemo(() => {
     const totalDocs = documents.length;
     const selectedCount = selectedDocuments.length;
-    const fileCount = documents.filter(doc => doc.documentType === "file").length;
-    const youtubeCount = documents.filter(doc => doc.documentType === "youtube").length;
-    const webCount = documents.filter(doc => doc.documentType === "web").length;
-    
+    const fileCount = documents.filter(
+      (doc) => doc.documentType === "file",
+    ).length;
+    const youtubeCount = documents.filter(
+      (doc) => doc.documentType === "youtube",
+    ).length;
+    const webCount = documents.filter(
+      (doc) => doc.documentType === "web",
+    ).length;
+
     return { totalDocs, selectedCount, fileCount, youtubeCount, webCount };
   }, [documents, selectedDocuments]);
 
   // Handlers
   const handleUpdateSelectedDocuments = async (newSelection: string[]) => {
     if (!projectId) return;
-    
+
     setIsUpdatingSelection(true);
     try {
       await updateProjectAction(projectId, {
-        selectedDocuments: newSelection
+        selectedDocuments: newSelection,
       });
       mutateProject();
       toast.success("Knowledge selection updated");
@@ -157,19 +198,19 @@ export default function KnowledgeManagementPage() {
   const handleToggleDocumentSelection = async (documentId: string) => {
     const isSelected = selectedDocuments.includes(documentId);
     let newSelection: string[];
-    
+
     if (isSelected) {
-      newSelection = selectedDocuments.filter(id => id !== documentId);
+      newSelection = selectedDocuments.filter((id) => id !== documentId);
     } else {
       newSelection = [...selectedDocuments, documentId];
     }
-    
+
     setSelectedDocuments(newSelection);
     await handleUpdateSelectedDocuments(newSelection);
   };
 
   const handleSelectAll = async () => {
-    const allDocumentIds = filteredAndSortedDocuments.map(doc => doc.id);
+    const allDocumentIds = filteredAndSortedDocuments.map((doc) => doc.id);
     setSelectedDocuments(allDocumentIds);
     await handleUpdateSelectedDocuments(allDocumentIds);
   };
@@ -181,7 +222,7 @@ export default function KnowledgeManagementPage() {
 
   // File upload handlers
   const onDrop = (acceptedFiles: File[]) => {
-    setUploadFiles(prev => [...prev, ...acceptedFiles]);
+    setUploadFiles((prev) => [...prev, ...acceptedFiles]);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -197,7 +238,7 @@ export default function KnowledgeManagementPage() {
   });
 
   const removeFile = (index: number) => {
-    setUploadFiles(prev => prev.filter((_, i) => i !== index));
+    setUploadFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const uploadDocuments = async () => {
@@ -223,7 +264,9 @@ export default function KnowledgeManagementPage() {
     }
 
     if (successCount > 0) {
-      toast.success(`Successfully uploaded ${successCount} document${successCount > 1 ? 's' : ''}`);
+      toast.success(
+        `Successfully uploaded ${successCount} document${successCount > 1 ? "s" : ""}`,
+      );
       mutate(`documents-${projectId}`);
       setUploadFiles([]);
       setIsAddModalOpen(false);
@@ -232,7 +275,10 @@ export default function KnowledgeManagementPage() {
     setIsUploading(false);
   };
 
-  const uploadYouTubeVideo = async (videoInfo: YouTubeVideoInfo, transcript: string) => {
+  const uploadYouTubeVideo = async (
+    videoInfo: YouTubeVideoInfo,
+    transcript: string,
+  ) => {
     try {
       await addDocumentAction(projectId!, {
         name: videoInfo.title,
@@ -267,8 +313,15 @@ export default function KnowledgeManagementPage() {
     }
   };
 
-  const handleDeleteDocument = async (documentId: string, documentName: string) => {
-    if (!confirm(`Are you sure you want to delete &quot;${documentName}&quot;? This action cannot be undone.`)) {
+  const handleDeleteDocument = async (
+    documentId: string,
+    documentName: string,
+  ) => {
+    if (
+      !confirm(
+        `Are you sure you want to delete &quot;${documentName}&quot;? This action cannot be undone.`,
+      )
+    ) {
       return;
     }
 
@@ -276,10 +329,12 @@ export default function KnowledgeManagementPage() {
       await deleteDocumentAction(documentId);
       toast.success(`Deleted "${documentName}" successfully`);
       mutate(`documents-${projectId}`);
-      
+
       // Remove from selected documents if it was selected
       if (selectedDocuments.includes(documentId)) {
-        const newSelection = selectedDocuments.filter(id => id !== documentId);
+        const newSelection = selectedDocuments.filter(
+          (id) => id !== documentId,
+        );
         setSelectedDocuments(newSelection);
         await handleUpdateSelectedDocuments(newSelection);
       }
@@ -315,20 +370,25 @@ export default function KnowledgeManagementPage() {
             <div>
               <h1 className="text-2xl font-bold">Knowledge Management</h1>
               <p className="text-sm text-muted-foreground">
-                Manage and organize your project&apos;s knowledge base • {stats.selectedCount} selected
+                Manage and organize your project&apos;s knowledge base •{" "}
+                {stats.selectedCount} selected
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
             >
-              {viewMode === "grid" ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
+              {viewMode === "grid" ? (
+                <List className="h-4 w-4" />
+              ) : (
+                <Grid3X3 className="h-4 w-4" />
+              )}
             </Button>
-            
+
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -337,7 +397,6 @@ export default function KnowledgeManagementPage() {
                 </Button>
               </DialogTrigger>
               <AddKnowledgeModal
-                projectId={projectId}
                 uploadFiles={uploadFiles}
                 isUploading={isUploading}
                 isDragActive={isDragActive}
@@ -360,7 +419,7 @@ export default function KnowledgeManagementPage() {
               <span>{stats.fileCount} Files</span>
             </div>
             <div className="flex items-center gap-2">
-              <Youtube className="h-4 w-4 text-red-600" />
+              <SquarePlay className="h-4 w-4 text-red-600" />
               <span>{stats.youtubeCount} Videos</span>
             </div>
             <div className="flex items-center gap-2">
@@ -389,8 +448,11 @@ export default function KnowledgeManagementPage() {
                 className="pl-10"
               />
             </div>
-            
-            <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+
+            <Select
+              value={filterType}
+              onValueChange={(value: any) => setFilterType(value)}
+            >
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
@@ -402,7 +464,10 @@ export default function KnowledgeManagementPage() {
               </SelectContent>
             </Select>
 
-            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+            <Select
+              value={sortBy}
+              onValueChange={(value: any) => setSortBy(value)}
+            >
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
@@ -442,7 +507,10 @@ export default function KnowledgeManagementPage() {
           {documentsLoading ? (
             <KnowledgeGridSkeleton />
           ) : filteredAndSortedDocuments.length === 0 ? (
-            <EmptyState searchQuery={searchQuery} onAddClick={() => setIsAddModalOpen(true)} />
+            <EmptyState
+              searchQuery={searchQuery}
+              onAddClick={() => setIsAddModalOpen(true)}
+            />
           ) : (
             <SmartTagsView
               documentsByType={documentsByType}
@@ -484,15 +552,20 @@ function SmartTagsView({
             <div>
               <h2 className="text-lg font-semibold">Files</h2>
               <p className="text-sm text-muted-foreground">
-                {documentsByType.files.length} document{documentsByType.files.length !== 1 ? 's' : ''}
+                {documentsByType.files.length} document
+                {documentsByType.files.length !== 1 ? "s" : ""}
               </p>
             </div>
           </div>
-          
-          <div className={cn(
-            "grid gap-4",
-            viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
-          )}>
+
+          <div
+            className={cn(
+              "grid gap-4",
+              viewMode === "grid"
+                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                : "grid-cols-1",
+            )}
+          >
             {documentsByType.files.map((document) => (
               <DocumentCard
                 key={document.id}
@@ -512,20 +585,25 @@ function SmartTagsView({
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-red-100 rounded-lg">
-              <Youtube className="h-5 w-5 text-red-600" />
+              <SquarePlay className="h-5 w-5 text-red-600" />
             </div>
             <div>
               <h2 className="text-lg font-semibold">YouTube Videos</h2>
               <p className="text-sm text-muted-foreground">
-                {documentsByType.youtube.length} video{documentsByType.youtube.length !== 1 ? 's' : ''}
+                {documentsByType.youtube.length} video
+                {documentsByType.youtube.length !== 1 ? "s" : ""}
               </p>
             </div>
           </div>
-          
-          <div className={cn(
-            "grid gap-4",
-            viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
-          )}>
+
+          <div
+            className={cn(
+              "grid gap-4",
+              viewMode === "grid"
+                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                : "grid-cols-1",
+            )}
+          >
             {documentsByType.youtube.map((document) => (
               <DocumentCard
                 key={document.id}
@@ -550,15 +628,20 @@ function SmartTagsView({
             <div>
               <h2 className="text-lg font-semibold">Web Pages</h2>
               <p className="text-sm text-muted-foreground">
-                {documentsByType.web.length} page{documentsByType.web.length !== 1 ? 's' : ''}
+                {documentsByType.web.length} page
+                {documentsByType.web.length !== 1 ? "s" : ""}
               </p>
             </div>
           </div>
-          
-          <div className={cn(
-            "grid gap-4",
-            viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
-          )}>
+
+          <div
+            className={cn(
+              "grid gap-4",
+              viewMode === "grid"
+                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                : "grid-cols-1",
+            )}
+          >
             {documentsByType.web.map((document) => (
               <DocumentCard
                 key={document.id}
@@ -607,22 +690,24 @@ function DocumentCard({
   };
 
   const formatDuration = (seconds: number): string => {
-    if (seconds === 0) return '';
+    if (seconds === 0) return "";
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    
+
     if (hours > 0) {
-      return `${hours}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+      return `${hours}:${(minutes % 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
     }
-    return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
+    return `${minutes}:${(seconds % 60).toString().padStart(2, "0")}`;
   };
 
   if (viewMode === "list") {
     return (
-      <Card className={cn(
-        "group hover:shadow-md transition-all duration-200 cursor-pointer",
-        isSelected && "ring-2 ring-primary bg-primary/5"
-      )}>
+      <Card
+        className={cn(
+          "group hover:shadow-md transition-all duration-200 cursor-pointer",
+          isSelected && "ring-2 ring-primary bg-primary/5",
+        )}
+      >
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
             <Checkbox
@@ -630,8 +715,9 @@ function DocumentCard({
               onCheckedChange={() => onToggleSelection(document.id)}
               className="shrink-0"
             />
-            
-            {document.documentType === 'youtube' && document.youtubeThumbnail ? (
+
+            {document.documentType === "youtube" &&
+            document.youtubeThumbnail ? (
               <div className="relative w-20 h-12 rounded overflow-hidden shrink-0">
                 <Image
                   src={document.youtubeThumbnail}
@@ -640,7 +726,7 @@ function DocumentCard({
                   className="object-cover"
                 />
               </div>
-            ) : document.documentType === 'web' ? (
+            ) : document.documentType === "web" ? (
               <div className="flex items-center gap-2 shrink-0">
                 <div className="p-2 bg-green-100 rounded-lg">
                   <Globe className="h-5 w-5 text-green-600" />
@@ -648,16 +734,14 @@ function DocumentCard({
               </div>
             ) : (
               <div className="p-3 bg-primary/10 rounded-lg shrink-0">
-                {document.documentType === 'youtube' ? (
-                  <Youtube className="h-6 w-6 text-red-600" />
-                ) : document.documentType === 'web' ? (
-                  <Globe className="h-6 w-6 text-green-600" />
+                {document.documentType === "youtube" ? (
+                  <SquarePlay className="h-6 w-6 text-red-600" />
                 ) : (
                   <FileText className="h-6 w-6 text-primary" />
                 )}
               </div>
             )}
-            
+
             <div className="flex-1 min-w-0">
               <h4 className="font-medium truncate mb-1" title={document.name}>
                 {document.name}
@@ -665,19 +749,23 @@ function DocumentCard({
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span>{formatFileSize(document.size)}</span>
                 <span>{formatDate(document.createdAt)}</span>
-                {document.documentType === 'youtube' && document.youtubeChannelName && (
-                  <div className="flex items-center gap-1">
-                    <User className="h-3 w-3" />
-                    <span className="truncate max-w-32">{document.youtubeChannelName}</span>
-                  </div>
-                )}
-                {document.documentType === 'youtube' && document.youtubeDuration && (
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    <span>{formatDuration(document.youtubeDuration)}</span>
-                  </div>
-                )}
-                {document.documentType === 'web' && document.webUrl && (
+                {document.documentType === "youtube" &&
+                  document.youtubeChannelName && (
+                    <div className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      <span className="truncate max-w-32">
+                        {document.youtubeChannelName}
+                      </span>
+                    </div>
+                  )}
+                {document.documentType === "youtube" &&
+                  document.youtubeDuration && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      <span>{formatDuration(document.youtubeDuration)}</span>
+                    </div>
+                  )}
+                {document.documentType === "web" && document.webUrl && (
                   <div className="flex items-center gap-1">
                     <Globe className="h-3 w-3" />
                     <span className="truncate max-w-32" title={document.webUrl}>
@@ -687,8 +775,8 @@ function DocumentCard({
                 )}
               </div>
             </div>
-            
-            {document.documentType === 'youtube' && document.youtubeUrl && (
+
+            {document.documentType === "youtube" && document.youtubeUrl && (
               <a
                 href={document.youtubeUrl}
                 target="_blank"
@@ -700,8 +788,8 @@ function DocumentCard({
                 <ExternalLink className="h-4 w-4" />
               </a>
             )}
-            
-            {document.documentType === 'web' && document.webUrl && (
+
+            {document.documentType === "web" && document.webUrl && (
               <a
                 href={document.webUrl}
                 target="_blank"
@@ -713,7 +801,7 @@ function DocumentCard({
                 <ExternalLink className="h-4 w-4" />
               </a>
             )}
-            
+
             {/* Delete button for list view */}
             <Button
               variant="ghost"
@@ -735,10 +823,12 @@ function DocumentCard({
 
   // Grid view
   return (
-    <Card className={cn(
-      "group hover:shadow-md transition-all duration-200 cursor-pointer relative",
-      isSelected && "ring-2 ring-primary bg-primary/5"
-    )}>
+    <Card
+      className={cn(
+        "group hover:shadow-md transition-all duration-200 cursor-pointer relative",
+        isSelected && "ring-2 ring-primary bg-primary/5",
+      )}
+    >
       {/* Delete button - positioned in top-right corner of the card */}
       <Button
         variant="ghost"
@@ -752,7 +842,7 @@ function DocumentCard({
       >
         <Trash2 className="h-3 w-3" />
       </Button>
-      
+
       <CardContent className="p-4">
         <div className="space-y-3">
           <div className="flex items-start gap-3">
@@ -761,8 +851,9 @@ function DocumentCard({
               onCheckedChange={() => onToggleSelection(document.id)}
               className="shrink-0 mt-1"
             />
-            
-            {document.documentType === 'youtube' && document.youtubeThumbnail ? (
+
+            {document.documentType === "youtube" &&
+            document.youtubeThumbnail ? (
               <div className="relative w-full h-24 rounded overflow-hidden">
                 <Image
                   src={document.youtubeThumbnail}
@@ -771,10 +862,11 @@ function DocumentCard({
                   className="object-cover"
                 />
                 <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
-                  {document.youtubeDuration && formatDuration(document.youtubeDuration)}
+                  {document.youtubeDuration &&
+                    formatDuration(document.youtubeDuration)}
                 </div>
               </div>
-            ) : document.documentType === 'web' ? (
+            ) : document.documentType === "web" ? (
               <div className="w-full h-24 bg-green-100 rounded-lg flex items-center justify-center">
                 <Globe className="h-8 w-8 text-green-600" />
               </div>
@@ -784,28 +876,38 @@ function DocumentCard({
               </div>
             )}
           </div>
-          
+
           <div className="space-y-2">
-            <h4 className="font-medium text-sm line-clamp-2 leading-tight" title={document.name}>
+            <h4
+              className="font-medium text-sm line-clamp-2 leading-tight"
+              title={document.name}
+            >
               {document.name}
             </h4>
-            
+
             <div className="space-y-1 text-xs text-muted-foreground">
               <div className="flex items-center justify-between">
                 <span>{formatFileSize(document.size)}</span>
                 <Badge variant="outline" className="text-xs h-4">
-                  {document.documentType === 'youtube' ? 'VIDEO' : document.documentType === 'web' ? 'WEB PAGE' : 'FILE'}
+                  {document.documentType === "youtube"
+                    ? "VIDEO"
+                    : document.documentType === "web"
+                      ? "WEB PAGE"
+                      : "FILE"}
                 </Badge>
               </div>
-              
-              {document.documentType === 'youtube' && document.youtubeChannelName && (
-                <div className="flex items-center gap-1">
-                  <User className="h-3 w-3" />
-                  <span className="truncate">{document.youtubeChannelName}</span>
-                </div>
-              )}
-              
-              {document.documentType === 'web' && document.webUrl && (
+
+              {document.documentType === "youtube" &&
+                document.youtubeChannelName && (
+                  <div className="flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    <span className="truncate">
+                      {document.youtubeChannelName}
+                    </span>
+                  </div>
+                )}
+
+              {document.documentType === "web" && document.webUrl && (
                 <div className="flex items-center gap-1">
                   <Globe className="h-3 w-3" />
                   <span className="truncate" title={document.webUrl}>
@@ -813,14 +915,14 @@ function DocumentCard({
                   </span>
                 </div>
               )}
-              
+
               <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
                 <span>{formatDate(document.createdAt)}</span>
               </div>
             </div>
-            
-            {document.documentType === 'youtube' && document.youtubeUrl && (
+
+            {document.documentType === "youtube" && document.youtubeUrl && (
               <a
                 href={document.youtubeUrl}
                 target="_blank"
@@ -833,8 +935,8 @@ function DocumentCard({
                 Watch Video
               </a>
             )}
-            
-            {document.documentType === 'web' && document.webUrl && (
+
+            {document.documentType === "web" && document.webUrl && (
               <a
                 href={document.webUrl}
                 target="_blank"
@@ -856,7 +958,6 @@ function DocumentCard({
 
 // Add Knowledge Modal
 function AddKnowledgeModal({
-  projectId,
   uploadFiles,
   isUploading,
   isDragActive,
@@ -867,7 +968,6 @@ function AddKnowledgeModal({
   uploadYouTubeVideo,
   uploadWebPage,
 }: {
-  projectId: string;
   uploadFiles: File[];
   isUploading: boolean;
   isDragActive: boolean;
@@ -875,7 +975,10 @@ function AddKnowledgeModal({
   getInputProps: any;
   removeFile: (index: number) => void;
   uploadDocuments: () => void;
-  uploadYouTubeVideo: (videoInfo: YouTubeVideoInfo, transcript: string) => Promise<void>;
+  uploadYouTubeVideo: (
+    videoInfo: YouTubeVideoInfo,
+    transcript: string,
+  ) => Promise<void>;
   uploadWebPage: (data: { url: string }) => Promise<void>;
 }) {
   const formatFileSize = (bytes: number) => {
@@ -903,7 +1006,7 @@ function AddKnowledgeModal({
               File Upload
             </TabsTrigger>
             <TabsTrigger value="youtube" className="flex items-center gap-2">
-              <Youtube className="h-4 w-4" />
+              <SquarePlay className="h-4 w-4" />
               YouTube Video
             </TabsTrigger>
             <TabsTrigger value="web" className="flex items-center gap-2">
@@ -911,7 +1014,7 @@ function AddKnowledgeModal({
               Web Page
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="files" className="space-y-4">
             {/* File Upload Section */}
             <div
@@ -928,7 +1031,9 @@ function AddKnowledgeModal({
                 <p>Drop the files here...</p>
               ) : (
                 <div>
-                  <p className="mb-1">Drag & drop files here, or click to select</p>
+                  <p className="mb-1">
+                    Drag & drop files here, or click to select
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     Supports: .txt, .md, .json, .html, .csv (max 10MB each)
                   </p>
@@ -975,20 +1080,22 @@ function AddKnowledgeModal({
                   ) : (
                     <>
                       <Upload className="h-4 w-4 mr-2" />
-                      Upload {uploadFiles.length} file{uploadFiles.length > 1 ? 's' : ''}
+                      Upload {uploadFiles.length} file
+                      {uploadFiles.length > 1 ? "s" : ""}
                     </>
                   )}
                 </Button>
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="youtube" className="space-y-4">
             {/* YouTube Upload Section */}
             <div className="text-center mb-4">
               <h3 className="text-lg font-medium mb-2">Add YouTube Video</h3>
               <p className="text-sm text-muted-foreground">
-                Add YouTube videos to your knowledge base by extracting their transcripts
+                Add YouTube videos to your knowledge base by extracting their
+                transcripts
               </p>
             </div>
             <YouTubeUpload onUpload={uploadYouTubeVideo} />
@@ -1011,7 +1118,10 @@ function AddKnowledgeModal({
 }
 
 // Empty state component
-function EmptyState({ searchQuery, onAddClick }: { searchQuery: string; onAddClick: () => void }) {
+function EmptyState({
+  searchQuery,
+  onAddClick,
+}: { searchQuery: string; onAddClick: () => void }) {
   if (searchQuery) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -1032,9 +1142,12 @@ function EmptyState({ searchQuery, onAddClick }: { searchQuery: string; onAddCli
       <div className="p-4 bg-muted rounded-full mb-4">
         <FileText className="h-12 w-12 text-muted-foreground" />
       </div>
-      <h3 className="text-lg font-semibold mb-2">Your knowledge base is empty</h3>
+      <h3 className="text-lg font-semibold mb-2">
+        Your knowledge base is empty
+      </h3>
       <p className="text-muted-foreground mb-6 max-w-md">
-        Add documents and YouTube videos to provide context for your AI conversations
+        Add documents and YouTube videos to provide context for your AI
+        conversations
       </p>
       <Button onClick={onAddClick}>
         <Plus className="h-4 w-4 mr-2" />

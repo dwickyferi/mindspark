@@ -1,16 +1,41 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { ChevronRight, FileText, X, Loader2, Youtube, ExternalLink, Clock, User, Plus, Upload, Globe } from "lucide-react";
+import {
+  ChevronRight,
+  FileText,
+  X,
+  Loader2,
+  Youtube,
+  ExternalLink,
+  Clock,
+  User,
+  Plus,
+  Upload,
+  Globe,
+} from "lucide-react";
 import { Button } from "ui/button";
 import { Document, YouTubeVideoInfo } from "app-types/rag";
 import useSWR, { mutate } from "swr";
-import { getDocumentsAction, addDocumentAction, addWebPageAction } from "@/app/api/rag/actions";
-import { selectProjectByIdAction, updateProjectAction } from "@/app/api/chat/actions";
+import {
+  getDocumentsAction,
+  addDocumentAction,
+  addWebPageAction,
+} from "@/app/api/rag/actions";
+import {
+  selectProjectByIdAction,
+  updateProjectAction,
+} from "@/app/api/chat/actions";
 import { cn } from "lib/utils";
 import { Badge } from "ui/badge";
 import { Card, CardContent } from "ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/tabs";
 import { useDropzone } from "react-dropzone";
 import Image from "next/image";
@@ -29,18 +54,19 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
-  
+
   const { data: documents = [], isLoading } = useSWR(
     projectId ? `documents-${projectId}` : null,
-    () => projectId ? getDocumentsAction(projectId) : Promise.resolve([]),
+    () => (projectId ? getDocumentsAction(projectId) : Promise.resolve([])),
     {
       refreshInterval: 5000, // Refresh every 5 seconds to show new uploads
-    }
+    },
   );
 
   const { data: project, mutate: mutateProject } = useSWR(
     projectId ? `project-${projectId}` : null,
-    () => projectId ? selectProjectByIdAction(projectId) : Promise.resolve(null)
+    () =>
+      projectId ? selectProjectByIdAction(projectId) : Promise.resolve(null),
   );
 
   // Initialize selected documents from project data
@@ -55,18 +81,18 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
     if (!project?.selectedDocuments) {
       return [];
     }
-    return documents.filter(doc => 
-      project.selectedDocuments!.includes(doc.id)
+    return documents.filter((doc) =>
+      project.selectedDocuments!.includes(doc.id),
     );
   }, [documents, project?.selectedDocuments]);
 
   const handleUpdateSelectedDocuments = async (newSelection: string[]) => {
     if (!projectId) return;
-    
+
     setIsUpdatingSelection(true);
     try {
       await updateProjectAction(projectId, {
-        selectedDocuments: newSelection
+        selectedDocuments: newSelection,
       });
       mutateProject();
       toast.success("Document selection updated");
@@ -82,21 +108,24 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
     }
   };
 
-  const handleToggleDocumentSelection = async (documentId: string, selected: boolean) => {
+  const handleToggleDocumentSelection = async (
+    documentId: string,
+    selected: boolean,
+  ) => {
     let newSelection: string[];
-    
+
     if (selected) {
       newSelection = [...selectedDocuments, documentId];
     } else {
-      newSelection = selectedDocuments.filter(id => id !== documentId);
+      newSelection = selectedDocuments.filter((id) => id !== documentId);
     }
-    
+
     setSelectedDocuments(newSelection);
     await handleUpdateSelectedDocuments(newSelection);
   };
 
   const handleSelectAll = async () => {
-    const allDocumentIds = documents.map(doc => doc.id);
+    const allDocumentIds = documents.map((doc) => doc.id);
     setSelectedDocuments(allDocumentIds);
     await handleUpdateSelectedDocuments(allDocumentIds);
   };
@@ -108,7 +137,7 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
 
   // File upload functionality
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setUploadFiles(prev => [...prev, ...acceptedFiles]);
+    setUploadFiles((prev) => [...prev, ...acceptedFiles]);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -124,7 +153,7 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
   });
 
   const removeFile = (index: number) => {
-    setUploadFiles(prev => prev.filter((_, i) => i !== index));
+    setUploadFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const uploadDocuments = async () => {
@@ -150,7 +179,9 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
     }
 
     if (successCount > 0) {
-      toast.success(`Successfully uploaded ${successCount} document${successCount > 1 ? 's' : ''}`);
+      toast.success(
+        `Successfully uploaded ${successCount} document${successCount > 1 ? "s" : ""}`,
+      );
       mutate(`documents-${projectId}`);
       setUploadFiles([]);
       setIsAddModalOpen(false);
@@ -159,7 +190,10 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
     setIsUploading(false);
   };
 
-  const uploadYouTubeVideo = async (videoInfo: YouTubeVideoInfo, transcript: string) => {
+  const uploadYouTubeVideo = async (
+    videoInfo: YouTubeVideoInfo,
+    transcript: string,
+  ) => {
     try {
       await addDocumentAction(projectId!, {
         name: videoInfo.title,
@@ -216,12 +250,19 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
         className={cn(
           "fixed top-1/2 right-4 z-[60] transform -translate-y-1/2 transition-all duration-200",
           "shadow-lg border bg-background/95 backdrop-blur-sm",
-          isOpen && "right-80"
+          isOpen && "right-80",
         )}
       >
         <FileText className="h-4 w-4 mr-1" />
-        <span className="text-xs">RAG Files ({selectedDocumentsData.length})</span>
-        <ChevronRight className={cn("h-3 w-3 ml-1 transition-transform", isOpen && "rotate-180")} />
+        <span className="text-xs">
+          RAG Files ({selectedDocumentsData.length})
+        </span>
+        <ChevronRight
+          className={cn(
+            "h-3 w-3 ml-1 transition-transform",
+            isOpen && "rotate-180",
+          )}
+        />
       </Button>
 
       {/* Sidebar */}
@@ -230,7 +271,7 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
           "fixed top-0 right-0 h-full w-72 bg-background/95 backdrop-blur-sm border-l z-[55]",
           "transform transition-transform duration-300 ease-in-out",
           "shadow-xl",
-          isOpen ? "translate-x-0" : "translate-x-full"
+          isOpen ? "translate-x-0" : "translate-x-full",
         )}
       >
         <div className="flex flex-col h-full">
@@ -242,24 +283,6 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
               <Badge variant="secondary" className="text-xs">
                 {selectedDocuments.length}
               </Badge>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsAddModalOpen(true)}
-                className="text-xs"
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
           </div>
 
@@ -296,13 +319,18 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
             {isLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
+                  <div
+                    key={i}
+                    className="h-16 bg-muted rounded-lg animate-pulse"
+                  />
                 ))}
               </div>
             ) : documents.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-32 text-center">
                 <FileText className="h-8 w-8 text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">No documents available</p>
+                <p className="text-sm text-muted-foreground">
+                  No documents available
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Upload documents in the project knowledge base first
                 </p>
@@ -324,10 +352,9 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
           {/* Footer Info */}
           <div className="p-4 border-t bg-muted/30">
             <p className="text-xs text-muted-foreground">
-              {selectedDocuments.length > 0 
-                ? `${selectedDocuments.length} selected document${selectedDocuments.length === 1 ? '' : 's'} will provide context for conversations.`
-                : "Select documents above to provide AI context."
-              }
+              {selectedDocuments.length > 0
+                ? `${selectedDocuments.length} selected document${selectedDocuments.length === 1 ? "" : "s"} will provide context for conversations.`
+                : "Select documents above to provide AI context."}
             </p>
           </div>
         </div>
@@ -350,7 +377,8 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
               Add to Knowledge Base
             </DialogTitle>
             <DialogDescription>
-              Add documents or YouTube videos to provide context for conversations.
+              Add documents or YouTube videos to provide context for
+              conversations.
             </DialogDescription>
           </DialogHeader>
 
@@ -361,7 +389,10 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
                   <FileText className="h-4 w-4" />
                   File Upload
                 </TabsTrigger>
-                <TabsTrigger value="youtube" className="flex items-center gap-2">
+                <TabsTrigger
+                  value="youtube"
+                  className="flex items-center gap-2"
+                >
                   <Youtube className="h-4 w-4" />
                   YouTube Video
                 </TabsTrigger>
@@ -370,7 +401,7 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
                   Web Page
                 </TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="files" className="space-y-4">
                 {/* File Upload Section */}
                 <div
@@ -387,7 +418,9 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
                     <p>Drop the files here...</p>
                   ) : (
                     <div>
-                      <p className="mb-1">Drag & drop files here, or click to select</p>
+                      <p className="mb-1">
+                        Drag & drop files here, or click to select
+                      </p>
                       <p className="text-sm text-muted-foreground">
                         Supports: .txt, .md, .json, .html, .csv (max 10MB each)
                       </p>
@@ -434,20 +467,24 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
                       ) : (
                         <>
                           <Upload className="h-4 w-4 mr-2" />
-                          Upload {uploadFiles.length} file{uploadFiles.length > 1 ? 's' : ''}
+                          Upload {uploadFiles.length} file
+                          {uploadFiles.length > 1 ? "s" : ""}
                         </>
                       )}
                     </Button>
                   </div>
                 )}
               </TabsContent>
-              
+
               <TabsContent value="youtube" className="space-y-4">
                 {/* YouTube Upload Section */}
                 <div className="text-center mb-4">
-                  <h3 className="text-lg font-medium mb-2">Add YouTube Video</h3>
+                  <h3 className="text-lg font-medium mb-2">
+                    Add YouTube Video
+                  </h3>
                   <p className="text-sm text-muted-foreground">
-                    Add YouTube videos to your knowledge base by extracting their transcripts
+                    Add YouTube videos to your knowledge base by extracting
+                    their transcripts
                   </p>
                 </div>
                 <YouTubeUpload onUpload={uploadYouTubeVideo} />
@@ -458,10 +495,14 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
                 <div className="text-center mb-4">
                   <h3 className="text-lg font-medium mb-2">Add Web Page</h3>
                   <p className="text-sm text-muted-foreground">
-                    Add web pages to your knowledge base by extracting their content
+                    Add web pages to your knowledge base by extracting their
+                    content
                   </p>
                 </div>
-                <WebPageUpload onUpload={uploadWebPage} isUploading={isUploading} />
+                <WebPageUpload
+                  onUpload={uploadWebPage}
+                  isUploading={isUploading}
+                />
               </TabsContent>
             </Tabs>
           </div>
@@ -471,11 +512,11 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
   );
 }
 
-function SelectableDocumentCard({ 
-  document, 
-  isSelected, 
-  onToggleSelect 
-}: { 
+function SelectableDocumentCard({
+  document,
+  isSelected,
+  onToggleSelect,
+}: {
   document: Document;
   isSelected: boolean;
   onToggleSelect: (documentId: string, selected: boolean) => void;
@@ -498,36 +539,41 @@ function SelectableDocumentCard({
   };
 
   const getFileTypeLabel = (document: Document): string => {
-    if (document.documentType === 'youtube') {
-      return 'YouTube';
+    if (document.documentType === "youtube") {
+      return "YouTube";
     }
-    if (document.documentType === 'web') {
-      return 'Web Page';
+    if (document.documentType === "web") {
+      return "Web Page";
     }
-    
+
     const typeMap: Record<string, string> = {
       "application/pdf": "PDF",
       "application/msword": "DOC",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        "DOCX",
       "text/plain": "TEXT",
       "text/markdown": "MD",
       "application/json": "JSON",
       "text/html": "HTML",
       "text/csv": "CSV",
     };
-    
-    return typeMap[document.mimeType] || document.mimeType.split("/")[1]?.toUpperCase() || "FILE";
+
+    return (
+      typeMap[document.mimeType] ||
+      document.mimeType.split("/")[1]?.toUpperCase() ||
+      "FILE"
+    );
   };
 
   const formatDuration = (seconds: number): string => {
-    if (seconds === 0) return '';
+    if (seconds === 0) return "";
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    
+
     if (hours > 0) {
-      return `${hours}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+      return `${hours}:${(minutes % 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
     }
-    return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
+    return `${minutes}:${(seconds % 60).toString().padStart(2, "0")}`;
   };
 
   const handleToggleSelect = () => {
@@ -535,10 +581,12 @@ function SelectableDocumentCard({
   };
 
   return (
-    <Card className={cn(
-      "group hover:shadow-md transition-all duration-200 cursor-pointer",
-      isSelected && "ring-2 ring-primary bg-primary/5"
-    )}>
+    <Card
+      className={cn(
+        "group hover:shadow-md transition-all duration-200 cursor-pointer",
+        isSelected && "ring-2 ring-primary bg-primary/5",
+      )}
+    >
       <CardContent className="p-3">
         <div className="flex items-start gap-2">
           <div className="flex items-center gap-2">
@@ -548,7 +596,7 @@ function SelectableDocumentCard({
               onChange={handleToggleSelect}
               className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
             />
-            {document.documentType === 'youtube' ? (
+            {document.documentType === "youtube" ? (
               <div className="flex-shrink-0 w-8 h-6 rounded overflow-hidden">
                 {document.youtubeThumbnail ? (
                   <Image
@@ -564,7 +612,7 @@ function SelectableDocumentCard({
                   </div>
                 )}
               </div>
-            ) : document.documentType === 'web' ? (
+            ) : document.documentType === "web" ? (
               <div className="flex items-center gap-1">
                 <div className="flex-shrink-0 p-1.5 bg-blue-100 rounded-lg">
                   <Globe className="h-4 w-4 text-blue-600" />
@@ -576,19 +624,26 @@ function SelectableDocumentCard({
               </div>
             )}
           </div>
-          
+
           <div className="flex-1 min-w-0" onClick={handleToggleSelect}>
-            <h4 className="font-medium text-sm truncate mb-1" title={document.name}>
+            <h4
+              className="font-medium text-sm truncate mb-1"
+              title={document.name}
+            >
               {document.name}
             </h4>
-            
+
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
               <span>{formatFileSize(document.size)}</span>
               <span>•</span>
-              {document.documentType === 'youtube' && document.youtubeChannelName ? (
+              {document.documentType === "youtube" &&
+              document.youtubeChannelName ? (
                 <>
                   <User className="h-3 w-3" />
-                  <span className="truncate max-w-20" title={document.youtubeChannelName}>
+                  <span
+                    className="truncate max-w-20"
+                    title={document.youtubeChannelName}
+                  >
                     {document.youtubeChannelName}
                   </span>
                   {document.youtubeDuration && document.youtubeDuration > 0 && (
@@ -599,7 +654,7 @@ function SelectableDocumentCard({
                     </>
                   )}
                 </>
-              ) : document.documentType === 'web' && document.webUrl ? (
+              ) : document.documentType === "web" && document.webUrl ? (
                 <>
                   <Globe className="h-3 w-3" />
                   <span className="truncate max-w-32" title={document.webUrl}>
@@ -610,12 +665,12 @@ function SelectableDocumentCard({
                 <span>{formatDate(document.createdAt)}</span>
               )}
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs h-5">
                 {getFileTypeLabel(document)}
               </Badge>
-              {document.documentType === 'youtube' && document.youtubeUrl && (
+              {document.documentType === "youtube" && document.youtubeUrl && (
                 <a
                   href={document.youtubeUrl}
                   target="_blank"
@@ -627,7 +682,7 @@ function SelectableDocumentCard({
                   <ExternalLink className="h-3 w-3" />
                 </a>
               )}
-              {document.documentType === 'web' && document.webUrl && (
+              {document.documentType === "web" && document.webUrl && (
                 <a
                   href={document.webUrl}
                   target="_blank"

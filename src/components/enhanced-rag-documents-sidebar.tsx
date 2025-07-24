@@ -1,37 +1,50 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { 
-  ChevronRight, 
-  FileText, 
-  X, 
-  Loader2, 
-  Youtube, 
-  ExternalLink, 
-  Clock, 
-  User, 
-  Plus, 
+import {
+  ChevronRight,
+  FileText,
+  X,
+  Loader2,
+  Youtube,
+  ExternalLink,
+  Clock,
+  User,
+  Plus,
   Upload,
   Search,
-  Filter,
   Settings,
   Check,
-  Minus
+  Minus,
 } from "lucide-react";
 import { Button } from "ui/button";
 import { Input } from "ui/input";
 import { Document, YouTubeVideoInfo } from "app-types/rag";
 import useSWR, { mutate } from "swr";
 import { getDocumentsAction, addDocumentAction } from "@/app/api/rag/actions";
-import { selectProjectByIdAction, updateProjectAction } from "@/app/api/chat/actions";
+import {
+  selectProjectByIdAction,
+  updateProjectAction,
+} from "@/app/api/chat/actions";
 import { cn } from "lib/utils";
 import { Badge } from "ui/badge";
 import { Card, CardContent } from "ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/tabs";
 import { Checkbox } from "ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "ui/select";
-import { Separator } from "ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "ui/select";
 import { ScrollArea } from "ui/scroll-area";
 import { useDropzone } from "react-dropzone";
 import Image from "next/image";
@@ -46,31 +59,33 @@ interface EnhancedRagDocumentsSidebarProps {
 type FilterType = "all" | "file" | "youtube";
 type SortType = "name" | "date" | "size" | "type";
 
-export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsSidebarProps) {
+export function EnhancedRagDocumentsSidebar({
+  projectId,
+}: EnhancedRagDocumentsSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [isUpdatingSelection, setIsUpdatingSelection] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
-  
+
   // Enhanced filtering and search
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [sortBy, setSortBy] = useState<SortType>("date");
-  const [showFilters, setShowFilters] = useState(false);
-  
+
   const { data: documents = [], isLoading } = useSWR(
     projectId ? `documents-${projectId}` : null,
-    () => projectId ? getDocumentsAction(projectId) : Promise.resolve([]),
+    () => (projectId ? getDocumentsAction(projectId) : Promise.resolve([])),
     {
       refreshInterval: 5000,
-    }
+    },
   );
 
   const { data: project, mutate: mutateProject } = useSWR(
     projectId ? `project-${projectId}` : null,
-    () => projectId ? selectProjectByIdAction(projectId) : Promise.resolve(null)
+    () =>
+      projectId ? selectProjectByIdAction(projectId) : Promise.resolve(null),
   );
 
   // Initialize selected documents from project data
@@ -82,11 +97,15 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
 
   // Enhanced filtering and sorting
   const filteredAndSortedDocuments = useMemo(() => {
-    let filtered = documents.filter((doc) => {
-      const matchesSearch = searchQuery === "" || 
+    const filtered = documents.filter((doc) => {
+      const matchesSearch =
+        searchQuery === "" ||
         doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (doc.youtubeChannelName?.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesType = filterType === "all" || doc.documentType === filterType;
+        doc.youtubeChannelName
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase());
+      const matchesType =
+        filterType === "all" || doc.documentType === filterType;
       return matchesSearch && matchesType;
     });
 
@@ -96,7 +115,9 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
         case "name":
           return a.name.localeCompare(b.name);
         case "date":
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
         case "size":
           return b.size - a.size;
         case "type":
@@ -111,9 +132,13 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
 
   // Group documents by type
   const documentsByType = useMemo(() => {
-    const fileDocuments = filteredAndSortedDocuments.filter(doc => doc.documentType === "file");
-    const youtubeDocuments = filteredAndSortedDocuments.filter(doc => doc.documentType === "youtube");
-    
+    const fileDocuments = filteredAndSortedDocuments.filter(
+      (doc) => doc.documentType === "file",
+    );
+    const youtubeDocuments = filteredAndSortedDocuments.filter(
+      (doc) => doc.documentType === "youtube",
+    );
+
     return {
       files: fileDocuments,
       youtube: youtubeDocuments,
@@ -123,27 +148,29 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
   // Selection stats
   const selectionStats = useMemo(() => {
     const totalFiltered = filteredAndSortedDocuments.length;
-    const selectedInFiltered = filteredAndSortedDocuments.filter(doc => 
-      selectedDocuments.includes(doc.id)
+    const selectedInFiltered = filteredAndSortedDocuments.filter((doc) =>
+      selectedDocuments.includes(doc.id),
     ).length;
-    
+
     return {
       total: documents.length,
       filtered: totalFiltered,
       selected: selectedDocuments.length,
       selectedInFiltered,
-      isAllFilteredSelected: totalFiltered > 0 && selectedInFiltered === totalFiltered,
-      isSomeFilteredSelected: selectedInFiltered > 0 && selectedInFiltered < totalFiltered,
+      isAllFilteredSelected:
+        totalFiltered > 0 && selectedInFiltered === totalFiltered,
+      isSomeFilteredSelected:
+        selectedInFiltered > 0 && selectedInFiltered < totalFiltered,
     };
   }, [documents, filteredAndSortedDocuments, selectedDocuments]);
 
   const handleUpdateSelectedDocuments = async (newSelection: string[]) => {
     if (!projectId) return;
-    
+
     setIsUpdatingSelection(true);
     try {
       await updateProjectAction(projectId, {
-        selectedDocuments: newSelection
+        selectedDocuments: newSelection,
       });
       mutateProject();
       toast.success("Knowledge selection updated");
@@ -159,29 +186,34 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
     }
   };
 
-  const handleToggleDocumentSelection = async (documentId: string, selected: boolean) => {
+  const handleToggleDocumentSelection = async (
+    documentId: string,
+    selected: boolean,
+  ) => {
     let newSelection: string[];
-    
+
     if (selected) {
       newSelection = [...selectedDocuments, documentId];
     } else {
-      newSelection = selectedDocuments.filter(id => id !== documentId);
+      newSelection = selectedDocuments.filter((id) => id !== documentId);
     }
-    
+
     setSelectedDocuments(newSelection);
     await handleUpdateSelectedDocuments(newSelection);
   };
 
   const handleSelectAllFiltered = async () => {
-    const filteredIds = filteredAndSortedDocuments.map(doc => doc.id);
+    const filteredIds = filteredAndSortedDocuments.map((doc) => doc.id);
     const newSelection = [...new Set([...selectedDocuments, ...filteredIds])];
     setSelectedDocuments(newSelection);
     await handleUpdateSelectedDocuments(newSelection);
   };
 
   const handleDeselectAllFiltered = async () => {
-    const filteredIds = new Set(filteredAndSortedDocuments.map(doc => doc.id));
-    const newSelection = selectedDocuments.filter(id => !filteredIds.has(id));
+    const filteredIds = new Set(
+      filteredAndSortedDocuments.map((doc) => doc.id),
+    );
+    const newSelection = selectedDocuments.filter((id) => !filteredIds.has(id));
     setSelectedDocuments(newSelection);
     await handleUpdateSelectedDocuments(newSelection);
   };
@@ -193,7 +225,7 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
 
   // File upload functionality
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setUploadFiles(prev => [...prev, ...acceptedFiles]);
+    setUploadFiles((prev) => [...prev, ...acceptedFiles]);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -209,7 +241,7 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
   });
 
   const removeFile = (index: number) => {
-    setUploadFiles(prev => prev.filter((_, i) => i !== index));
+    setUploadFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const uploadDocuments = async () => {
@@ -235,7 +267,9 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
     }
 
     if (successCount > 0) {
-      toast.success(`Successfully uploaded ${successCount} document${successCount > 1 ? 's' : ''}`);
+      toast.success(
+        `Successfully uploaded ${successCount} document${successCount > 1 ? "s" : ""}`,
+      );
       mutate(`documents-${projectId}`);
       setUploadFiles([]);
       setIsAddModalOpen(false);
@@ -244,7 +278,10 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
     setIsUploading(false);
   };
 
-  const uploadYouTubeVideo = async (videoInfo: YouTubeVideoInfo, transcript: string) => {
+  const uploadYouTubeVideo = async (
+    videoInfo: YouTubeVideoInfo,
+    transcript: string,
+  ) => {
     try {
       await addDocumentAction(projectId!, {
         name: videoInfo.title,
@@ -282,14 +319,19 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
         className={cn(
           "fixed top-1/2 right-4 z-[60] transform -translate-y-1/2 transition-all duration-200",
           "shadow-lg border bg-background/95 backdrop-blur-sm",
-          isOpen && "right-96"
+          isOpen && "right-96",
         )}
       >
         <FileText className="h-4 w-4 mr-1" />
         <span className="text-xs">
           Knowledge ({selectionStats.selected}/{selectionStats.total})
         </span>
-        <ChevronRight className={cn("h-3 w-3 ml-1 transition-transform", isOpen && "rotate-180")} />
+        <ChevronRight
+          className={cn(
+            "h-3 w-3 ml-1 transition-transform",
+            isOpen && "rotate-180",
+          )}
+        />
       </Button>
 
       {/* Enhanced Sidebar */}
@@ -298,7 +340,7 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
           "fixed top-0 right-0 h-full w-96 bg-background/95 backdrop-blur-sm border-l z-[55]",
           "transform transition-transform duration-300 ease-in-out",
           "shadow-xl",
-          isOpen ? "translate-x-0" : "translate-x-full"
+          isOpen ? "translate-x-0" : "translate-x-full",
         )}
       >
         <div className="flex flex-col h-full">
@@ -353,9 +395,12 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
                   className="pl-10 h-8 text-sm"
                 />
               </div>
-              
+
               <div className="flex items-center gap-2">
-                <Select value={filterType} onValueChange={(value: FilterType) => setFilterType(value)}>
+                <Select
+                  value={filterType}
+                  onValueChange={(value: FilterType) => setFilterType(value)}
+                >
                   <SelectTrigger className="h-8 text-xs flex-1">
                     <SelectValue />
                   </SelectTrigger>
@@ -365,8 +410,11 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
                     <SelectItem value="youtube">Videos</SelectItem>
                   </SelectContent>
                 </Select>
-                
-                <Select value={sortBy} onValueChange={(value: SortType) => setSortBy(value)}>
+
+                <Select
+                  value={sortBy}
+                  onValueChange={(value: SortType) => setSortBy(value)}
+                >
                   <SelectTrigger className="h-8 text-xs flex-1">
                     <SelectValue />
                   </SelectTrigger>
@@ -386,7 +434,8 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
             <div className="p-4 border-b bg-muted/10">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">
-                  {selectionStats.filtered} document{selectionStats.filtered !== 1 ? 's' : ''} shown
+                  {selectionStats.filtered} document
+                  {selectionStats.filtered !== 1 ? "s" : ""} shown
                 </span>
                 {isUpdatingSelection && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -395,12 +444,16 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
                   </div>
                 )}
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={selectionStats.isAllFilteredSelected ? handleDeselectAllFiltered : handleSelectAllFiltered}
+                  onClick={
+                    selectionStats.isAllFilteredSelected
+                      ? handleDeselectAllFiltered
+                      : handleSelectAllFiltered
+                  }
                   disabled={isUpdatingSelection}
                   className="text-xs h-7"
                 >
@@ -416,12 +469,14 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
                     </>
                   )}
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleSelectNone}
-                  disabled={isUpdatingSelection || selectionStats.selected === 0}
+                  disabled={
+                    isUpdatingSelection || selectionStats.selected === 0
+                  }
                   className="text-xs h-7"
                 >
                   Clear All
@@ -436,7 +491,10 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
               {isLoading ? (
                 <KnowledgeListSkeleton />
               ) : filteredAndSortedDocuments.length === 0 ? (
-                <EmptyKnowledgeState searchQuery={searchQuery} onAddClick={() => setIsAddModalOpen(true)} />
+                <EmptyKnowledgeState
+                  searchQuery={searchQuery}
+                  onAddClick={() => setIsAddModalOpen(true)}
+                />
               ) : (
                 <EnhancedKnowledgeList
                   documentsByType={documentsByType}
@@ -451,7 +509,8 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
           <div className="p-4 border-t bg-muted/10">
             <div className="text-xs text-muted-foreground space-y-1">
               <p>
-                <strong>{selectionStats.selected}</strong> of <strong>{selectionStats.total}</strong> documents selected
+                <strong>{selectionStats.selected}</strong> of{" "}
+                <strong>{selectionStats.total}</strong> documents selected
               </p>
               <p>
                 Selected knowledge will provide context for AI conversations.
@@ -478,7 +537,8 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
               Add to Knowledge Base
             </DialogTitle>
             <DialogDescription>
-              Add documents or YouTube videos to provide context for conversations.
+              Add documents or YouTube videos to provide context for
+              conversations.
             </DialogDescription>
           </DialogHeader>
 
@@ -489,12 +549,15 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
                   <FileText className="h-4 w-4" />
                   File Upload
                 </TabsTrigger>
-                <TabsTrigger value="youtube" className="flex items-center gap-2">
+                <TabsTrigger
+                  value="youtube"
+                  className="flex items-center gap-2"
+                >
                   <Youtube className="h-4 w-4" />
                   YouTube Video
                 </TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="files" className="space-y-4">
                 <FileUploadSection
                   uploadFiles={uploadFiles}
@@ -506,12 +569,15 @@ export function EnhancedRagDocumentsSidebar({ projectId }: EnhancedRagDocumentsS
                   uploadDocuments={uploadDocuments}
                 />
               </TabsContent>
-              
+
               <TabsContent value="youtube" className="space-y-4">
                 <div className="text-center mb-4">
-                  <h3 className="text-lg font-medium mb-2">Add YouTube Video</h3>
+                  <h3 className="text-lg font-medium mb-2">
+                    Add YouTube Video
+                  </h3>
                   <p className="text-sm text-muted-foreground">
-                    Add YouTube videos to your knowledge base by extracting their transcripts
+                    Add YouTube videos to your knowledge base by extracting
+                    their transcripts
                   </p>
                 </div>
                 <YouTubeUpload onUpload={uploadYouTubeVideo} />
@@ -548,7 +614,7 @@ function EnhancedKnowledgeList({
               {documentsByType.files.length}
             </Badge>
           </div>
-          
+
           <div className="space-y-2">
             {documentsByType.files.map((document) => (
               <KnowledgeCard
@@ -574,7 +640,7 @@ function EnhancedKnowledgeList({
               {documentsByType.youtube.length}
             </Badge>
           </div>
-          
+
           <div className="space-y-2">
             {documentsByType.youtube.map((document) => (
               <KnowledgeCard
@@ -592,11 +658,11 @@ function EnhancedKnowledgeList({
 }
 
 // Enhanced Knowledge Card Component
-function KnowledgeCard({ 
-  document, 
-  isSelected, 
-  onToggleSelect 
-}: { 
+function KnowledgeCard({
+  document,
+  isSelected,
+  onToggleSelect,
+}: {
   document: Document;
   isSelected: boolean;
   onToggleSelect: (documentId: string, selected: boolean) => void;
@@ -617,14 +683,14 @@ function KnowledgeCard({
   };
 
   const formatDuration = (seconds: number): string => {
-    if (seconds === 0) return '';
+    if (seconds === 0) return "";
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    
+
     if (hours > 0) {
-      return `${hours}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+      return `${hours}:${(minutes % 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
     }
-    return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
+    return `${minutes}:${(seconds % 60).toString().padStart(2, "0")}`;
   };
 
   const handleToggleSelect = () => {
@@ -632,10 +698,12 @@ function KnowledgeCard({
   };
 
   return (
-    <Card className={cn(
-      "group hover:shadow-sm transition-all duration-200 cursor-pointer border",
-      isSelected && "ring-1 ring-primary bg-primary/5 border-primary/20"
-    )}>
+    <Card
+      className={cn(
+        "group hover:shadow-sm transition-all duration-200 cursor-pointer border",
+        isSelected && "ring-1 ring-primary bg-primary/5 border-primary/20",
+      )}
+    >
       <CardContent className="p-3">
         <div className="flex items-start gap-3">
           <Checkbox
@@ -643,8 +711,8 @@ function KnowledgeCard({
             onCheckedChange={handleToggleSelect}
             className="mt-0.5 shrink-0"
           />
-          
-          {document.documentType === 'youtube' && document.youtubeThumbnail ? (
+
+          {document.documentType === "youtube" && document.youtubeThumbnail ? (
             <div className="flex-shrink-0 w-12 h-8 rounded overflow-hidden">
               <Image
                 src={document.youtubeThumbnail}
@@ -656,32 +724,38 @@ function KnowledgeCard({
             </div>
           ) : (
             <div className="flex-shrink-0 p-1.5 bg-primary/10 rounded">
-              {document.documentType === 'youtube' ? (
+              {document.documentType === "youtube" ? (
                 <Youtube className="h-3.5 w-3.5 text-red-600" />
               ) : (
                 <FileText className="h-3.5 w-3.5 text-primary" />
               )}
             </div>
           )}
-          
+
           <div className="flex-1 min-w-0" onClick={handleToggleSelect}>
-            <h4 className="font-medium text-sm leading-tight line-clamp-2 mb-1" title={document.name}>
+            <h4
+              className="font-medium text-sm leading-tight line-clamp-2 mb-1"
+              title={document.name}
+            >
               {document.name}
             </h4>
-            
+
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>{formatFileSize(document.size)}</span>
                 <span>•</span>
                 <span>{formatDate(document.createdAt)}</span>
               </div>
-              
-              {document.documentType === 'youtube' && (
+
+              {document.documentType === "youtube" && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   {document.youtubeChannelName && (
                     <>
                       <User className="h-3 w-3" />
-                      <span className="truncate max-w-20" title={document.youtubeChannelName}>
+                      <span
+                        className="truncate max-w-20"
+                        title={document.youtubeChannelName}
+                      >
                         {document.youtubeChannelName}
                       </span>
                     </>
@@ -697,8 +771,8 @@ function KnowledgeCard({
               )}
             </div>
           </div>
-          
-          {document.documentType === 'youtube' && document.youtubeUrl && (
+
+          {document.documentType === "youtube" && document.youtubeUrl && (
             <a
               href={document.youtubeUrl}
               target="_blank"
@@ -750,7 +824,7 @@ function FileUploadSection({
           "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
           isDragActive
             ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25 hover:border-primary/50"
+            : "border-muted-foreground/25 hover:border-primary/50",
         )}
       >
         <input {...getInputProps()} />
@@ -805,7 +879,8 @@ function FileUploadSection({
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                Upload {uploadFiles.length} file{uploadFiles.length > 1 ? 's' : ''}
+                Upload {uploadFiles.length} file
+                {uploadFiles.length > 1 ? "s" : ""}
               </>
             )}
           </Button>
@@ -816,13 +891,16 @@ function FileUploadSection({
 }
 
 // Empty state for the sidebar
-function EmptyKnowledgeState({ searchQuery, onAddClick }: { searchQuery: string; onAddClick: () => void }) {
+function EmptyKnowledgeState({
+  searchQuery,
+  onAddClick,
+}: { searchQuery: string; onAddClick: () => void }) {
   if (searchQuery) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <Search className="h-8 w-8 text-muted-foreground mb-2" />
         <p className="text-sm text-muted-foreground mb-4">
-          No results for "{searchQuery}"
+          No results for &quot;{searchQuery}&quot;
         </p>
         <p className="text-xs text-muted-foreground">
           Try different keywords or clear filters
