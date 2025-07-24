@@ -1,9 +1,4 @@
-// models.ts
-import { createOllama } from "ollama-ai-provider";
 import { openai } from "@ai-sdk/openai";
-import { google } from "@ai-sdk/google";
-import { anthropic } from "@ai-sdk/anthropic";
-import { xai } from "@ai-sdk/xai";
 import { openrouter } from "@openrouter/ai-sdk-provider";
 import { LanguageModel } from "ai";
 import {
@@ -11,10 +6,6 @@ import {
   openaiCompatibleModelsSafeParse,
 } from "./create-openai-compatiable";
 import { ChatModel } from "app-types/chat";
-
-const ollama = createOllama({
-  baseURL: process.env.OLLAMA_BASE_URL || "http://localhost:11434/api",
-});
 
 const staticModels = {
   openai: {
@@ -26,37 +17,22 @@ const staticModels = {
       reasoningEffort: "medium",
     }),
   },
-  google: {
-    "gemini-2.0-flash-lite": google("gemini-2.0-flash-lite"),
-    "gemini-2.5-flash": google("gemini-2.5-flash"),
-    "gemini-2.5-pro": google("gemini-2.5-pro"),
-  },
-  anthropic: {
-    "claude-4-sonnet": anthropic("claude-4-sonnet-20250514"),
-    "claude-4-opus": anthropic("claude-4-opus-20250514"),
-    "claude-3-7-sonnet": anthropic("claude-3-7-sonnet-latest"),
-  },
-  xai: {
-    "grok-3": xai("grok-3-latest"),
-    "grok-3-mini": xai("grok-3-mini-latest"),
-  },
-  ollama: {
-    "gemma3:1b": ollama("gemma3:1b"),
-    "gemma3:4b": ollama("gemma3:4b"),
-    "gemma3:12b": ollama("gemma3:12b"),
-  },
   openRouter: {
     "qwen3-8b:free": openrouter("qwen/qwen3-8b:free"),
     "qwen3-14b:free": openrouter("qwen/qwen3-14b:free"),
+    "qwen/qwen3-235b-a22b-07-25:free": openrouter(
+      "qwen/qwen3-235b-a22b-07-25:free",
+    ),
+    "x-ai/grok-4": openrouter("x-ai/grok-4"),
+    "x-ai/grok-3-mini": openrouter("x-ai/grok-3-mini"),
+    "anthropic/claude-sonnet-4": openrouter("anthropic/claude-sonnet-4"),
+    "anthropic/claude-3.7-sonnet": openrouter("anthropic/claude-3.7-sonnet"),
+    "anthropic/claude-3-5-sonnet": openrouter("anthropic/claude-3-5-sonnet"),
   },
 };
 
 const staticUnsupportedModels = new Set([
   staticModels.openai["o4-mini"],
-  staticModels.google["gemini-2.0-flash-lite"],
-  staticModels.ollama["gemma3:1b"],
-  staticModels.ollama["gemma3:4b"],
-  staticModels.ollama["gemma3:12b"],
   staticModels.openRouter["qwen3-8b:free"],
   staticModels.openRouter["qwen3-14b:free"],
 ]);
