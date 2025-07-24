@@ -202,23 +202,28 @@ export async function POST(request: Request) {
         let ragContext = "";
         if (thread?.projectId && isLastMessageUserMessage) {
           try {
-            const userMessage = message.parts
-              ?.filter(part => part.type === 'text')
-              ?.map(part => part.text)
-              ?.join(' ') || '';
-            
+            const userMessage =
+              message.parts
+                ?.filter((part) => part.type === "text")
+                ?.map((part) => part.text)
+                ?.join(" ") || "";
+
             if (userMessage.trim()) {
               // Get project details to access selected documents
-              const project = await chatRepository.selectProjectById(thread.projectId);
-              const selectedDocumentIds = project?.selectedDocuments || [];
-              
-              const results = await ragService.searchRelevantContent(
+              const project = await chatRepository.selectProjectById(
                 thread.projectId,
-                userMessage,
-                5, // limit
-                0.3, // threshold
-                selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined
               );
+              const selectedDocumentIds = project?.selectedDocuments || [];
+
+              // Get ALL content from selected documents (no filtering or relevance scoring)
+              const results =
+                selectedDocumentIds.length > 0
+                  ? await ragService.getSelectedDocumentsContent(
+                      thread.projectId,
+                      selectedDocumentIds,
+                    )
+                  : [];
+
               ragContext = ragService.formatContextForRAG(results);
             }
           } catch (error) {

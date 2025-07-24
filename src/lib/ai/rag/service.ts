@@ -1,6 +1,6 @@
 import {
   generateEmbeddings,
-  generateQueryEmbedding,
+  generateContextualEmbeddings,
   extractTextFromFile,
   validateContentForRAG,
 } from "./embedding";
@@ -13,7 +13,7 @@ import type {
 
 export class RAGService {
   /**
-   * Add a document to the RAG system
+   * Add a document to the RAG system with enhanced contextual embedding
    */
   async addDocument(
     projectId: string,
@@ -41,8 +41,27 @@ export class RAGService {
     });
 
     try {
-      // Generate embeddings for the document content
-      const embeddings = await generateEmbeddings(extractedContent);
+      // Generate contextual embeddings with document metadata for better retrieval
+      const documentContext = {
+        title: documentData.name,
+        type: this.getFileTypeLabel(documentData.mimeType, documentData.name),
+        source: documentData.documentType || "file",
+      };
+
+      // Use contextual embeddings if available, fallback to regular embeddings
+      let embeddings;
+      try {
+        embeddings = await generateContextualEmbeddings(
+          extractedContent,
+          documentContext,
+        );
+      } catch (error) {
+        console.warn(
+          "Contextual embeddings failed, falling back to regular embeddings:",
+          error,
+        );
+        embeddings = await generateEmbeddings(extractedContent);
+      }
 
       // Create chunks with embeddings
       const chunks = embeddings.map(({ content, embedding, chunkIndex }) => ({
@@ -137,76 +156,117 @@ export class RAGService {
   }
 
   /**
-   * Search for relevant content based on a query
+   * Get all content from selected documents for fixed context inclusion
    */
-  async searchRelevantContent(
+  async getSelectedDocumentsContent(
     projectId: string,
-    query: string,
-    limit: number = 5,
-    threshold: number = 0.3,
-    selectedDocumentIds?: string[],
+    selectedDocumentIds: string[],
   ): Promise<ChunkWithSimilarity[]> {
-    if (!query.trim()) {
+    if (!selectedDocumentIds || selectedDocumentIds.length === 0) {
       return [];
     }
 
     try {
-      const queryEmbedding = await generateQueryEmbedding(query);
-      return ragRepository.searchSimilarChunks(
+      // Get all chunks from selected documents without any filtering
+      const allChunks = await ragRepository.getAllChunksFromDocuments(
         projectId,
-        queryEmbedding,
-        limit,
-        threshold,
         selectedDocumentIds,
       );
+
+      // Return chunks with similarity set to 1.0 (full relevance)
+      return allChunks.map((chunk) => ({
+        ...chunk,
+        similarity: 1.0, // Fixed high relevance for selected documents
+      }));
     } catch (error) {
-      console.error("Error searching for relevant content:", error);
+      console.error("Error getting selected documents content:", error);
       return [];
     }
   }
 
   /**
-   * Generate context from search results for RAG
+   * Generate enhanced context from search results for RAG with improved formatting
+   */ /**
+   * Generate enhanced context from search results for RAG with simplified formatting
    */
   formatContextForRAG(chunks: ChunkWithSimilarity[]): string {
     if (chunks.length === 0) {
       return "";
     }
 
-    const contextParts = chunks.map((chunk, index) => {
-      const document = chunk.document;
-      if (!document) {
-        return `[${index + 1}] ${chunk.content.trim()}`;
-      }
+    // Group chunks by document to avoid redundant metadata
+    const documentGroups = new Map<
+      string,
+      { document: any; chunks: ChunkWithSimilarity[] }
+    >();
 
-      // Format metadata header based on document type
+    chunks.forEach((chunk) => {
+      const document = chunk.document;
+      if (!document) return;
+
+      const docId = document.name || "unknown";
+      if (!documentGroups.has(docId)) {
+        documentGroups.set(docId, { document, chunks: [] });
+      }
+      documentGroups.get(docId)!.chunks.push(chunk);
+    });
+
+    const contextParts: string[] = [];
+    let sourceIndex = 1;
+
+    documentGroups.forEach(({ document, chunks: docChunks }, docId) => {
+      // Create simple metadata header without relevance scores
       let metadataHeader = "";
+      let sourceType = "Document";
+
       switch (document.documentType) {
         case "youtube":
-          metadataHeader = `[Source: YouTube Video - "${document.name}"]`;
+          sourceType = "YouTube Video";
+          metadataHeader = `[Source ${sourceIndex}: ${sourceType}]\nTitle: "${document.name}"\nType: Video Transcript`;
           break;
         case "web":
+          sourceType = "Web Page";
           const pageTitle = document.webTitle || document.name;
           const domain = document.webUrl
             ? new URL(document.webUrl).hostname
             : "";
-          metadataHeader = `[Source: Web Page - "${pageTitle}"${domain ? ` (${domain})` : ""}]`;
+          metadataHeader = `[Source ${sourceIndex}: ${sourceType}]\nTitle: "${pageTitle}"${domain ? `\nDomain: ${domain}` : ""}\nType: Web Content`;
           break;
         case "file":
         default:
-          // Determine file type from mimeType or file extension
           const fileType = this.getFileTypeLabel(
             document.mimeType,
             document.name,
           );
-          metadataHeader = `[Source: ${fileType} - "${document.name}"]`;
+          sourceType = fileType;
+          metadataHeader = `[Source ${sourceIndex}: ${sourceType}]\nFilename: "${document.name}"\nType: ${fileType}`;
           break;
       }
 
-      return `${metadataHeader}\nContent:\n${chunk.content.trim()}`;
+      // Format content sections without relevance scores
+      const contentSections = docChunks.map((chunk, index) => {
+        const sectionHeader =
+          docChunks.length > 1 ? `\nSection ${index + 1}:` : "\nContent:";
+        return `${sectionHeader}\n${chunk.content.trim()}`;
+      });
+
+      contextParts.push(
+        `${metadataHeader}${contentSections.join("\n")}\n${"=".repeat(50)}`,
+      );
+      sourceIndex++;
     });
 
-    return `Based on the following context from your project documents:\n\n${contextParts.join("\n\n")}`;
+    // Create the final formatted context with clear structure
+    return `<knowledge_context>
+You have access to information from the project's knowledge base. Use this information to provide accurate, contextual responses. Each source is clearly labeled with metadata.
+
+${contextParts.join("\n\n")}
+
+Instructions:
+- Reference sources by their number and type when citing information (e.g., "According to Source 1 (YouTube Video)...")
+- If information conflicts between sources, acknowledge the discrepancy
+- If asked about a specific source type (e.g., "the video", "the document"), use the metadata to identify which source is being referenced
+</knowledge_context>`;
   }
 
   /**

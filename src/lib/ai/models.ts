@@ -28,6 +28,9 @@ const staticModels = {
     "anthropic/claude-sonnet-4": openrouter("anthropic/claude-sonnet-4"),
     "anthropic/claude-3.7-sonnet": openrouter("anthropic/claude-3.7-sonnet"),
     "anthropic/claude-3-5-sonnet": openrouter("anthropic/claude-3-5-sonnet"),
+    "google/gemini-2.5-flash-lite": openrouter("google/gemini-2.5-flash-lite"),
+    "openai/gpt-4o": openrouter("openai/gpt-4o"),
+    "openai/gpt-4.1": openrouter("openai/gpt-4.1"),
   },
 };
 

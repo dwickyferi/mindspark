@@ -70,7 +70,16 @@ export type YouTubeVideoInfo = {
 
 export type ChunkWithSimilarity = DocumentChunk & {
   similarity: number;
-  document?: Pick<Document, 'name' | 'mimeType' | 'documentType' | 'youtubeThumbnail' | 'webUrl' | 'webTitle' | 'webFavicon'>;
+  document?: Pick<
+    Document,
+    | "name"
+    | "mimeType"
+    | "documentType"
+    | "youtubeThumbnail"
+    | "webUrl"
+    | "webTitle"
+    | "webFavicon"
+  >;
 };
 
 export const DocumentUploadSchema = z.object({
@@ -103,15 +112,34 @@ export const YouTubeUploadSchema = z.object({
 
 export interface RAGRepository {
   // Document operations
-  createDocument(projectId: string, userId: string, document: DocumentUpload): Promise<Document>;
+  createDocument(
+    projectId: string,
+    userId: string,
+    document: DocumentUpload,
+  ): Promise<Document>;
   getDocumentsByProjectId(projectId: string): Promise<Document[]>;
   getDocumentById(id: string): Promise<Document | null>;
   deleteDocument(id: string): Promise<void>;
-  updateDocument(id: string, updates: Partial<Pick<Document, 'name' | 'content' | 'metadata'>>): Promise<Document>;
+  updateDocument(
+    id: string,
+    updates: Partial<Pick<Document, "name" | "content" | "metadata">>,
+  ): Promise<Document>;
 
   // Chunk operations
-  createChunks(chunks: Array<Omit<DocumentChunk, 'id' | 'createdAt'>>): Promise<DocumentChunk[]>;
+  createChunks(
+    chunks: Array<Omit<DocumentChunk, "id" | "createdAt">>,
+  ): Promise<DocumentChunk[]>;
   deleteChunksByDocumentId(documentId: string): Promise<void>;
-  searchSimilarChunks(projectId: string, queryEmbedding: number[], limit?: number, threshold?: number, selectedDocumentIds?: string[]): Promise<ChunkWithSimilarity[]>;
+  searchSimilarChunks(
+    projectId: string,
+    queryEmbedding: number[],
+    limit?: number,
+    threshold?: number,
+    selectedDocumentIds?: string[],
+  ): Promise<ChunkWithSimilarity[]>;
+  getAllChunksFromDocuments(
+    projectId: string,
+    selectedDocumentIds: string[],
+  ): Promise<ChunkWithSimilarity[]>;
   getChunksByDocumentId(documentId: string): Promise<DocumentChunk[]>;
 }

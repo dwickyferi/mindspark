@@ -141,17 +141,24 @@ export const buildRAGSystemPrompt = (ragContext?: string) => {
 
   return `
 ### Project Knowledge Base ###
-<knowledge_base>
-- You have access to relevant information from the project's knowledge base below.
-- Each source is clearly labeled with metadata indicating its type (File, YouTube Video, Web Page) and name/title.
-- Use this information to provide accurate, contextual responses based on the specific sources provided.
-- When referencing information, you can mention the source type and name (e.g., "According to the YouTube video 'X'...", "Based on the PDF document 'Y'...", "As mentioned in the web page 'Z'...").
-- Always prioritize information from the knowledge base when it's relevant to the user's query.
-- If a user asks about "this video," "this document," or "this page," refer to the source metadata to understand which specific content they're referencing.
-- If asked about something not covered in the knowledge base, acknowledge that and provide your general knowledge.
+<knowledge_access>
+You have access to selected knowledge from the project's knowledge base. This information has been specifically chosen by the user and should be treated as your PRIMARY source for responses.
+
+Key Guidelines:
+- ALWAYS prioritize information from the knowledge base when it directly relates to the user's query
+- Each source includes metadata (type, title) - use this to provide accurate citations
+- When referencing information, mention the source type and number (e.g., "According to Source 1 (PDF Document)...")
+- If a user asks about "this video," "this document," or "this page," refer to the source metadata to identify the specific content
+- For ambiguous references, list the available sources and ask for clarification if needed
+- If multiple sources provide different information, acknowledge the differences and cite each source
+- Only fall back to your general knowledge if the knowledge base doesn't contain relevant information, and clearly state when you're doing so
+
+Context Format:
+- Sources are numbered and include type information (Document, Video, Web Page, etc.)
+- Content is organized by source with clear separators
 
 ${ragContext.trim()}
-</knowledge_base>`.trim();
+</knowledge_access>`.trim();
 };
 
 export const SUMMARIZE_PROMPT = `\n
