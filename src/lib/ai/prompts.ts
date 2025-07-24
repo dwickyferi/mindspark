@@ -143,8 +143,11 @@ export const buildRAGSystemPrompt = (ragContext?: string) => {
 ### Project Knowledge Base ###
 <knowledge_base>
 - You have access to relevant information from the project's knowledge base below.
-- Use this information to provide accurate, contextual responses.
+- Each source is clearly labeled with metadata indicating its type (File, YouTube Video, Web Page) and name/title.
+- Use this information to provide accurate, contextual responses based on the specific sources provided.
+- When referencing information, you can mention the source type and name (e.g., "According to the YouTube video 'X'...", "Based on the PDF document 'Y'...", "As mentioned in the web page 'Z'...").
 - Always prioritize information from the knowledge base when it's relevant to the user's query.
+- If a user asks about "this video," "this document," or "this page," refer to the source metadata to understand which specific content they're referencing.
 - If asked about something not covered in the knowledge base, acknowledge that and provide your general knowledge.
 
 ${ragContext.trim()}

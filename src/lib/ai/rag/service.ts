@@ -1,6 +1,15 @@
-import { generateEmbeddings, generateQueryEmbedding, extractTextFromFile, validateContentForRAG } from "./embedding";
+import {
+  generateEmbeddings,
+  generateQueryEmbedding,
+  extractTextFromFile,
+  validateContentForRAG,
+} from "./embedding";
 import { ragRepository } from "@/lib/db/repository";
-import type { Document, DocumentUpload, ChunkWithSimilarity } from "app-types/rag";
+import type {
+  Document,
+  DocumentUpload,
+  ChunkWithSimilarity,
+} from "app-types/rag";
 
 export class RAGService {
   /**
@@ -9,12 +18,18 @@ export class RAGService {
   async addDocument(
     projectId: string,
     userId: string,
-    documentData: DocumentUpload
+    documentData: DocumentUpload,
   ): Promise<Document> {
     // Extract and validate content
-    const extractedContent = extractTextFromFile(documentData.content, documentData.mimeType);
-    const validation = validateContentForRAG(extractedContent, documentData.mimeType);
-    
+    const extractedContent = extractTextFromFile(
+      documentData.content,
+      documentData.mimeType,
+    );
+    const validation = validateContentForRAG(
+      extractedContent,
+      documentData.mimeType,
+    );
+
     if (!validation.isValid) {
       throw new Error(`Document is not suitable for RAG: ${validation.reason}`);
     }
@@ -28,7 +43,7 @@ export class RAGService {
     try {
       // Generate embeddings for the document content
       const embeddings = await generateEmbeddings(extractedContent);
-      
+
       // Create chunks with embeddings
       const chunks = embeddings.map(({ content, embedding, chunkIndex }) => ({
         documentId: document.id,
@@ -45,7 +60,9 @@ export class RAGService {
     } catch (error) {
       // If embedding fails, clean up the document
       await ragRepository.deleteDocument(document.id);
-      throw new Error(`Failed to process document for RAG: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to process document for RAG: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
@@ -54,7 +71,11 @@ export class RAGService {
    */
   async updateDocument(
     documentId: string,
-    updates: { name?: string; content?: string; metadata?: Record<string, any> }
+    updates: {
+      name?: string;
+      content?: string;
+      metadata?: Record<string, any>;
+    },
   ): Promise<Document> {
     const document = await ragRepository.getDocumentById(documentId);
     if (!document) {
@@ -63,11 +84,19 @@ export class RAGService {
 
     // If content is being updated, regenerate embeddings
     if (updates.content) {
-      const extractedContent = extractTextFromFile(updates.content, document.mimeType);
-      const validation = validateContentForRAG(extractedContent, document.mimeType);
-      
+      const extractedContent = extractTextFromFile(
+        updates.content,
+        document.mimeType,
+      );
+      const validation = validateContentForRAG(
+        extractedContent,
+        document.mimeType,
+      );
+
       if (!validation.isValid) {
-        throw new Error(`Updated content is not suitable for RAG: ${validation.reason}`);
+        throw new Error(
+          `Updated content is not suitable for RAG: ${validation.reason}`,
+        );
       }
 
       // Delete old chunks
@@ -75,7 +104,7 @@ export class RAGService {
 
       // Generate new embeddings
       const embeddings = await generateEmbeddings(extractedContent);
-      
+
       // Create new chunks
       const chunks = embeddings.map(({ content, embedding, chunkIndex }) => ({
         documentId,
@@ -115,7 +144,7 @@ export class RAGService {
     query: string,
     limit: number = 5,
     threshold: number = 0.3,
-    selectedDocumentIds?: string[]
+    selectedDocumentIds?: string[],
   ): Promise<ChunkWithSimilarity[]> {
     if (!query.trim()) {
       return [];
@@ -123,7 +152,13 @@ export class RAGService {
 
     try {
       const queryEmbedding = await generateQueryEmbedding(query);
-      return ragRepository.searchSimilarChunks(projectId, queryEmbedding, limit, threshold, selectedDocumentIds);
+      return ragRepository.searchSimilarChunks(
+        projectId,
+        queryEmbedding,
+        limit,
+        threshold,
+        selectedDocumentIds,
+      );
     } catch (error) {
       console.error("Error searching for relevant content:", error);
       return [];
@@ -139,11 +174,92 @@ export class RAGService {
     }
 
     const contextParts = chunks.map((chunk, index) => {
-      const source = chunk.document?.name ? ` (from ${chunk.document.name})` : "";
-      return `[${index + 1}] ${chunk.content.trim()}${source}`;
+      const document = chunk.document;
+      if (!document) {
+        return `[${index + 1}] ${chunk.content.trim()}`;
+      }
+
+      // Format metadata header based on document type
+      let metadataHeader = "";
+      switch (document.documentType) {
+        case "youtube":
+          metadataHeader = `[Source: YouTube Video - "${document.name}"]`;
+          break;
+        case "web":
+          const pageTitle = document.webTitle || document.name;
+          const domain = document.webUrl
+            ? new URL(document.webUrl).hostname
+            : "";
+          metadataHeader = `[Source: Web Page - "${pageTitle}"${domain ? ` (${domain})` : ""}]`;
+          break;
+        case "file":
+        default:
+          // Determine file type from mimeType or file extension
+          const fileType = this.getFileTypeLabel(
+            document.mimeType,
+            document.name,
+          );
+          metadataHeader = `[Source: ${fileType} - "${document.name}"]`;
+          break;
+      }
+
+      return `${metadataHeader}\nContent:\n${chunk.content.trim()}`;
     });
 
-    return `Based on the following context from your project documents:\n\n${contextParts.join('\n\n')}`;
+    return `Based on the following context from your project documents:\n\n${contextParts.join("\n\n")}`;
+  }
+
+  /**
+   * Get a user-friendly file type label from MIME type or filename
+   */
+  private getFileTypeLabel(mimeType: string, fileName: string): string {
+    // First try to determine from MIME type
+    const mimeTypeMap: Record<string, string> = {
+      "application/pdf": "PDF Document",
+      "application/msword": "Word Document",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        "Word Document",
+      "application/vnd.ms-excel": "Excel Spreadsheet",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+        "Excel Spreadsheet",
+      "application/vnd.ms-powerpoint": "PowerPoint Presentation",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+        "PowerPoint Presentation",
+      "text/plain": "Text File",
+      "text/markdown": "Markdown File",
+      "text/html": "HTML File",
+      "text/csv": "CSV File",
+      "application/json": "JSON File",
+      "application/xml": "XML File",
+      "text/xml": "XML File",
+    };
+
+    if (mimeTypeMap[mimeType]) {
+      return mimeTypeMap[mimeType];
+    }
+
+    // Fallback to file extension
+    const extension = fileName.split(".").pop()?.toLowerCase();
+    const extensionMap: Record<string, string> = {
+      pdf: "PDF Document",
+      doc: "Word Document",
+      docx: "Word Document",
+      xls: "Excel Spreadsheet",
+      xlsx: "Excel Spreadsheet",
+      ppt: "PowerPoint Presentation",
+      pptx: "PowerPoint Presentation",
+      txt: "Text File",
+      md: "Markdown File",
+      html: "HTML File",
+      htm: "HTML File",
+      csv: "CSV File",
+      json: "JSON File",
+      xml: "XML File",
+    };
+
+    return extension && extensionMap[extension]
+      ? extensionMap[extension]
+      : "File";
   }
 
   /**
