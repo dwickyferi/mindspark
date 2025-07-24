@@ -71,6 +71,13 @@
       "when": 1753360635330,
       "tag": "0009_wakeful_deadpool",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1753365385728,
+      "tag": "0010_cheerful_molten_man",
+      "breakpoints": true
     }
   ]
 }

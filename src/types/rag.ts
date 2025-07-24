@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export type DocumentType = "file" | "youtube";
+
 export type Document = {
   id: string;
   projectId: string;
@@ -9,6 +11,14 @@ export type Document = {
   mimeType: string;
   size: number;
   metadata: Record<string, any>;
+  // YouTube-specific fields
+  documentType: DocumentType;
+  youtubeVideoId?: string;
+  youtubeThumbnail?: string;
+  youtubeTitle?: string;
+  youtubeChannelName?: string;
+  youtubeDuration?: number;
+  youtubeUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -29,11 +39,28 @@ export type DocumentUpload = {
   content: string;
   mimeType: string;
   size: number;
+  documentType?: DocumentType;
+  // YouTube-specific fields
+  youtubeVideoId?: string;
+  youtubeThumbnail?: string;
+  youtubeTitle?: string;
+  youtubeChannelName?: string;
+  youtubeDuration?: number;
+  youtubeUrl?: string;
+};
+
+export type YouTubeVideoInfo = {
+  videoId: string;
+  title: string;
+  channelName: string;
+  thumbnail: string;
+  duration: number;
+  url: string;
 };
 
 export type ChunkWithSimilarity = DocumentChunk & {
   similarity: number;
-  document?: Pick<Document, 'name' | 'mimeType'>;
+  document?: Pick<Document, 'name' | 'mimeType' | 'documentType' | 'youtubeThumbnail'>;
 };
 
 export const DocumentUploadSchema = z.object({
@@ -41,6 +68,18 @@ export const DocumentUploadSchema = z.object({
   content: z.string().min(1, "Document content cannot be empty"),
   mimeType: z.string().min(1, "MIME type is required"),
   size: z.number().positive("File size must be positive"),
+  documentType: z.enum(["file", "youtube"]).optional().default("file"),
+  // YouTube-specific fields
+  youtubeVideoId: z.string().optional(),
+  youtubeThumbnail: z.string().url().optional(),
+  youtubeTitle: z.string().optional(),
+  youtubeChannelName: z.string().optional(),
+  youtubeDuration: z.number().positive().optional(),
+  youtubeUrl: z.string().url().optional(),
+});
+
+export const YouTubeUploadSchema = z.object({
+  url: z.string().url("Please enter a valid YouTube URL"),
 });
 
 export interface RAGRepository {

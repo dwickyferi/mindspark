@@ -1,7 +1,7 @@
 "use client";
 import { selectProjectByIdAction } from "@/app/api/chat/actions";
 import { appStore } from "@/app/store";
-import { ProjectKnowledgeSheet } from "@/components/project-knowledge-sheet";
+import { EnhancedDocumentManager } from "@/components/enhanced-document-manager";
 import { ProjectDropdown } from "@/components/project-dropdown";
 import { ProjectSystemMessagePopup } from "@/components/project-system-message-popup";
 import PromptInput from "@/components/prompt-input";
@@ -204,12 +204,12 @@ export default function ProjectPage() {
                 </p>
               </div>
             </div>
-            <ProjectKnowledgeSheet projectId={id as string}>
+            <EnhancedDocumentManager projectId={id as string}>
               <Button variant="outline" className="w-full">
                 <FileUp className="h-4 w-4 mr-2" />
                 Knowledge Base
               </Button>
-            </ProjectKnowledgeSheet>
+            </EnhancedDocumentManager>
           </div>
           <FeatureCard
             title="Add Instructions"

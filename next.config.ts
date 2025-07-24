@@ -13,6 +13,16 @@ export default () => {
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
       NEXT_PUBLIC_GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
     },
+    images: {
+      remotePatterns: [
+        {
+          protocol: 'https',
+          hostname: 'img.youtube.com',
+          port: '',
+          pathname: '/vi/**',
+        },
+      ],
+    },
   };
   const withNextIntl = createNextIntlPlugin();
   return withNextIntl(nextConfig);

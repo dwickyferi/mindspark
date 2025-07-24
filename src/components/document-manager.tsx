@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "ui/dialog";
 import { Button } from "ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/tabs";
 import {
   FileText,
   Upload,
@@ -18,12 +19,14 @@ import {
   Loader2,
   AlertCircle,
   Trash2,
+  Youtube,
 } from "lucide-react";
 import { toast } from "sonner";
 import { addDocumentAction, getDocumentsAction, deleteDocumentAction } from "@/app/api/rag/actions";
-import { Document } from "app-types/rag";
+import { Document, YouTubeVideoInfo } from "app-types/rag";
 import useSWR, { mutate } from "swr";
 import { Badge } from "ui/badge";
+import { YouTubeUpload } from "@/components/youtube-upload";
 
 interface DocumentManagerProps {
   projectId: string;
@@ -94,6 +97,29 @@ export function DocumentManager({ projectId, children }: DocumentManagerProps) {
     setIsUploading(false);
   };
 
+  const uploadYouTubeVideo = async (videoInfo: YouTubeVideoInfo, transcript: string) => {
+    try {
+      await addDocumentAction(projectId, {
+        name: videoInfo.title,
+        content: transcript,
+        mimeType: "text/plain",
+        size: new TextEncoder().encode(transcript).length,
+        documentType: "youtube",
+        youtubeVideoId: videoInfo.videoId,
+        youtubeThumbnail: videoInfo.thumbnail,
+        youtubeTitle: videoInfo.title,
+        youtubeChannelName: videoInfo.channelName,
+        youtubeDuration: videoInfo.duration,
+        youtubeUrl: videoInfo.url,
+      });
+      toast.success(`Added YouTube video: ${videoInfo.title}`);
+      mutate(`/api/project/${projectId}/documents`);
+    } catch (error) {
+      console.error("Failed to upload YouTube video:", error);
+      throw new Error("Failed to add YouTube video to knowledge base");
+    }
+  };
+
   const deleteDocument = async (documentId: string, documentName: string) => {
     try {
       await deleteDocumentAction(documentId);
@@ -127,82 +153,110 @@ export function DocumentManager({ projectId, children }: DocumentManagerProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-6">
-          {/* Upload Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Upload Documents</h3>
+        <div className="flex-1 overflow-y-auto">
+          <Tabs defaultValue="files" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="files" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                File Upload
+              </TabsTrigger>
+              <TabsTrigger value="youtube" className="flex items-center gap-2">
+                <Youtube className="h-4 w-4" />
+                YouTube Video
+              </TabsTrigger>
+            </TabsList>
             
-            <div
-              {...getRootProps()}
-              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                isDragActive
-                  ? "border-primary bg-primary/5"
-                  : "border-muted-foreground/25 hover:border-primary/50"
-              }`}
-            >
-              <input {...getInputProps()} />
-              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              {isDragActive ? (
-                <p>Drop the files here...</p>
-              ) : (
-                <div>
-                  <p className="mb-1">Drag & drop files here, or click to select</p>
-                  <p className="text-sm text-muted-foreground">
-                    Supports: .txt, .md, .json, .html, .csv (max 10MB each)
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* File Queue */}
-            {uploadFiles.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium">Files to upload:</h4>
-                {uploadFiles.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 bg-muted rounded-lg"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      <span className="text-sm">{file.name}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {formatFileSize(file.size)}
-                      </Badge>
+            <TabsContent value="files" className="space-y-6 mt-6">
+              {/* File Upload Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Upload Documents</h3>
+                
+                <div
+                  {...getRootProps()}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                    isDragActive
+                      ? "border-primary bg-primary/5"
+                      : "border-muted-foreground/25 hover:border-primary/50"
+                  }`}
+                >
+                  <input {...getInputProps()} />
+                  <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                  {isDragActive ? (
+                    <p>Drop the files here...</p>
+                  ) : (
+                    <div>
+                      <p className="mb-1">Drag & drop files here, or click to select</p>
+                      <p className="text-sm text-muted-foreground">
+                        Supports: .txt, .md, .json, .html, .csv (max 10MB each)
+                      </p>
                     </div>
+                  )}
+                </div>
+
+                {/* File Queue */}
+                {uploadFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Files to upload:</h4>
+                    {uploadFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-muted rounded-lg"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          <span className="text-sm">{file.name}</span>
+                          <Badge variant="secondary" className="text-xs">
+                            {formatFileSize(file.size)}
+                          </Badge>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeFile(index)}
+                          disabled={isUploading}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
                     <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => removeFile(index)}
+                      onClick={uploadDocuments}
                       disabled={isUploading}
+                      className="w-full"
                     >
-                      <X className="h-4 w-4" />
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload {uploadFiles.length} file{uploadFiles.length > 1 ? 's' : ''}
+                        </>
+                      )}
                     </Button>
                   </div>
-                ))}
-                <Button
-                  onClick={uploadDocuments}
-                  disabled={isUploading}
-                  className="w-full"
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload {uploadFiles.length} file{uploadFiles.length > 1 ? 's' : ''}
-                    </>
-                  )}
-                </Button>
+                )}
               </div>
-            )}
-          </div>
+            </TabsContent>
+            
+            <TabsContent value="youtube" className="space-y-6 mt-6">
+              {/* YouTube Upload Section */}
+              <div className="space-y-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-medium mb-2">Add YouTube Video</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Add YouTube videos to your knowledge base by extracting their transcripts
+                  </p>
+                </div>
+                <YouTubeUpload onUpload={uploadYouTubeVideo} />
+              </div>
+            </TabsContent>
+          </Tabs>
 
-          {/* Documents List */}
-          <div className="space-y-4">
+          {/* Documents List - shown on both tabs */}
+          <div className="space-y-4 mt-8 pt-6 border-t">
             <h3 className="text-lg font-medium">Existing Documents</h3>
             
             {isLoading ? (
@@ -228,13 +282,29 @@ export function DocumentManager({ projectId, children }: DocumentManagerProps) {
                     className="flex items-center justify-between p-3 bg-muted rounded-lg"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <FileText className="h-4 w-4 flex-shrink-0" />
+                      {doc.documentType === 'youtube' ? (
+                        <Youtube className="h-4 w-4 flex-shrink-0 text-red-600" />
+                      ) : (
+                        <FileText className="h-4 w-4 flex-shrink-0" />
+                      )}
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{doc.name}</p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>{formatFileSize(doc.size)}</span>
                           <span>•</span>
-                          <span>{doc.mimeType}</span>
+                          {doc.documentType === 'youtube' ? (
+                            <>
+                              <span>YouTube</span>
+                              {doc.youtubeChannelName && (
+                                <>
+                                  <span>•</span>
+                                  <span>{doc.youtubeChannelName}</span>
+                                </>
+                              )}
+                            </>
+                          ) : (
+                            <span>{doc.mimeType}</span>
+                          )}
                           <span>•</span>
                           <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
                         </div>
