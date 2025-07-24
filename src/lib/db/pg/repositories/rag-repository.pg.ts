@@ -17,6 +17,14 @@ export const pgRAGRepository: RAGRepository = {
         mimeType: document.mimeType,
         size: document.size,
         metadata: {},
+        // Handle document type and YouTube-specific fields
+        documentType: document.documentType || "file",
+        youtubeVideoId: document.youtubeVideoId,
+        youtubeThumbnail: document.youtubeThumbnail,
+        youtubeTitle: document.youtubeTitle,
+        youtubeChannelName: document.youtubeChannelName,
+        youtubeDuration: document.youtubeDuration,
+        youtubeUrl: document.youtubeUrl,
       })
       .returning();
 
