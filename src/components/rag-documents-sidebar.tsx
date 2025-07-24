@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { ChevronRight, FileText, X, Loader2, Youtube, ExternalLink, Clock, User, Plus, Upload } from "lucide-react";
+import { ChevronRight, FileText, X, Loader2, Youtube, ExternalLink, Clock, User, Plus, Upload, Globe } from "lucide-react";
 import { Button } from "ui/button";
 import { Document, YouTubeVideoInfo } from "app-types/rag";
 import useSWR, { mutate } from "swr";
-import { getDocumentsAction, addDocumentAction } from "@/app/api/rag/actions";
+import { getDocumentsAction, addDocumentAction, addWebPageAction } from "@/app/api/rag/actions";
 import { selectProjectByIdAction, updateProjectAction } from "@/app/api/chat/actions";
 import { cn } from "lib/utils";
 import { Badge } from "ui/badge";
@@ -16,6 +16,7 @@ import { useDropzone } from "react-dropzone";
 import Image from "next/image";
 import { toast } from "sonner";
 import { YouTubeUpload } from "@/components/youtube-upload";
+import { WebPageUpload } from "@/components/web-page-upload";
 
 interface RagDocumentsSidebarProps {
   projectId?: string;
@@ -182,6 +183,17 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
     }
   };
 
+  const uploadWebPage = async (data: { url: string }) => {
+    try {
+      await addWebPageAction(projectId!, data);
+      mutate(`documents-${projectId}`);
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error("Failed to upload web page:", error);
+      throw new Error("Failed to add web page to knowledge base");
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -344,7 +356,7 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
 
           <div className="flex-1 overflow-y-auto">
             <Tabs defaultValue="files" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsList className="grid w-full grid-cols-3 mb-6">
                 <TabsTrigger value="files" className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   File Upload
@@ -352,6 +364,10 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
                 <TabsTrigger value="youtube" className="flex items-center gap-2">
                   <Youtube className="h-4 w-4" />
                   YouTube Video
+                </TabsTrigger>
+                <TabsTrigger value="web" className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  Web Page
                 </TabsTrigger>
               </TabsList>
               
@@ -436,6 +452,17 @@ export function RagDocumentsSidebar({ projectId }: RagDocumentsSidebarProps) {
                 </div>
                 <YouTubeUpload onUpload={uploadYouTubeVideo} />
               </TabsContent>
+
+              <TabsContent value="web" className="space-y-4">
+                {/* Web Page Upload Section */}
+                <div className="text-center mb-4">
+                  <h3 className="text-lg font-medium mb-2">Add Web Page</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Add web pages to your knowledge base by extracting their content
+                  </p>
+                </div>
+                <WebPageUpload onUpload={uploadWebPage} isUploading={isUploading} />
+              </TabsContent>
             </Tabs>
           </div>
         </DialogContent>
@@ -473,6 +500,9 @@ function SelectableDocumentCard({
   const getFileTypeLabel = (document: Document): string => {
     if (document.documentType === 'youtube') {
       return 'YouTube';
+    }
+    if (document.documentType === 'web') {
+      return 'Web Page';
     }
     
     const typeMap: Record<string, string> = {
@@ -534,6 +564,12 @@ function SelectableDocumentCard({
                   </div>
                 )}
               </div>
+            ) : document.documentType === 'web' ? (
+              <div className="flex items-center gap-1">
+                <div className="flex-shrink-0 p-1.5 bg-blue-100 rounded-lg">
+                  <Globe className="h-4 w-4 text-blue-600" />
+                </div>
+              </div>
             ) : (
               <div className="flex-shrink-0 p-1.5 bg-primary/10 rounded-lg">
                 <FileText className="h-4 w-4 text-primary" />
@@ -563,6 +599,13 @@ function SelectableDocumentCard({
                     </>
                   )}
                 </>
+              ) : document.documentType === 'web' && document.webUrl ? (
+                <>
+                  <Globe className="h-3 w-3" />
+                  <span className="truncate max-w-32" title={document.webUrl}>
+                    {new URL(document.webUrl).hostname}
+                  </span>
+                </>
               ) : (
                 <span>{formatDate(document.createdAt)}</span>
               )}
@@ -580,6 +623,18 @@ function SelectableDocumentCard({
                   onClick={(e) => e.stopPropagation()}
                   className="text-xs text-blue-600 hover:underline flex items-center gap-1"
                   title="Watch on YouTube"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+              {document.documentType === 'web' && document.webUrl && (
+                <a
+                  href={document.webUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                  title="View web page"
                 >
                   <ExternalLink className="h-3 w-3" />
                 </a>

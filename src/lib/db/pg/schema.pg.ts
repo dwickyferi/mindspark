@@ -234,14 +234,20 @@ export const DocumentSchema = pgTable("document", {
   mimeType: text("mime_type").notNull(),
   size: integer("size").notNull(),
   metadata: json("metadata").default({}),
+  // Document type
+  documentType: text("document_type").notNull().default("file"), // "file" | "youtube" | "web"
   // YouTube-specific fields
-  documentType: text("document_type").notNull().default("file"), // "file" | "youtube"
   youtubeVideoId: text("youtube_video_id"), // YouTube video ID
   youtubeThumbnail: text("youtube_thumbnail"), // Thumbnail URL
   youtubeTitle: text("youtube_title"), // Original video title
   youtubeChannelName: text("youtube_channel_name"), // Channel name
   youtubeDuration: integer("youtube_duration"), // Duration in seconds
   youtubeUrl: text("youtube_url"), // Original YouTube URL
+  // Web page-specific fields
+  webUrl: text("web_url"), // Original web page URL
+  webTitle: text("web_title"), // Extracted page title
+  webFavicon: text("web_favicon"), // Favicon URL
+  webExtractedAt: timestamp("web_extracted_at"), // When content was extracted
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

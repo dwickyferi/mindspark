@@ -1,8 +1,9 @@
 "use server";
 
 import { ragService } from "@/lib/ai/rag/service";
-import { DocumentUploadSchema } from "app-types/rag";
+import { DocumentUploadSchema, WebPageUploadSchema } from "app-types/rag";
 import { getSession } from "auth/server";
+import { webPageService } from "@/lib/ai/rag/web-page-service";
 
 export async function getUserId() {
   const session = await getSession();
@@ -18,6 +19,49 @@ export async function addDocumentAction(projectId: string, documentData: any) {
   const validatedData = DocumentUploadSchema.parse(documentData);
   
   return ragService.addDocument(projectId, userId, validatedData);
+}
+
+export async function addWebPageAction(projectId: string, data: { url: string }) {
+  const userId = await getUserId();
+  const validatedData = WebPageUploadSchema.parse(data);
+  
+  console.log("🔍 Server Action Debug - addWebPageAction called");
+  console.log("- URL:", validatedData.url);
+  console.log("- TAVILY_API_KEY in server action:", !!process.env.TAVILY_API_KEY);
+  console.log("- Environment context:", process.env.NODE_ENV);
+  
+  try {
+    // Extract content from the web page
+    const documentData = await webPageService.extractWebPageContent(validatedData.url);
+    
+    return ragService.addDocument(projectId, userId, documentData);
+  } catch (error) {
+    console.error("❌ Error in addWebPageAction:", error);
+    throw error;
+  }
+}
+
+export async function previewWebPageAction(data: { url: string }) {
+  const validatedData = WebPageUploadSchema.parse(data);
+  
+  console.log("🔍 Server Action Debug - previewWebPageAction called");
+  console.log("- URL:", validatedData.url);
+  console.log("- TAVILY_API_KEY in server action:", !!process.env.TAVILY_API_KEY);
+  
+  try {
+    // Extract content from the web page for preview
+    const documentData = await webPageService.extractWebPageContent(validatedData.url);
+    
+    return {
+      title: documentData.webTitle || documentData.name,
+      url: documentData.webUrl!,
+      contentPreview: documentData.content.substring(0, 300) + "...",
+      size: documentData.size,
+    };
+  } catch (error) {
+    console.error("❌ Error in previewWebPageAction:", error);
+    throw error;
+  }
 }
 
 export async function getDocumentsAction(projectId: string) {

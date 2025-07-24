@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export type DocumentType = "file" | "youtube";
+export type DocumentType = "file" | "youtube" | "web";
 
 export type Document = {
   id: string;
@@ -19,6 +19,11 @@ export type Document = {
   youtubeChannelName?: string;
   youtubeDuration?: number;
   youtubeUrl?: string;
+  // Web page-specific fields
+  webUrl?: string;
+  webTitle?: string;
+  webFavicon?: string;
+  webExtractedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -47,6 +52,11 @@ export type DocumentUpload = {
   youtubeChannelName?: string;
   youtubeDuration?: number;
   youtubeUrl?: string;
+  // Web page-specific fields
+  webUrl?: string;
+  webTitle?: string;
+  webFavicon?: string;
+  webExtractedAt?: Date;
 };
 
 export type YouTubeVideoInfo = {
@@ -60,7 +70,7 @@ export type YouTubeVideoInfo = {
 
 export type ChunkWithSimilarity = DocumentChunk & {
   similarity: number;
-  document?: Pick<Document, 'name' | 'mimeType' | 'documentType' | 'youtubeThumbnail'>;
+  document?: Pick<Document, 'name' | 'mimeType' | 'documentType' | 'youtubeThumbnail' | 'webUrl' | 'webTitle' | 'webFavicon'>;
 };
 
 export const DocumentUploadSchema = z.object({
@@ -68,7 +78,7 @@ export const DocumentUploadSchema = z.object({
   content: z.string().min(1, "Document content cannot be empty"),
   mimeType: z.string().min(1, "MIME type is required"),
   size: z.number().positive("File size must be positive"),
-  documentType: z.enum(["file", "youtube"]).optional().default("file"),
+  documentType: z.enum(["file", "youtube", "web"]).optional().default("file"),
   // YouTube-specific fields
   youtubeVideoId: z.string().optional(),
   youtubeThumbnail: z.string().url().optional(),
@@ -76,6 +86,15 @@ export const DocumentUploadSchema = z.object({
   youtubeChannelName: z.string().optional(),
   youtubeDuration: z.number().positive().optional(),
   youtubeUrl: z.string().url().optional(),
+  // Web page-specific fields
+  webUrl: z.string().url().optional(),
+  webTitle: z.string().optional(),
+  webFavicon: z.string().url().optional(),
+  webExtractedAt: z.date().optional(),
+});
+
+export const WebPageUploadSchema = z.object({
+  url: z.string().url("Please enter a valid website URL"),
 });
 
 export const YouTubeUploadSchema = z.object({

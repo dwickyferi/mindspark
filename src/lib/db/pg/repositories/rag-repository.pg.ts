@@ -17,14 +17,20 @@ export const pgRAGRepository: RAGRepository = {
         mimeType: document.mimeType,
         size: document.size,
         metadata: {},
-        // Handle document type and YouTube-specific fields
+        // Handle document type and type-specific fields
         documentType: document.documentType || "file",
+        // YouTube-specific fields
         youtubeVideoId: document.youtubeVideoId,
         youtubeThumbnail: document.youtubeThumbnail,
         youtubeTitle: document.youtubeTitle,
         youtubeChannelName: document.youtubeChannelName,
         youtubeDuration: document.youtubeDuration,
         youtubeUrl: document.youtubeUrl,
+        // Web page-specific fields
+        webUrl: document.webUrl,
+        webTitle: document.webTitle,
+        webFavicon: document.webFavicon,
+        webExtractedAt: document.webExtractedAt,
       })
       .returning();
 
@@ -119,6 +125,11 @@ export const pgRAGRepository: RAGRepository = {
         document: {
           name: DocumentSchema.name,
           mimeType: DocumentSchema.mimeType,
+          documentType: DocumentSchema.documentType,
+          youtubeThumbnail: DocumentSchema.youtubeThumbnail,
+          webUrl: DocumentSchema.webUrl,
+          webTitle: DocumentSchema.webTitle,
+          webFavicon: DocumentSchema.webFavicon,
         }
       })
       .from(DocumentChunkSchema)

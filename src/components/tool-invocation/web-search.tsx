@@ -5,10 +5,9 @@ import { TavilyResponse } from "lib/ai/tools/web/web-search";
 import equal from "lib/equal";
 import { notify } from "lib/notify";
 import { cn, toAny } from "lib/utils";
-import { AlertTriangleIcon } from "lucide-react";
+import { AlertTriangleIcon, Globe } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { memo, useMemo, useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
 import { GlobalIcon } from "ui/global-icon";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "ui/hover-card";
 import JsonView from "ui/json-view";
@@ -151,13 +150,8 @@ function PureWebSearchToolInvocation({ part }: WebSearchToolInvocationProps) {
                         rel="noopener noreferrer"
                         className="group rounded-full bg-secondary pl-1.5 pr-2 py-1.5 text-xs flex items-center gap-1 hover:bg-input hover:ring hover:ring-blue-500 transition-all cursor-pointer"
                       >
-                        <div className="rounded-full bg-input ring ring-input">
-                          <Avatar className="size-3 rounded-full">
-                            <AvatarImage src={result.favicon} />
-                            <AvatarFallback>
-                              {result.title?.slice(0, 1).toUpperCase() || "?"}
-                            </AvatarFallback>
-                          </Avatar>
+                        <div className="rounded-full bg-input ring ring-input flex items-center justify-center">
+                          <Globe className="size-2 text-muted-foreground" />
                         </div>
                         <span className="truncate max-w-44">{result.url}</span>
                       </a>
@@ -165,13 +159,8 @@ function PureWebSearchToolInvocation({ part }: WebSearchToolInvocationProps) {
 
                     <HoverCardContent className="flex flex-col gap-1 p-6">
                       <div className="flex items-center gap-2">
-                        <div className="rounded-full ring ring-input">
-                          <Avatar className="size-6 rounded-full">
-                            <AvatarImage src={result.favicon} />
-                            <AvatarFallback>
-                              {result.title?.slice(0, 1).toUpperCase() || "?"}
-                            </AvatarFallback>
-                          </Avatar>
+                        <div className="rounded-full ring ring-input flex items-center justify-center">
+                          <Globe className="size-4 text-muted-foreground" />
                         </div>
                         <span
                           className={cn(

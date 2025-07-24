@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import { 
   FileText, 
   Youtube, 
+  Globe,
   Search, 
   Plus, 
   ArrowLeft,
@@ -14,7 +15,6 @@ import {
   User,
   ExternalLink,
   Calendar,
-  Filter,
   Grid3X3,
   List,
   Trash2
@@ -22,7 +22,7 @@ import {
 import { Button } from "ui/button";
 import { Input } from "ui/input";
 import { Badge } from "ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "ui/card";
+import { Card, CardContent } from "ui/card";
 import { Checkbox } from "ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "ui/dialog";
@@ -32,11 +32,12 @@ import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
 
-import { getDocumentsAction, addDocumentAction, deleteDocumentAction } from "@/app/api/rag/actions";
+import { getDocumentsAction, addDocumentAction, addWebPageAction, deleteDocumentAction } from "@/app/api/rag/actions";
 import { selectProjectByIdAction, updateProjectAction } from "@/app/api/chat/actions";
 import { Document } from "app-types/rag";
 import { useDropzone } from "react-dropzone";
 import { YouTubeUpload } from "@/components/youtube-upload";
+import { WebPageUpload } from "@/components/web-page-upload";
 import { YouTubeVideoInfo } from "app-types/rag";
 
 type ViewMode = "grid" | "list";
@@ -44,7 +45,6 @@ type SortOption = "name" | "date" | "size" | "type";
 
 export default function KnowledgeManagementPage() {
   const params = useParams();
-  const router = useRouter();
   const projectId = params.id as string;
 
   // State management
@@ -52,7 +52,7 @@ export default function KnowledgeManagementPage() {
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [sortBy, setSortBy] = useState<SortOption>("date");
-  const [filterType, setFilterType] = useState<"all" | "file" | "youtube">("all");
+  const [filterType, setFilterType] = useState<"all" | "file" | "youtube" | "web">("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUpdatingSelection, setIsUpdatingSelection] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
@@ -111,10 +111,12 @@ export default function KnowledgeManagementPage() {
   const documentsByType = useMemo(() => {
     const fileDocuments = filteredAndSortedDocuments.filter(doc => doc.documentType === "file");
     const youtubeDocuments = filteredAndSortedDocuments.filter(doc => doc.documentType === "youtube");
+    const webDocuments = filteredAndSortedDocuments.filter(doc => doc.documentType === "web");
     
     return {
       files: fileDocuments,
       youtube: youtubeDocuments,
+      web: webDocuments,
     };
   }, [filteredAndSortedDocuments]);
 
@@ -124,8 +126,9 @@ export default function KnowledgeManagementPage() {
     const selectedCount = selectedDocuments.length;
     const fileCount = documents.filter(doc => doc.documentType === "file").length;
     const youtubeCount = documents.filter(doc => doc.documentType === "youtube").length;
+    const webCount = documents.filter(doc => doc.documentType === "web").length;
     
-    return { totalDocs, selectedCount, fileCount, youtubeCount };
+    return { totalDocs, selectedCount, fileCount, youtubeCount, webCount };
   }, [documents, selectedDocuments]);
 
   // Handlers
@@ -253,6 +256,17 @@ export default function KnowledgeManagementPage() {
     }
   };
 
+  const uploadWebPage = async (data: { url: string }) => {
+    try {
+      await addWebPageAction(projectId!, data);
+      mutate(`documents-${projectId}`);
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error("Failed to upload web page:", error);
+      throw new Error("Failed to add web page to knowledge base");
+    }
+  };
+
   const handleDeleteDocument = async (documentId: string, documentName: string) => {
     if (!confirm(`Are you sure you want to delete &quot;${documentName}&quot;? This action cannot be undone.`)) {
       return;
@@ -332,6 +346,7 @@ export default function KnowledgeManagementPage() {
                 removeFile={removeFile}
                 uploadDocuments={uploadDocuments}
                 uploadYouTubeVideo={uploadYouTubeVideo}
+                uploadWebPage={uploadWebPage}
               />
             </Dialog>
           </div>
@@ -347,6 +362,10 @@ export default function KnowledgeManagementPage() {
             <div className="flex items-center gap-2">
               <Youtube className="h-4 w-4 text-red-600" />
               <span>{stats.youtubeCount} Videos</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-green-600" />
+              <span>{stats.webCount} Web Pages</span>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">
@@ -379,6 +398,7 @@ export default function KnowledgeManagementPage() {
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="file">Files</SelectItem>
                 <SelectItem value="youtube">Videos</SelectItem>
+                <SelectItem value="web">Web Pages</SelectItem>
               </SelectContent>
             </Select>
 
@@ -446,7 +466,7 @@ function SmartTagsView({
   onDelete,
   viewMode,
 }: {
-  documentsByType: { files: Document[]; youtube: Document[] };
+  documentsByType: { files: Document[]; youtube: Document[]; web: Document[] };
   selectedDocuments: string[];
   onToggleSelection: (documentId: string) => void;
   onDelete: (documentId: string, documentName: string) => void;
@@ -507,6 +527,39 @@ function SmartTagsView({
             viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
           )}>
             {documentsByType.youtube.map((document) => (
+              <DocumentCard
+                key={document.id}
+                document={document}
+                isSelected={selectedDocuments.includes(document.id)}
+                onToggleSelection={onToggleSelection}
+                onDelete={onDelete}
+                viewMode={viewMode}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Web Pages Section */}
+      {documentsByType.web.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <Globe className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Web Pages</h2>
+              <p className="text-sm text-muted-foreground">
+                {documentsByType.web.length} page{documentsByType.web.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+          
+          <div className={cn(
+            "grid gap-4",
+            viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
+          )}>
+            {documentsByType.web.map((document) => (
               <DocumentCard
                 key={document.id}
                 document={document}
@@ -587,10 +640,18 @@ function DocumentCard({
                   className="object-cover"
                 />
               </div>
+            ) : document.documentType === 'web' ? (
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Globe className="h-5 w-5 text-green-600" />
+                </div>
+              </div>
             ) : (
               <div className="p-3 bg-primary/10 rounded-lg shrink-0">
                 {document.documentType === 'youtube' ? (
                   <Youtube className="h-6 w-6 text-red-600" />
+                ) : document.documentType === 'web' ? (
+                  <Globe className="h-6 w-6 text-green-600" />
                 ) : (
                   <FileText className="h-6 w-6 text-primary" />
                 )}
@@ -616,6 +677,14 @@ function DocumentCard({
                     <span>{formatDuration(document.youtubeDuration)}</span>
                   </div>
                 )}
+                {document.documentType === 'web' && document.webUrl && (
+                  <div className="flex items-center gap-1">
+                    <Globe className="h-3 w-3" />
+                    <span className="truncate max-w-32" title={document.webUrl}>
+                      {new URL(document.webUrl).hostname}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -627,6 +696,19 @@ function DocumentCard({
                 onClick={(e) => e.stopPropagation()}
                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors shrink-0"
                 title="Watch on YouTube"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            )}
+            
+            {document.documentType === 'web' && document.webUrl && (
+              <a
+                href={document.webUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors shrink-0"
+                title="View web page"
               >
                 <ExternalLink className="h-4 w-4" />
               </a>
@@ -692,6 +774,10 @@ function DocumentCard({
                   {document.youtubeDuration && formatDuration(document.youtubeDuration)}
                 </div>
               </div>
+            ) : document.documentType === 'web' ? (
+              <div className="w-full h-24 bg-green-100 rounded-lg flex items-center justify-center">
+                <Globe className="h-8 w-8 text-green-600" />
+              </div>
             ) : (
               <div className="w-full h-24 bg-primary/10 rounded-lg flex items-center justify-center">
                 <FileText className="h-8 w-8 text-primary" />
@@ -708,7 +794,7 @@ function DocumentCard({
               <div className="flex items-center justify-between">
                 <span>{formatFileSize(document.size)}</span>
                 <Badge variant="outline" className="text-xs h-4">
-                  {document.documentType === 'youtube' ? 'VIDEO' : 'FILE'}
+                  {document.documentType === 'youtube' ? 'VIDEO' : document.documentType === 'web' ? 'WEB PAGE' : 'FILE'}
                 </Badge>
               </div>
               
@@ -716,6 +802,15 @@ function DocumentCard({
                 <div className="flex items-center gap-1">
                   <User className="h-3 w-3" />
                   <span className="truncate">{document.youtubeChannelName}</span>
+                </div>
+              )}
+              
+              {document.documentType === 'web' && document.webUrl && (
+                <div className="flex items-center gap-1">
+                  <Globe className="h-3 w-3" />
+                  <span className="truncate" title={document.webUrl}>
+                    {new URL(document.webUrl).hostname}
+                  </span>
                 </div>
               )}
               
@@ -738,6 +833,20 @@ function DocumentCard({
                 Watch Video
               </a>
             )}
+            
+            {document.documentType === 'web' && document.webUrl && (
+              <a
+                href={document.webUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-xs text-green-600 hover:underline"
+                title="View web page"
+              >
+                <ExternalLink className="h-3 w-3" />
+                View Page
+              </a>
+            )}
           </div>
         </div>
       </CardContent>
@@ -756,6 +865,7 @@ function AddKnowledgeModal({
   removeFile,
   uploadDocuments,
   uploadYouTubeVideo,
+  uploadWebPage,
 }: {
   projectId: string;
   uploadFiles: File[];
@@ -765,7 +875,8 @@ function AddKnowledgeModal({
   getInputProps: any;
   removeFile: (index: number) => void;
   uploadDocuments: () => void;
-  uploadYouTubeVideo: (videoInfo: YouTubeVideoInfo, transcript: string) => void;
+  uploadYouTubeVideo: (videoInfo: YouTubeVideoInfo, transcript: string) => Promise<void>;
+  uploadWebPage: (data: { url: string }) => Promise<void>;
 }) {
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -786,7 +897,7 @@ function AddKnowledgeModal({
 
       <div className="flex-1 overflow-y-auto">
         <Tabs defaultValue="files" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="files" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               File Upload
@@ -794,6 +905,10 @@ function AddKnowledgeModal({
             <TabsTrigger value="youtube" className="flex items-center gap-2">
               <Youtube className="h-4 w-4" />
               YouTube Video
+            </TabsTrigger>
+            <TabsTrigger value="web" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              Web Page
             </TabsTrigger>
           </TabsList>
           
@@ -877,6 +992,17 @@ function AddKnowledgeModal({
               </p>
             </div>
             <YouTubeUpload onUpload={uploadYouTubeVideo} />
+          </TabsContent>
+
+          <TabsContent value="web" className="space-y-4">
+            {/* Web Page Upload Section */}
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-medium mb-2">Add Web Page</h3>
+              <p className="text-sm text-muted-foreground">
+                Add web pages to your knowledge base by extracting their content
+              </p>
+            </div>
+            <WebPageUpload onUpload={uploadWebPage} isUploading={isUploading} />
           </TabsContent>
         </Tabs>
       </div>
