@@ -16,7 +16,8 @@ import {
   Calendar,
   Filter,
   Grid3X3,
-  List
+  List,
+  Trash2
 } from "lucide-react";
 import { Button } from "ui/button";
 import { Input } from "ui/input";
@@ -31,7 +32,7 @@ import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
 
-import { getDocumentsAction, addDocumentAction } from "@/app/api/rag/actions";
+import { getDocumentsAction, addDocumentAction, deleteDocumentAction } from "@/app/api/rag/actions";
 import { selectProjectByIdAction, updateProjectAction } from "@/app/api/chat/actions";
 import { Document } from "app-types/rag";
 import { useDropzone } from "react-dropzone";
@@ -80,7 +81,7 @@ export default function KnowledgeManagementPage() {
 
   // Filter and sort documents
   const filteredAndSortedDocuments = useMemo(() => {
-    let filtered = documents.filter((doc) => {
+    const filtered = documents.filter((doc) => {
       const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (doc.youtubeChannelName?.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesType = filterType === "all" || doc.documentType === filterType;
@@ -252,6 +253,28 @@ export default function KnowledgeManagementPage() {
     }
   };
 
+  const handleDeleteDocument = async (documentId: string, documentName: string) => {
+    if (!confirm(`Are you sure you want to delete &quot;${documentName}&quot;? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteDocumentAction(documentId);
+      toast.success(`Deleted "${documentName}" successfully`);
+      mutate(`documents-${projectId}`);
+      
+      // Remove from selected documents if it was selected
+      if (selectedDocuments.includes(documentId)) {
+        const newSelection = selectedDocuments.filter(id => id !== documentId);
+        setSelectedDocuments(newSelection);
+        await handleUpdateSelectedDocuments(newSelection);
+      }
+    } catch (error) {
+      console.error("Failed to delete document:", error);
+      toast.error(`Failed to delete "${documentName}"`);
+    }
+  };
+
   if (!project) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -278,7 +301,7 @@ export default function KnowledgeManagementPage() {
             <div>
               <h1 className="text-2xl font-bold">Knowledge Management</h1>
               <p className="text-sm text-muted-foreground">
-                Manage and organize your project's knowledge base • {stats.selectedCount} selected
+                Manage and organize your project&apos;s knowledge base • {stats.selectedCount} selected
               </p>
             </div>
           </div>
@@ -405,6 +428,7 @@ export default function KnowledgeManagementPage() {
               documentsByType={documentsByType}
               selectedDocuments={selectedDocuments}
               onToggleSelection={handleToggleDocumentSelection}
+              onDelete={handleDeleteDocument}
               viewMode={viewMode}
             />
           )}
@@ -419,11 +443,13 @@ function SmartTagsView({
   documentsByType,
   selectedDocuments,
   onToggleSelection,
+  onDelete,
   viewMode,
 }: {
   documentsByType: { files: Document[]; youtube: Document[] };
   selectedDocuments: string[];
   onToggleSelection: (documentId: string) => void;
+  onDelete: (documentId: string, documentName: string) => void;
   viewMode: ViewMode;
 }) {
   return (
@@ -453,6 +479,7 @@ function SmartTagsView({
                 document={document}
                 isSelected={selectedDocuments.includes(document.id)}
                 onToggleSelection={onToggleSelection}
+                onDelete={onDelete}
                 viewMode={viewMode}
               />
             ))}
@@ -485,6 +512,7 @@ function SmartTagsView({
                 document={document}
                 isSelected={selectedDocuments.includes(document.id)}
                 onToggleSelection={onToggleSelection}
+                onDelete={onDelete}
                 viewMode={viewMode}
               />
             ))}
@@ -500,11 +528,13 @@ function DocumentCard({
   document,
   isSelected,
   onToggleSelection,
+  onDelete,
   viewMode,
 }: {
   document: Document;
   isSelected: boolean;
   onToggleSelection: (documentId: string) => void;
+  onDelete: (documentId: string, documentName: string) => void;
   viewMode: ViewMode;
 }) {
   const formatFileSize = (bytes: number): string => {
@@ -601,6 +631,20 @@ function DocumentCard({
                 <ExternalLink className="h-4 w-4" />
               </a>
             )}
+            
+            {/* Delete button for list view */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(document.id, document.name);
+              }}
+              className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0"
+              title="Delete document"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -610,9 +654,23 @@ function DocumentCard({
   // Grid view
   return (
     <Card className={cn(
-      "group hover:shadow-md transition-all duration-200 cursor-pointer",
+      "group hover:shadow-md transition-all duration-200 cursor-pointer relative",
       isSelected && "ring-2 ring-primary bg-primary/5"
     )}>
+      {/* Delete button - positioned in top-right corner of the card */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(document.id, document.name);
+        }}
+        className="absolute top-2 right-2 h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
+        title="Delete document"
+      >
+        <Trash2 className="h-3 w-3" />
+      </Button>
+      
       <CardContent className="p-4">
         <div className="space-y-3">
           <div className="flex items-start gap-3">
@@ -834,7 +892,7 @@ function EmptyState({ searchQuery, onAddClick }: { searchQuery: string; onAddCli
         <Search className="h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-lg font-semibold mb-2">No results found</h3>
         <p className="text-muted-foreground mb-4">
-          No documents match your search for "{searchQuery}"
+          No documents match your search for &quot;{searchQuery}&quot;
         </p>
         <p className="text-sm text-muted-foreground">
           Try adjusting your search terms or filters
