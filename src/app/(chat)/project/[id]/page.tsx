@@ -18,6 +18,7 @@ import {
   FileUp,
   Pencil,
   MessagesSquare,
+  Database,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -204,12 +205,20 @@ export default function ProjectPage() {
                 </p>
               </div>
             </div>
-            <EnhancedDocumentManager projectId={id as string}>
-              <Button variant="outline" className="w-full">
-                <FileUp className="h-4 w-4 mr-2" />
-                Knowledge Base
-              </Button>
-            </EnhancedDocumentManager>
+            <div className="flex gap-2">
+              <EnhancedDocumentManager projectId={id as string}>
+                <Button variant="outline" className="flex-1">
+                  <FileUp className="h-4 w-4 mr-2" />
+                  Quick Upload
+                </Button>
+              </EnhancedDocumentManager>
+              <Link href={`/project/${id}/knowledge`}>
+                <Button variant="outline">
+                  <Database className="h-4 w-4 mr-2" />
+                  Manage
+                </Button>
+              </Link>
+            </div>
           </div>
           <FeatureCard
             title="Add Instructions"
