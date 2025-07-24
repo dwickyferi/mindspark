@@ -11,6 +11,7 @@ import {
 import {
   CREATE_THREAD_TITLE_PROMPT,
   generateExampleToolSchemaPrompt,
+  generateSystemInstructionPrompt,
 } from "lib/ai/prompts";
 
 import type { ChatModel, ChatThread, Project } from "app-types/chat";
@@ -191,7 +192,9 @@ export async function selectProjectByIdAction(id: string) {
 
 export async function updateProjectAction(
   id: string,
-  project: Partial<Pick<Project, "name" | "instructions" | "selectedDocuments">>,
+  project: Partial<
+    Pick<Project, "name" | "instructions" | "selectedDocuments">
+  >,
 ) {
   const updatedProject = await chatRepository.updateProject(id, project);
   await serverCache.delete(CacheKeys.project(id));
@@ -288,6 +291,24 @@ export async function rememberMcpServerCustomizationsAction(userId: string) {
 
   serverCache.set(key, prompts, 1000 * 60 * 30); // 30 minutes
   return prompts;
+}
+
+export async function generateSystemInstructionAction({
+  model,
+  existingContent,
+}: {
+  model?: ChatModel;
+  existingContent?: string;
+}) {
+  const languageModel = customModelProvider.getModel(model);
+
+  const { text } = await generateText({
+    model: languageModel,
+    prompt: generateSystemInstructionPrompt(existingContent),
+    maxTokens: 1000,
+  });
+
+  return text.trim();
 }
 
 export async function generateObjectAction({

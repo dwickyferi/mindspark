@@ -232,3 +232,38 @@ export const buildToolCallUnsupportedModelSystemPrompt = `
 - You are using a model that does not support tool calls. 
 - When users request tool usage, simply explain that the current model cannot use tools and that they can switch to a model that supports tool calling to use tools.
 `.trim();
+
+export const generateSystemInstructionPrompt = (existingContent?: string) => {
+  const basePrompt = `You are an expert at creating high-quality system instructions for AI assistants. 
+
+Create a well-structured system instruction that begins with the exact title:
+**System Instruction**
+
+The instruction should include:
+- Clear response tone and style (professional, helpful, accurate)
+- Level of detail expectations (comprehensive, well-structured)
+- Formatting preferences (bullet points, numbered steps, markdown where appropriate)
+- Emphasis on factual accuracy and clarity
+- Any specific behavioral guidelines
+
+Make the instruction generative, encouraging detailed and well-structured responses.`;
+
+  if (existingContent && existingContent.trim()) {
+    return `${basePrompt}
+
+EXISTING CONTENT TO ENHANCE:
+"${existingContent}"
+
+Please enhance and expand the existing content into a more polished, comprehensive system instruction while maintaining the original intent and context. Structure it properly and ensure it follows the requirements above.`;
+  } else {
+    return `${basePrompt}
+
+Create a default high-quality system instruction that promotes:
+- Professional and helpful communication style
+- Accurate, detailed, and well-structured responses
+- Clear explanations and comprehensive assistance
+- Appropriate use of formatting for readability
+
+The instruction should be versatile enough to work well for general-purpose AI assistance.`;
+  }
+};

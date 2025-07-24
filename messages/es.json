@@ -173,7 +173,14 @@
       "projectInstructions": "Instrucciones del Proyecto",
       "projectInstructionsUpdated": "Instrucciones del proyecto actualizadas",
       "howCanTheChatBotBestHelpYouWithThisProject": "¿Cómo puede el ChatBot ayudarte mejor con este proyecto?",
-      "youCanAskTheChatBotToFocusOnASpecificTopicOrToRespondInAParticularToneOrFormat": "Puedes pedirle al ChatBot que se enfoque en un tema específico o que responda en un tono o formato particular."
+      "youCanAskTheChatBotToFocusOnASpecificTopicOrToRespondInAParticularToneOrFormat": "Puedes pedirle al ChatBot que se enfoque en un tema específico o que responda en un tono o formato particular.",
+      "generatePrompt": "Generar Prompt",
+      "generatingPrompt": "Generando Prompt...",
+      "autoGenerateHelpfulSystemInstruction": "Generar automáticamente una instrucción de sistema útil",
+      "replaceExistingContent": "Esto reemplazará el contenido existente. ¿Continuar?",
+      "enhanceExistingContent": "Esto mejorará el contenido existente. ¿Continuar?",
+      "promptGeneratedSuccessfully": "Prompt generado exitosamente",
+      "failedToGeneratePrompt": "Error al generar el prompt"
     },
     "ChatPreferences": {
       "title": "Preferencias de Chat",
