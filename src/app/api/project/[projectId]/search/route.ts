@@ -6,7 +6,7 @@ import { getSession } from "auth/server";
 // POST /api/project/[projectId]/search - Search for relevant content in project documents
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ projectId: string }> }
+  { params }: { params: Promise<{ projectId: string }> },
 ) {
   try {
     const session = await getSession();
@@ -20,7 +20,7 @@ export async function POST(
     if (!query || typeof query !== "string" || query.trim().length === 0) {
       return NextResponse.json(
         { error: "Query is required and must be a non-empty string" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -33,7 +33,7 @@ export async function POST(
       query.trim(),
       Math.min(Math.max(Number(limit) || 5, 1), 20), // Limit between 1-20
       Math.min(Math.max(Number(threshold) || 0.3, 0), 1), // Threshold between 0-1
-      selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined
+      selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined,
     );
 
     return NextResponse.json({
@@ -45,7 +45,7 @@ export async function POST(
     console.error("Error searching documents:", error);
     return NextResponse.json(
       { error: "Failed to search documents" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -241,7 +241,7 @@ export default function ProjectPage() {
               <span>{t("conversationList")}</span>
             </h3>
             <div className="flex flex-col gap-2 px-2">
-              {project.threads.map((thread) => (
+              {project.threads.slice(-5).map((thread) => (
                 <div
                   className="flex gap-1 group/project-thread"
                   key={thread.id}
