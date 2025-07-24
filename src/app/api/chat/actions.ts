@@ -191,7 +191,7 @@ export async function selectProjectByIdAction(id: string) {
 
 export async function updateProjectAction(
   id: string,
-  project: Partial<Pick<Project, "name" | "instructions">>,
+  project: Partial<Pick<Project, "name" | "instructions" | "selectedDocuments">>,
 ) {
   const updatedProject = await chatRepository.updateProject(id, project);
   await serverCache.delete(CacheKeys.project(id));

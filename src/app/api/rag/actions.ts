@@ -64,7 +64,8 @@ export async function searchDocumentsAction(
   projectId: string, 
   query: string, 
   limit: number = 5, 
-  threshold: number = 0.3
+  threshold: number = 0.3,
+  selectedDocumentIds?: string[]
 ) {
   await getUserId(); // Ensure user is authenticated
   
@@ -72,7 +73,7 @@ export async function searchDocumentsAction(
     return { results: [], context: "" };
   }
   
-  const results = await ragService.searchRelevantContent(projectId, query, limit, threshold);
+  const results = await ragService.searchRelevantContent(projectId, query, limit, threshold, selectedDocumentIds);
   const context = ragService.formatContextForRAG(results);
   
   return { results, context };

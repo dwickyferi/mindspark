@@ -29,6 +29,7 @@ import equal from "lib/equal";
 import { MCPIcon } from "ui/mcp-icon";
 import { DefaultToolName } from "lib/ai/tools";
 import { DefaultToolIcon } from "./default-tool-icon";
+import { ChatDocumentUpload } from "./chat-document-upload";
 
 interface PromptInputProps {
   placeholder?: string;
@@ -39,6 +40,8 @@ interface PromptInputProps {
   toolDisabled?: boolean;
   isLoading?: boolean;
   model?: ChatModel;
+  onThinkingChange?: (thinking: boolean) => void;
+  thinking?: boolean;
   setModel?: (model: ChatModel) => void;
   voiceDisabled?: boolean;
   threadId?: string;
@@ -63,6 +66,8 @@ export default function PromptInput({
   toolDisabled,
   voiceDisabled,
   threadId,
+  onThinkingChange,
+  thinking,
 }: PromptInputProps) {
   const t = useTranslations("Chat");
 
@@ -245,14 +250,23 @@ export default function PromptInput({
                 />
               </div>
               <div className="flex w-full items-center gap-[2px] z-30">
-                <Button
-                  variant={"ghost"}
-                  size={"sm"}
-                  className="rounded-full hover:bg-input! p-2!"
-                  onClick={notImplementedToast}
-                >
-                  <Paperclip />
-                </Button>
+                {currentProjectId ? (
+                  <ChatDocumentUpload
+                    projectId={currentProjectId}
+                    variant="icon"
+                    size="sm"
+                    className="rounded-full hover:bg-input! p-2!"
+                  />
+                ) : (
+                  <Button
+                    variant={"ghost"}
+                    size={"sm"}
+                    className="rounded-full hover:bg-input! p-2!"
+                    onClick={notImplementedToast}
+                  >
+                    <Paperclip />
+                  </Button>
+                )}
 
                 {!toolDisabled && (
                   <>

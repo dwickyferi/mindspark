@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { pgDb } from "../db.pg";
 import { DocumentSchema, DocumentChunkSchema } from "../schema.pg";
 import type { RAGRepository, Document, DocumentChunk, DocumentUpload, ChunkWithSimilarity } from "app-types/rag";
@@ -93,9 +93,18 @@ export const pgRAGRepository: RAGRepository = {
     projectId: string, 
     queryEmbedding: number[], 
     limit: number = 5, 
-    threshold: number = 0.3
+    threshold: number = 0.3,
+    selectedDocumentIds?: string[]
   ): Promise<ChunkWithSimilarity[]> {
-    // Get all chunks for the project
+    // Build the where conditions
+    const whereConditions = [eq(DocumentChunkSchema.projectId, projectId)];
+    
+    // If selectedDocumentIds is provided and not empty, filter by those documents
+    if (selectedDocumentIds && selectedDocumentIds.length > 0) {
+      whereConditions.push(inArray(DocumentChunkSchema.documentId, selectedDocumentIds));
+    }
+
+    // Get chunks for the project (and optionally filtered by selected documents)
     const chunks = await pgDb
       .select({
         chunk: DocumentChunkSchema,
@@ -106,7 +115,7 @@ export const pgRAGRepository: RAGRepository = {
       })
       .from(DocumentChunkSchema)
       .leftJoin(DocumentSchema, eq(DocumentChunkSchema.documentId, DocumentSchema.id))
-      .where(eq(DocumentChunkSchema.projectId, projectId));
+      .where(and(...whereConditions));
 
     // Calculate similarities in memory since we don't have pgvector properly set up
     const chunksWithSimilarity = chunks

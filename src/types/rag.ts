@@ -54,6 +54,6 @@ export interface RAGRepository {
   // Chunk operations
   createChunks(chunks: Array<Omit<DocumentChunk, 'id' | 'createdAt'>>): Promise<DocumentChunk[]>;
   deleteChunksByDocumentId(documentId: string): Promise<void>;
-  searchSimilarChunks(projectId: string, queryEmbedding: number[], limit?: number, threshold?: number): Promise<ChunkWithSimilarity[]>;
+  searchSimilarChunks(projectId: string, queryEmbedding: number[], limit?: number, threshold?: number, selectedDocumentIds?: string[]): Promise<ChunkWithSimilarity[]>;
   getChunksByDocumentId(documentId: string): Promise<DocumentChunk[]>;
 }

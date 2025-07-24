@@ -46,6 +46,7 @@ export const ProjectSchema = pgTable("project", {
     .notNull()
     .references(() => UserSchema.id),
   instructions: json("instructions").$type<Project["instructions"]>(),
+  selectedDocuments: json("selected_documents").$type<string[]>().default([]),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

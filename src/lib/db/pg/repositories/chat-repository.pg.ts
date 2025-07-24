@@ -373,7 +373,7 @@ export const pgChatRepository: ChatRepository = {
 
   updateProject: async (
     id: string,
-    project: Partial<Pick<Project, "name" | "instructions">>,
+    project: Partial<Pick<Project, "name" | "instructions" | "selectedDocuments">>,
   ): Promise<Project> => {
     const [result] = await db
       .update(ProjectSchema)

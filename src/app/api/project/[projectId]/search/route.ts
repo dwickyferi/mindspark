@@ -1,4 +1,5 @@
 import { ragService } from "@/lib/ai/rag/service";
+import { chatRepository } from "@/lib/db/repository";
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "auth/server";
 
@@ -23,11 +24,16 @@ export async function POST(
       );
     }
 
+    // Get project details to access selected documents
+    const project = await chatRepository.selectProjectById(projectId);
+    const selectedDocumentIds = project?.selectedDocuments || [];
+
     const results = await ragService.searchRelevantContent(
       projectId,
       query.trim(),
       Math.min(Math.max(Number(limit) || 5, 1), 20), // Limit between 1-20
-      Math.min(Math.max(Number(threshold) || 0.3, 0), 1) // Threshold between 0-1
+      Math.min(Math.max(Number(threshold) || 0.3, 0), 1), // Threshold between 0-1
+      selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined
     );
 
     return NextResponse.json({

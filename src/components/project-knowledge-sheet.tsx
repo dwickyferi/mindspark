@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import {
   Sheet,
@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { addDocumentAction, getDocumentsAction, deleteDocumentAction } from "@/app/api/rag/actions";
+import { updateProjectAction, selectProjectByIdAction } from "@/app/api/chat/actions";
 import { Document } from "app-types/rag";
 import useSWR from "swr";
 import { cn } from "lib/utils";
@@ -42,10 +43,12 @@ interface ProjectKnowledgeSheetProps {
 
 interface DocumentCardProps {
   document: Document;
+  isSelected: boolean;
+  onToggleSelect: (documentId: string, selected: boolean) => void;
   onDelete: (id: string, name: string) => Promise<void>;
 }
 
-function DocumentCard({ document, onDelete }: DocumentCardProps) {
+function DocumentCard({ document, isSelected, onToggleSelect, onDelete }: DocumentCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const formatFileSize = (bytes: number): string => {
@@ -89,15 +92,30 @@ function DocumentCard({ document, onDelete }: DocumentCardProps) {
     }
   };
 
+  const handleToggleSelect = () => {
+    onToggleSelect(document.id, !isSelected);
+  };
+
   return (
-    <Card className="group hover:shadow-md transition-all duration-200">
+    <Card className={cn(
+      "group hover:shadow-md transition-all duration-200 cursor-pointer",
+      isSelected && "ring-2 ring-primary bg-primary/5"
+    )}>
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 p-2 bg-primary/10 rounded-lg">
-            <FileText className="h-5 w-5 text-primary" />
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={handleToggleSelect}
+              className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
+            />
+            <div className="flex-shrink-0 p-2 bg-primary/10 rounded-lg">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
           </div>
           
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0" onClick={handleToggleSelect}>
             <h4 className="font-medium text-sm truncate mb-1" title={document.name}>
               {document.name}
             </h4>
@@ -116,7 +134,10 @@ function DocumentCard({ document, onDelete }: DocumentCardProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleDelete}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete();
+            }}
             disabled={isDeleting}
             className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-destructive hover:text-destructive"
           >
@@ -306,6 +327,8 @@ function UploadModal({
 
 export function ProjectKnowledgeSheet({ projectId, children }: ProjectKnowledgeSheetProps) {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [isUpdatingSelection, setIsUpdatingSelection] = useState(false);
 
   const {
     data: documents = [],
@@ -316,10 +339,32 @@ export function ProjectKnowledgeSheet({ projectId, children }: ProjectKnowledgeS
     getDocumentsAction(projectId)
   );
 
+  const {
+    data: project,
+    mutate: mutateProject
+  } = useSWR(`/api/project/${projectId}`, () =>
+    selectProjectByIdAction(projectId)
+  );
+
+  // Initialize selected documents from project data
+  useEffect(() => {
+    if (project?.selectedDocuments) {
+      setSelectedDocuments(project.selectedDocuments);
+    }
+  }, [project?.selectedDocuments]);
+
   const handleDeleteDocument = async (documentId: string, documentName: string) => {
     try {
       await deleteDocumentAction(documentId);
       toast.success(`Deleted ${documentName}`);
+      
+      // Remove from selected documents if it was selected
+      if (selectedDocuments.includes(documentId)) {
+        const newSelection = selectedDocuments.filter(id => id !== documentId);
+        setSelectedDocuments(newSelection);
+        await handleUpdateSelectedDocuments(newSelection);
+      }
+      
       mutateDocuments();
     } catch (error) {
       console.error("Failed to delete document:", error);
@@ -330,6 +375,51 @@ export function ProjectKnowledgeSheet({ projectId, children }: ProjectKnowledgeS
   const handleUploadComplete = () => {
     mutateDocuments();
   };
+
+  const handleToggleDocumentSelection = async (documentId: string, selected: boolean) => {
+    let newSelection: string[];
+    
+    if (selected) {
+      newSelection = [...selectedDocuments, documentId];
+    } else {
+      newSelection = selectedDocuments.filter(id => id !== documentId);
+    }
+    
+    setSelectedDocuments(newSelection);
+    await handleUpdateSelectedDocuments(newSelection);
+  };
+
+  const handleUpdateSelectedDocuments = async (newSelection: string[]) => {
+    setIsUpdatingSelection(true);
+    try {
+      await updateProjectAction(projectId, {
+        selectedDocuments: newSelection
+      });
+      mutateProject();
+    } catch (error) {
+      console.error("Failed to update selected documents:", error);
+      toast.error("Failed to update document selection");
+      // Revert selection on error
+      if (project?.selectedDocuments) {
+        setSelectedDocuments(project.selectedDocuments);
+      }
+    } finally {
+      setIsUpdatingSelection(false);
+    }
+  };
+
+  const handleSelectAll = async () => {
+    const allDocumentIds = documents.map(doc => doc.id);
+    setSelectedDocuments(allDocumentIds);
+    await handleUpdateSelectedDocuments(allDocumentIds);
+  };
+
+  const handleSelectNone = async () => {
+    setSelectedDocuments([]);
+    await handleUpdateSelectedDocuments([]);
+  };
+
+  const selectedCount = selectedDocuments.length;
 
   return (
     <>
@@ -349,6 +439,11 @@ export function ProjectKnowledgeSheet({ projectId, children }: ProjectKnowledgeS
                   <Badge variant="secondary" className="text-xs">
                     {documents.length}
                   </Badge>
+                  {selectedCount > 0 && (
+                    <Badge variant="default" className="text-xs ml-2">
+                      {selectedCount} selected
+                    </Badge>
+                  )}
                 </div>
                 <Button
                   size="sm"
@@ -360,8 +455,36 @@ export function ProjectKnowledgeSheet({ projectId, children }: ProjectKnowledgeS
                 </Button>
               </div>
               <SheetDescription>
-                Manage documents that provide context for your project conversations.
+                Select documents to provide context for your project conversations.
               </SheetDescription>
+              
+              {/* Selection Controls */}
+              {documents.length > 0 && (
+                <div className="flex items-center gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectAll}
+                    disabled={isUpdatingSelection}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectNone}
+                    disabled={isUpdatingSelection}
+                  >
+                    Select None
+                  </Button>
+                  {isUpdatingSelection && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Updating...
+                    </div>
+                  )}
+                </div>
+              )}
             </SheetHeader>
 
             {/* Content */}
@@ -398,6 +521,8 @@ export function ProjectKnowledgeSheet({ projectId, children }: ProjectKnowledgeS
                     <DocumentCard
                       key={document.id}
                       document={document}
+                      isSelected={selectedDocuments.includes(document.id)}
+                      onToggleSelect={handleToggleDocumentSelection}
                       onDelete={handleDeleteDocument}
                     />
                   ))}
@@ -409,7 +534,10 @@ export function ProjectKnowledgeSheet({ projectId, children }: ProjectKnowledgeS
             {documents.length > 0 && (
               <div className="px-6 py-4 border-t bg-muted/30">
                 <p className="text-xs text-muted-foreground">
-                  These documents provide context for AI responses in this project.
+                  {selectedCount > 0 
+                    ? `${selectedCount} of ${documents.length} documents selected for AI conversations in this project.`
+                    : "No documents selected. Select documents above to provide context for AI conversations."
+                  }
                 </p>
               </div>
             )}

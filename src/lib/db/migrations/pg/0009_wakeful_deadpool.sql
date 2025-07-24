@@ -1,0 +1,1 @@
+ALTER TABLE "project" ADD COLUMN "selected_documents" json DEFAULT '[]'::json;

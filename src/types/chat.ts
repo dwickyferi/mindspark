@@ -23,6 +23,7 @@ export type Project = {
   instructions: {
     systemPrompt: string;
   };
+  selectedDocuments?: string[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -185,7 +186,7 @@ export type ChatRepository = {
 
   updateProject(
     id: string,
-    project: Partial<Pick<Project, "name" | "instructions">>,
+    project: Partial<Pick<Project, "name" | "instructions" | "selectedDocuments">>,
   ): Promise<Project>;
 
   deleteProject(id: string): Promise<void>;

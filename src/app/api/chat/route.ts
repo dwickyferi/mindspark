@@ -208,11 +208,16 @@ export async function POST(request: Request) {
               ?.join(' ') || '';
             
             if (userMessage.trim()) {
+              // Get project details to access selected documents
+              const project = await chatRepository.selectProjectById(thread.projectId);
+              const selectedDocumentIds = project?.selectedDocuments || [];
+              
               const results = await ragService.searchRelevantContent(
                 thread.projectId,
                 userMessage,
                 5, // limit
-                0.3 // threshold
+                0.3, // threshold
+                selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined
               );
               ragContext = ragService.formatContextForRAG(results);
             }

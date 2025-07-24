@@ -114,7 +114,8 @@ export class RAGService {
     projectId: string,
     query: string,
     limit: number = 5,
-    threshold: number = 0.3
+    threshold: number = 0.3,
+    selectedDocumentIds?: string[]
   ): Promise<ChunkWithSimilarity[]> {
     if (!query.trim()) {
       return [];
@@ -122,7 +123,7 @@ export class RAGService {
 
     try {
       const queryEmbedding = await generateQueryEmbedding(query);
-      return ragRepository.searchSimilarChunks(projectId, queryEmbedding, limit, threshold);
+      return ragRepository.searchSimilarChunks(projectId, queryEmbedding, limit, threshold, selectedDocumentIds);
     } catch (error) {
       console.error("Error searching for relevant content:", error);
       return [];
