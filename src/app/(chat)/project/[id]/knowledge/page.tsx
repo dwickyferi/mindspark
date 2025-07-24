@@ -356,9 +356,9 @@ export default function KnowledgeManagementPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="border-b bg-card/50 backdrop-blur-sm">
+      <div className="border-b bg-card/50 backdrop-blur-sm flex-shrink-0">
         <div className="flex items-center justify-between p-6">
           <div className="flex items-center gap-4">
             <Link href={`/project/${projectId}`}>
@@ -436,7 +436,7 @@ export default function KnowledgeManagementPage() {
       </div>
 
       {/* Controls */}
-      <div className="border-b bg-card/30">
+      <div className="border-b bg-card/30 flex-shrink-0">
         <div className="flex items-center justify-between p-4 gap-4">
           <div className="flex items-center gap-4 flex-1">
             <div className="relative flex-1 max-w-md">
@@ -502,7 +502,7 @@ export default function KnowledgeManagementPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto min-h-0">
         <div className="p-6">
           {documentsLoading ? (
             <KnowledgeGridSkeleton />
