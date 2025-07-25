@@ -1,7 +1,7 @@
-import { openai } from "@ai-sdk/openai";
-import { anthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
+import { customModelProvider } from "../ai/models";
 import type { TableSchema } from "./schema-processor";
+import type { ChatModel } from "app-types/chat";
 
 export interface SQLGenerationResult {
   sql: string;
@@ -15,7 +15,7 @@ export interface SQLGenerationResult {
 export interface SQLGenerationOptions {
   userQuery: string;
   tableSchemas: TableSchema[];
-  aiProvider: "openai" | "anthropic" | "ollama";
+  aiProvider: string;
   aiModel: string;
   maxRetries: number;
   previousError?: string;
@@ -85,17 +85,11 @@ export class SQLGenerator {
     const schemaContext = this.buildSchemaContext(tableSchemas);
     const systemPrompt = this.buildSystemPrompt(schemaContext, previousError);
 
-    let model;
-    switch (aiProvider) {
-      case "openai":
-        model = openai(aiModel);
-        break;
-      case "anthropic":
-        model = anthropic(aiModel);
-        break;
-      default:
-        throw new Error(`Unsupported AI provider: ${aiProvider}`);
-    }
+    // Use the custom model provider to get the appropriate model
+    const model = customModelProvider.getModel({
+      provider: aiProvider,
+      model: aiModel,
+    } as ChatModel);
 
     const { text } = await generateText({
       model,

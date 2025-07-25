@@ -13,6 +13,7 @@ export interface TextToSQLRequest extends ChartGenerationRequest {
 }
 
 export interface TextToSQLResponse extends ChartGenerationResponse {
+  data?: any[]; // Query result rows
   queryComplexity?: {
     complexity: "low" | "medium" | "high";
     factors: string[];
@@ -186,6 +187,7 @@ export class TextToSQLService {
       // Step 9: Return successful result
       return {
         success: true,
+        data: queryResult?.rows || queryResult || [], // Include the actual query results
         sql: safeSql,
         explanation: `${sqlResult.explanation}\n\nQuery returned ${queryResult?.rowCount || 0} rows in ${queryResult?.executionTime || 0}ms.`,
         retryCount: sqlResult.retryCount + executionAttempt,
