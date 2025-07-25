@@ -1,7 +1,13 @@
 "use client";
 import { SidebarMenuButton, useSidebar } from "ui/sidebar";
 import { Tooltip } from "ui/tooltip";
-import { SidebarMenu, SidebarMenuItem } from "ui/sidebar";
+import {
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
+} from "ui/sidebar";
 import { SidebarGroupContent } from "ui/sidebar";
 
 import { SidebarGroup } from "ui/sidebar";
@@ -11,12 +17,22 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { MCPIcon } from "ui/mcp-icon";
 import { WriteIcon } from "ui/write-icon";
-import { Waypoints } from "lucide-react";
+import {
+  Waypoints,
+  ChevronDown,
+  Database,
+  BarChart3,
+  Layers,
+  MessageSquare,
+} from "lucide-react";
+import { useState } from "react";
 
 export function AppSidebarMenus() {
   const router = useRouter();
   const t = useTranslations("Layout");
   const { setOpenMobile } = useSidebar();
+  const [isMindsparksOpen, setIsMindsparksOpen] = useState(false);
+
   return (
     <SidebarGroup>
       <SidebarGroupContent>
@@ -65,12 +81,62 @@ export function AppSidebarMenus() {
         <SidebarMenu>
           <Tooltip>
             <SidebarMenuItem>
-              <Link href="/workflow">
-                <SidebarMenuButton className="font-semibold">
-                  <Waypoints className="size-4" />
-                  {t("workflow")}
-                </SidebarMenuButton>
-              </Link>
+              <SidebarMenuButton
+                className="font-semibold"
+                onClick={() => setIsMindsparksOpen(!isMindsparksOpen)}
+              >
+                <Waypoints className="size-4" />
+                {t("workflow")}
+                <ChevronDown
+                  className={`size-4 ml-auto transition-transform ${
+                    isMindsparksOpen ? "transform rotate-180" : ""
+                  }`}
+                />
+              </SidebarMenuButton>
+              {isMindsparksOpen && (
+                <SidebarMenuSub>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild>
+                      <Link href="/workflow">
+                        <Waypoints className="size-4" />
+                        Workflow Builder
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild>
+                      <Link href="/studio/datasets">
+                        <Database className="size-4" />
+                        MindSpark Datasets
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild>
+                      <Link href="/studio">
+                        <MessageSquare className="size-4" />
+                        Text-to-SQL Chat
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild>
+                      <Link href="/studio/charts">
+                        <BarChart3 className="size-4" />
+                        Chart Library
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild>
+                      <Link href="/studio/dashboards">
+                        <Layers className="size-4" />
+                        Dashboards
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              )}
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>

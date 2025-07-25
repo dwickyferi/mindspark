@@ -1,6 +1,7 @@
 import {
   generateEmbeddings,
   generateContextualEmbeddings,
+  generateQueryEmbedding,
   extractTextFromFile,
   validateContentForRAG,
 } from "./embedding";
@@ -327,6 +328,36 @@ Instructions:
    */
   async getDocument(documentId: string): Promise<Document | null> {
     return ragRepository.getDocumentById(documentId);
+  }
+
+  /**
+   * Search for relevant content in project documents using semantic similarity
+   */
+  async searchRelevantContent(
+    projectId: string,
+    query: string,
+    limit: number = 5,
+    threshold: number = 0.3,
+    selectedDocumentIds?: string[],
+  ): Promise<ChunkWithSimilarity[]> {
+    try {
+      // Generate embedding for the search query
+      const queryEmbedding = await generateQueryEmbedding(query);
+
+      // Search for similar chunks using the repository
+      const results = await ragRepository.searchSimilarChunks(
+        projectId,
+        queryEmbedding,
+        limit,
+        threshold,
+        selectedDocumentIds,
+      );
+
+      return results;
+    } catch (error) {
+      console.error("Error searching relevant content:", error);
+      throw new Error("Failed to search relevant content");
+    }
   }
 }
 
