@@ -44,7 +44,8 @@ export default function DatasetsPage() {
   const [editingDatasource, setEditingDatasource] = useState<
     (DatasourceListItem & { connectionConfig?: any }) | null
   >(null);
-  const [deletingDatasource, setDeletingDatasource] = useState<DatasourceListItem | null>(null);
+  const [deletingDatasource, setDeletingDatasource] =
+    useState<DatasourceListItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [testingConnections, setTestingConnections] = useState<Set<string>>(
     new Set(),
@@ -170,9 +171,13 @@ export default function DatasetsPage() {
     if (!deletingDatasource) return;
 
     try {
-      const response = await DatasourceAPI.deleteDatasource(deletingDatasource.id);
+      const response = await DatasourceAPI.deleteDatasource(
+        deletingDatasource.id,
+      );
       if (response.success) {
-        setDatasources((prev) => prev.filter((ds) => ds.id !== deletingDatasource.id));
+        setDatasources((prev) =>
+          prev.filter((ds) => ds.id !== deletingDatasource.id),
+        );
         toast.success("Datasource deleted successfully");
       } else {
         toast.error(response.error || "Failed to delete datasource");
@@ -314,8 +319,8 @@ export default function DatasetsPage() {
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-gray-600 mb-4">
-              Are you sure you want to delete &quot;{deletingDatasource?.name}&quot;? 
-              This action cannot be undone.
+              Are you sure you want to delete &quot;{deletingDatasource?.name}
+              &quot;? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <Button
