@@ -447,6 +447,36 @@ export const ChartGenerationHistorySchema = pgTable(
   ],
 );
 
+// MindSpark Studio - Studio Session State (for persistent history)
+export const StudioSessionSchema = pgTable(
+  "studio_session",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserSchema.id, { onDelete: "cascade" }),
+    selectedDatasourceId: uuid("selected_datasource_id").references(
+      () => DatasourceSchema.id,
+    ),
+    selectedDatabase: text("selected_database"), // Store the selected database name
+    selectedSchema: text("selected_schema"),
+    selectedTables: json("selected_tables").$type<string[]>().default([]),
+    expandedSidebar: boolean("expanded_sidebar").notNull().default(true),
+    sessionMetadata: json("session_metadata").default({}), // Additional session data
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    unique("studio_session_user_unique").on(table.userId), // One session per user
+    index("studio_session_user_idx").on(table.userId),
+    index("studio_session_datasource_idx").on(table.selectedDatasourceId),
+  ],
+);
+
 export type McpServerEntity = typeof McpServerSchema.$inferSelect;
 export type ChatThreadEntity = typeof ChatThreadSchema.$inferSelect;
 export type ChatMessageEntity = typeof ChatMessageSchema.$inferSelect;
@@ -468,3 +498,4 @@ export type DatasourceConnectionTestEntity =
   typeof DatasourceConnectionTestSchema.$inferSelect;
 export type ChartGenerationHistoryEntity =
   typeof ChartGenerationHistorySchema.$inferSelect;
+export type StudioSessionEntity = typeof StudioSessionSchema.$inferSelect;

@@ -38,9 +38,12 @@ import {
   Brain,
   Sparkles,
   Search,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DatasourceAPI, type DatasourceListItem } from "@/lib/api/datasources";
+import { StudioAPI } from "@/lib/api/studio";
+import { ConfirmationModal } from "@/components/confirmation-modal";
 import { SelectModel } from "@/components/select-model";
 import {
   Table,
@@ -496,7 +499,8 @@ const chartCardPropsAreEqual = (
     prevProps.onAiInputOpenChange === nextProps.onAiInputOpenChange &&
     prevProps.onAiInputQueryChange === nextProps.onAiInputQueryChange &&
     prevProps.onAiInputSubmit === nextProps.onAiInputSubmit &&
-    prevProps.onToggleExpansion === nextProps.onToggleExpansion
+    prevProps.onToggleExpansion === nextProps.onToggleExpansion &&
+    prevProps.onDeleteChart === nextProps.onDeleteChart
   );
 };
 
@@ -510,6 +514,7 @@ interface ChartCardProps {
   onAiInputQueryChange: (chartId: string, value: string) => void;
   onAiInputSubmit: (chartId: string) => void;
   onToggleExpansion: (chartId: string) => void;
+  onDeleteChart: (chartId: string, chartTitle: string) => void;
 }
 
 const ChartCardComponent = React.memo(
@@ -522,6 +527,7 @@ const ChartCardComponent = React.memo(
     onAiInputQueryChange,
     onAiInputSubmit,
     onToggleExpansion,
+    onDeleteChart,
   }: ChartCardProps) => {
     // Memoized handlers to prevent unnecessary re-renders and focus loss
     const handleQueryChange = useCallback(
@@ -543,6 +549,10 @@ const ChartCardComponent = React.memo(
     const handleToggleClick = useCallback(() => {
       onToggleExpansion(chart.id);
     }, [chart.id, onToggleExpansion]);
+
+    const handleDeleteClick = useCallback(() => {
+      onDeleteChart(chart.id, chart.chartProps.title);
+    }, [chart.id, chart.chartProps.title, onDeleteChart]);
 
     const handlePopoverOpenChange = useCallback(
       (open: boolean) => {
@@ -644,6 +654,21 @@ const ChartCardComponent = React.memo(
                   <p>{chart.isExpanded ? "View Chart" : "Inspect Data"}</p>
                 </TooltipContent>
               </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="shadow text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={handleDeleteClick}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Delete Chart</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </CardHeader>
@@ -710,6 +735,7 @@ export default function AnalyticsStudioPage() {
   const [datasources, setDatasources] = useState<DatasourceListItem[]>([]);
   const [selectedDatasource, setSelectedDatasource] =
     useState<DatasourceListItem | null>(null);
+  const [selectedDatabase, setSelectedDatabase] = useState<string>("");
   const [availableSchemas, setAvailableSchemas] = useState<DatabaseSchema[]>(
     [],
   );
@@ -720,6 +746,24 @@ export default function AnalyticsStudioPage() {
   const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
   const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [expandedSidebar, setExpandedSidebar] = useState(true);
+
+  // Persistent storage state
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
+  const [isLoadingCharts, setIsLoadingCharts] = useState(true);
+  const [isRestoringSession, setIsRestoringSession] = useState(false);
+
+  // Delete confirmation modal state
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    chartId: string | null;
+    chartTitle: string;
+    isDeleting: boolean;
+  }>({
+    isOpen: false,
+    chartId: null,
+    chartTitle: "",
+    isDeleting: false,
+  });
 
   // Get model from app store (same as chat page)
   const selectedModel = appStore(useShallow((state) => state.chatModel));
@@ -831,6 +875,35 @@ export default function AnalyticsStudioPage() {
                   chartTitle: result.chartTitle,
                   lastUpdated: Date.now(), // Add timestamp for re-render tracking
                 };
+
+                // Save chart to database
+                if (selectedDatasource) {
+                  try {
+                    const saveResponse = await StudioAPI.createChart({
+                      title: result.chartTitle || result.query,
+                      description: `Generated from query: ${result.query}`,
+                      datasourceId: selectedDatasource.id,
+                      sqlQuery: result.sql || "",
+                      chartType: result.chartType,
+                      chartConfig: chartProps,
+                      dataCache: result.data,
+                      dataMode: "static",
+                      tags: [],
+                    });
+
+                    if (saveResponse.success && saveResponse.data) {
+                      // Update the chart ID with the database ID
+                      newChart.id = saveResponse.data.id;
+                    }
+                  } catch (saveError) {
+                    console.error(
+                      "Failed to save chart to database:",
+                      saveError,
+                    );
+                    // Continue with local chart even if save fails
+                    toast.error("Chart created but failed to save to database");
+                  }
+                }
 
                 // Use functional update to prevent duplicate charts
                 setChartCards((prev) => {
@@ -991,16 +1064,235 @@ export default function AnalyticsStudioPage() {
     }
   }, [modifyMessages, modifyingChartId]); // Include modifyingChartId for proper updates
 
-  // Load datasources on mount
+  // Load datasources on mount and restore session
   useEffect(() => {
-    loadDatasources();
+    const initializeStudio = async () => {
+      try {
+        // Load datasources first
+        await loadDatasources();
+
+        // Load session state
+        setIsLoadingSession(true);
+        const sessionResponse = await StudioAPI.getSession();
+        if (sessionResponse.success && sessionResponse.data) {
+          const session = sessionResponse.data;
+
+          // Find and set the selected datasource
+          if (session.selectedDatasourceId) {
+            const response = await DatasourceAPI.listDatasources();
+            if (response.success && response.data) {
+              const datasource = response.data.find(
+                (ds) => ds.id === session.selectedDatasourceId,
+              );
+              if (datasource) {
+                // Set restoration flag to prevent useEffect conflicts
+                setIsRestoringSession(true);
+
+                // Show toast notification that session is being restored
+                toast.success("Restoring your previous session...", {
+                  duration: 2000,
+                });
+
+                // Step 1: Set datasource and wait
+                setSelectedDatasource(datasource);
+                setSelectedDatabase(session.selectedDatabase || "");
+                setExpandedSidebar(session.expandedSidebar);
+
+                // Step 2: Load schemas and wait
+                setIsLoadingSchemas(true);
+                try {
+                  const response = await fetch(
+                    `/api/analytics/schema?datasourceId=${datasource.id}`,
+                  );
+                  const result = await response.json();
+
+                  if (result.success && result.schema) {
+                    // Extract unique schemas from the schema response
+                    const schemas = result.schema.schemas || [];
+                    const schemaList = schemas.map((schema: string) => ({
+                      name: schema,
+                      tableCount:
+                        result.schema.tables?.filter(
+                          (table: any) => table.schema === schema,
+                        )?.length || 0,
+                    }));
+                    setAvailableSchemas(schemaList);
+
+                    // Step 3: Set saved schema if it exists, then load tables
+                    if (
+                      session.selectedSchema &&
+                      schemaList.find((s) => s.name === session.selectedSchema)
+                    ) {
+                      setSelectedSchema(session.selectedSchema);
+
+                      // Step 4: Load tables for the selected schema and wait
+                      setIsLoadingTables(true);
+                      try {
+                        // Filter tables by selected schema
+                        const filteredTables =
+                          result.schema.tables?.filter(
+                            (table: any) =>
+                              table.schema === session.selectedSchema,
+                          ) || [];
+                        setAvailableTables(filteredTables);
+
+                        // Step 5: Set saved tables if they exist
+                        if (
+                          session.selectedTables &&
+                          session.selectedTables.length > 0
+                        ) {
+                          const validTables = session.selectedTables.filter(
+                            (tableName) =>
+                              filteredTables.some((table: any) => {
+                                const fullTableName = table.schema
+                                  ? `${table.schema}.${table.name}`
+                                  : table.name;
+                                return fullTableName === tableName;
+                              }),
+                          );
+                          setSelectedTables(validTables);
+
+                          // Show success message when session is fully restored
+                          toast.success(
+                            `Session restored: ${datasource.name} → ${session.selectedSchema} → ${validTables.length} table(s)`,
+                            {
+                              duration: 3000,
+                            },
+                          );
+                        } else {
+                          toast.success(
+                            `Session restored: ${datasource.name} → ${session.selectedSchema}`,
+                            {
+                              duration: 3000,
+                            },
+                          );
+                        }
+                      } catch (error) {
+                        console.error(
+                          "Failed to load tables during session restore:",
+                          error,
+                        );
+                      } finally {
+                        setIsLoadingTables(false);
+                      }
+                    } else if (session.selectedSchema) {
+                      // Schema from session no longer exists, clear it and save updated session
+                      console.warn(
+                        `Saved schema "${session.selectedSchema}" no longer exists, clearing selection`,
+                      );
+                      setSelectedSchema("");
+                      setSelectedTables([]);
+                      // Update the session to clear the invalid schema
+                      StudioAPI.saveSession({
+                        selectedDatasourceId: datasource.id,
+                        selectedDatabase: session.selectedDatabase || "",
+                        selectedSchema: "",
+                        selectedTables: [],
+                        expandedSidebar: session.expandedSidebar,
+                        sessionMetadata: {},
+                      }).catch(console.error);
+
+                      toast.success(`Session restored: ${datasource.name}`, {
+                        duration: 3000,
+                      });
+                    } else {
+                      // No saved schema, just show datasource restored
+                      toast.success(`Session restored: ${datasource.name}`, {
+                        duration: 3000,
+                      });
+                    }
+                  }
+                } catch (error) {
+                  console.error(
+                    "Failed to load schemas during session restore:",
+                    error,
+                  );
+                } finally {
+                  setIsLoadingSchemas(false);
+                  // Clear restoration flag after all steps are complete
+                  setIsRestoringSession(false);
+                }
+              }
+            }
+          } else {
+            // No saved datasource, clear restoration flag
+            setIsRestoringSession(false);
+          }
+        } else {
+          // No saved session, clear restoration flag
+          setIsRestoringSession(false);
+        }
+
+        // Load existing charts
+        setIsLoadingCharts(true);
+        const chartsResponse = await StudioAPI.getCharts();
+        if (chartsResponse.success && chartsResponse.data) {
+          // Convert database charts to ChartCard format
+          const loadedCharts: ChartCard[] = chartsResponse.data.map(
+            (chart) => ({
+              id: chart.id,
+              query: chart.title, // Use title as query for display
+              sql: chart.sqlQuery,
+              data: chart.dataCache || [],
+              chartType: chart.chartType as ChartType,
+              chartProps: chart.chartConfig as any, // Use any for now since we store different formats
+              isExpanded: false,
+              executionTime: undefined,
+              rowCount: chart.dataCache?.length || 0,
+              chartTitle: chart.title,
+              lastUpdated: Date.now(),
+            }),
+          );
+          setChartCards(loadedCharts);
+        }
+      } catch (error) {
+        console.error("Error initializing studio:", error);
+        toast.error("Failed to load studio session");
+        // Make sure to clear restoration flag on error
+        setIsRestoringSession(false);
+      } finally {
+        setIsLoadingSession(false);
+        setIsLoadingCharts(false);
+      }
+    };
+
+    initializeStudio();
   }, []);
 
-  // Load schemas when datasource is selected
+  // Auto-save session state when key values change
   useEffect(() => {
-    if (selectedDatasource) {
+    if (!isLoadingSession) {
+      const saveSession = async () => {
+        try {
+          await StudioAPI.saveSession({
+            selectedDatasourceId: selectedDatasource?.id || null,
+            selectedDatabase: selectedDatabase,
+            selectedSchema: selectedSchema,
+            selectedTables: selectedTables,
+            expandedSidebar: expandedSidebar,
+            sessionMetadata: {},
+          });
+        } catch (error) {
+          console.error("Failed to save session:", error);
+        }
+      };
+
+      saveSession();
+    }
+  }, [
+    selectedDatasource,
+    selectedDatabase,
+    selectedSchema,
+    selectedTables,
+    expandedSidebar,
+    isLoadingSession,
+  ]);
+
+  // Load schemas when datasource is selected (but not during session restoration)
+  useEffect(() => {
+    if (selectedDatasource && !isRestoringSession) {
       loadSchemas();
-    } else {
+    } else if (!selectedDatasource) {
       setAvailableSchemas([]);
       setSelectedSchema("");
       setAvailableTables([]);
@@ -1010,17 +1302,17 @@ export default function AnalyticsStudioPage() {
       setProcessedInvocations(new Set());
       setProcessedModifyInvocations(new Set());
     }
-  }, [selectedDatasource]);
+  }, [selectedDatasource, isRestoringSession]);
 
-  // Load tables when schema is selected
+  // Load tables when schema is selected (but not during session restoration)
   useEffect(() => {
-    if (selectedDatasource && selectedSchema) {
+    if (selectedDatasource && selectedSchema && !isRestoringSession) {
       loadTables();
-    } else {
+    } else if (!selectedSchema) {
       setAvailableTables([]);
       setSelectedTables([]);
     }
-  }, [selectedDatasource, selectedSchema]);
+  }, [selectedDatasource, selectedSchema, isRestoringSession]);
 
   const loadDatasources = async () => {
     try {
@@ -1057,10 +1349,7 @@ export default function AnalyticsStudioPage() {
         }));
         setAvailableSchemas(schemaList);
 
-        // Auto-select first schema if available
-        if (schemaList.length > 0) {
-          setSelectedSchema(schemaList[0].name);
-        }
+        // Remove auto-selection logic - let user manually select or session restoration handle it
       } else {
         toast.error("Failed to load database schemas");
       }
@@ -1365,6 +1654,50 @@ Use the textToSql tool to execute this updated request.
     );
   }, []);
 
+  // Delete chart functionality
+  const handleDeleteChart = useCallback(
+    (chartId: string, chartTitle: string) => {
+      setDeleteModal({
+        isOpen: true,
+        chartId,
+        chartTitle,
+        isDeleting: false,
+      });
+    },
+    [],
+  );
+
+  const confirmDeleteChart = useCallback(async () => {
+    if (!deleteModal.chartId) return;
+
+    setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
+
+    try {
+      // Delete from database
+      const deleteResponse = await StudioAPI.deleteChart(deleteModal.chartId);
+
+      if (deleteResponse.success) {
+        // Remove from local state
+        setChartCards((prev) =>
+          prev.filter((chart) => chart.id !== deleteModal.chartId),
+        );
+        toast.success("Chart deleted successfully!");
+      } else {
+        toast.error(deleteResponse.error || "Failed to delete chart");
+      }
+    } catch (error) {
+      console.error("Error deleting chart:", error);
+      toast.error("Failed to delete chart");
+    } finally {
+      setDeleteModal({
+        isOpen: false,
+        chartId: null,
+        chartTitle: "",
+        isDeleting: false,
+      });
+    }
+  }, [deleteModal.chartId]);
+
   // New optimized callback handlers for the ChartCardComponent
   const handleAiInputOpenChange = useCallback(
     (chartId: string, open: boolean) => {
@@ -1451,6 +1784,7 @@ Use the textToSql tool to execute this updated request.
                       (ds) => ds.id === value,
                     );
                     setSelectedDatasource(datasource || null);
+                    setSelectedDatabase(datasource?.name || "");
                     setSelectedSchema("");
                     setSelectedTables([]);
                   }}
@@ -1697,6 +2031,7 @@ Use the textToSql tool to execute this updated request.
                     onAiInputQueryChange={handleAiInputQueryChange}
                     onAiInputSubmit={handleAiInputSubmit}
                     onToggleExpansion={toggleChartExpansion}
+                    onDeleteChart={handleDeleteChart}
                   />
                 ))}
               </div>
@@ -1704,6 +2039,26 @@ Use the textToSql tool to execute this updated request.
           )}
         </div>
       </div>
+
+      {/* Delete confirmation modal */}
+      <ConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={() =>
+          setDeleteModal({
+            isOpen: false,
+            chartId: null,
+            chartTitle: "",
+            isDeleting: false,
+          })
+        }
+        onConfirm={confirmDeleteChart}
+        title="Delete Chart"
+        description={`Are you sure you want to delete "${deleteModal.chartTitle}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={deleteModal.isDeleting}
+      />
     </div>
   );
 }
