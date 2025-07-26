@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -111,6 +111,7 @@ interface ChartCard {
   rowCount?: number;
   chartTitle?: string;
   lastUpdated?: number; // Add timestamp to force re-renders
+  toolCallId?: string; // Track the originating tool call for deduplication
 }
 
 interface DatabaseTable {
@@ -768,13 +769,12 @@ export default function AnalyticsStudioPage() {
   // Get model from app store (same as chat page)
   const selectedModel = appStore(useShallow((state) => state.chatModel));
 
-  // State to track processed tool invocations to prevent infinite loops
-  const [processedInvocations, setProcessedInvocations] = useState<Set<string>>(
-    new Set(),
-  );
-  const [processedModifyInvocations, setProcessedModifyInvocations] = useState<
-    Set<string>
-  >(new Set());
+  // Use refs to track processed invocations to prevent stale closures
+  const processedInvocationsRef = useRef<Set<string>>(new Set());
+  const processedModifyInvocationsRef = useRef<Set<string>>(new Set());
+
+  // Add ref to track last generation time for debouncing
+  const lastGenerationTimeRef = useRef<number>(0);
 
   // State to track which chart is currently being modified
   const [modifyingChartId, setModifyingChartId] = useState<string | null>(null);
@@ -844,13 +844,28 @@ export default function AnalyticsStudioPage() {
         ) {
           const result = (invocation as any).result;
 
-          // Create a unique key for this invocation to prevent duplicate processing
+          // Create a stable, deterministic key for this invocation - NO Date.now()!
           const invocationKey = `${lastMessage.id}-${invocation.toolCallId}-${result.query || ""}-${result.chartType || ""}`;
 
           // Skip if we've already processed this invocation
-          if (processedInvocations.has(invocationKey)) {
+          if (processedInvocationsRef.current.has(invocationKey)) {
+            console.log(
+              "Skipping already processed invocation:",
+              invocationKey,
+            );
             continue;
           }
+
+          // Additional safety check: also check by toolCallId alone (should be globally unique)
+          const toolCallId = invocation.toolCallId;
+          if (processedInvocationsRef.current.has(`toolCall-${toolCallId}`)) {
+            console.log("Skipping already processed toolCall:", toolCallId);
+            continue;
+          }
+
+          // Mark as processed immediately to prevent duplicates
+          processedInvocationsRef.current.add(invocationKey);
+          processedInvocationsRef.current.add(`toolCall-${toolCallId}`);
 
           if (result?.success) {
             const processResult = async () => {
@@ -874,6 +889,7 @@ export default function AnalyticsStudioPage() {
                   rowCount: result.rowCount,
                   chartTitle: result.chartTitle,
                   lastUpdated: Date.now(), // Add timestamp for re-render tracking
+                  toolCallId: invocation.toolCallId, // Track the originating tool call
                 };
 
                 // Save chart to database
@@ -905,25 +921,47 @@ export default function AnalyticsStudioPage() {
                   }
                 }
 
-                // Use functional update to prevent duplicate charts
+                // Use functional update to prevent duplicate charts with improved deduplication
                 setChartCards((prev) => {
-                  // Check if chart with same query, chartType, and similar data already exists
-                  const exists = prev.some(
-                    (chart) =>
-                      chart.query === result.query &&
-                      chart.chartType === result.chartType &&
-                      JSON.stringify(chart.data) ===
-                        JSON.stringify(result.data),
+                  // Primary deduplication: Check if we already have a chart from this exact toolCall
+                  const toolCallDuplicate = prev.some(
+                    (chart) => chart.toolCallId === invocation.toolCallId,
                   );
-                  if (exists) {
-                    console.log("Duplicate chart prevented:", {
+
+                  if (toolCallDuplicate) {
+                    console.log(
+                      "Duplicate chart prevented - same toolCallId:",
+                      {
+                        toolCallId: invocation.toolCallId,
+                        query: result.query,
+                        chartType: result.chartType,
+                      },
+                    );
+                    return prev;
+                  }
+
+                  // Secondary deduplication: Content-based duplicate detection
+                  const contentDuplicate = prev.some((chart) => {
+                    const queryMatch = chart.query === result.query;
+                    const typeMatch = chart.chartType === result.chartType;
+                    const sqlMatch = chart.sql === (result.sql || "");
+                    const dataMatch = chart.rowCount === result.rowCount;
+
+                    // Consider it a duplicate if query, type, SQL, and row count all match
+                    return queryMatch && typeMatch && sqlMatch && dataMatch;
+                  });
+
+                  if (contentDuplicate) {
+                    console.log("Duplicate chart prevented - content match:", {
                       query: result.query,
                       chartType: result.chartType,
                       existingCharts: prev.length,
                     });
                     return prev;
                   }
+
                   console.log("Adding new chart:", {
+                    toolCallId: invocation.toolCallId,
                     query: result.query,
                     chartType: result.chartType,
                     totalCharts: prev.length + 1,
@@ -931,33 +969,20 @@ export default function AnalyticsStudioPage() {
                   return [...prev, newChart];
                 });
 
-                // Mark this invocation as processed immediately
-                setProcessedInvocations(
-                  (prev) => new Set([...prev, invocationKey]),
-                );
-
                 toast.success("Chart generated successfully!");
               } catch (error) {
                 console.error("Error processing chart result:", error);
                 toast.error("Failed to process chart data");
-                // Still mark as processed to prevent retry loops
-                setProcessedInvocations(
-                  (prev) => new Set([...prev, invocationKey]),
-                );
               }
             };
             processResult();
           } else {
             toast.error(result?.error || "Failed to generate chart");
-            // Mark failed invocations as processed too
-            setProcessedInvocations(
-              (prev) => new Set([...prev, invocationKey]),
-            );
           }
         }
       }
     }
-  }, [messages]); // Remove processedInvocations from dependency array
+  }, [messages, selectedDatasource]); // Remove generateChartProps as it's defined later
 
   // Watch for modification results
   useEffect(() => {
@@ -970,13 +995,31 @@ export default function AnalyticsStudioPage() {
         ) {
           const result = (invocation as any).result;
 
-          // Create a unique key for this modification invocation
+          // Create a stable key for this modification invocation - NO Date.now()!
           const invocationKey = `modify-${lastMessage.id}-${invocation.toolCallId}-${result.query || ""}-${modifyingChartId || ""}`;
 
           // Skip if we've already processed this invocation
-          if (processedModifyInvocations.has(invocationKey)) {
+          if (processedModifyInvocationsRef.current.has(invocationKey)) {
+            console.log(
+              "Skipping already processed modification invocation:",
+              invocationKey,
+            );
             continue;
           }
+
+          // Additional safety check: also check by toolCallId alone for modifications
+          const modifyToolCallKey = `modify-toolCall-${invocation.toolCallId}`;
+          if (processedModifyInvocationsRef.current.has(modifyToolCallKey)) {
+            console.log(
+              "Skipping already processed modify toolCall:",
+              invocation.toolCallId,
+            );
+            continue;
+          }
+
+          // Mark as processed immediately
+          processedModifyInvocationsRef.current.add(invocationKey);
+          processedModifyInvocationsRef.current.add(modifyToolCallKey);
 
           if (result?.success) {
             const processResult = async () => {
@@ -1032,21 +1075,12 @@ export default function AnalyticsStudioPage() {
                 // Clear the modifying chart ID
                 setModifyingChartId(null);
 
-                // Mark this invocation as processed immediately
-                setProcessedModifyInvocations(
-                  (prev) => new Set([...prev, invocationKey]),
-                );
-
                 toast.success("Chart updated successfully!");
               } catch (error) {
                 console.error("Error processing chart modification:", error);
                 toast.error("Failed to process chart update");
                 // Clear the modifying chart ID on error
                 setModifyingChartId(null);
-                // Still mark as processed to prevent retry loops
-                setProcessedModifyInvocations(
-                  (prev) => new Set([...prev, invocationKey]),
-                );
               }
             };
             processResult();
@@ -1054,15 +1088,21 @@ export default function AnalyticsStudioPage() {
             toast.error(result?.error || "Failed to update chart");
             // Clear the modifying chart ID on error
             setModifyingChartId(null);
-            // Mark failed invocations as processed too
-            setProcessedModifyInvocations(
-              (prev) => new Set([...prev, invocationKey]),
-            );
           }
         }
       }
     }
-  }, [modifyMessages, modifyingChartId]); // Include modifyingChartId for proper updates
+  }, [modifyMessages, modifyingChartId]); // Remove generateChartProps from dependencies as it's defined later
+
+  // Cleanup effect to prevent memory leaks and stale data
+  useEffect(() => {
+    return () => {
+      // Clear processed invocations when component unmounts
+      processedInvocationsRef.current.clear();
+      processedModifyInvocationsRef.current.clear();
+      console.log("Cleaned up processed invocations on component unmount");
+    };
+  }, []);
 
   // Load datasources on mount and restore session
   useEffect(() => {
@@ -1275,8 +1315,8 @@ export default function AnalyticsStudioPage() {
       setSelectedTables([]);
       // Clear any ongoing modifications when datasource changes
       setModifyingChartId(null);
-      setProcessedInvocations(new Set());
-      setProcessedModifyInvocations(new Set());
+      processedInvocationsRef.current.clear();
+      processedModifyInvocationsRef.current.clear();
     }
   }, [selectedDatasource, isRestoringSession]);
 
@@ -1502,15 +1542,30 @@ export default function AnalyticsStudioPage() {
       return;
     }
 
+    // Debouncing: prevent rapid successive generations
+    const now = Date.now();
+    if (now - lastGenerationTimeRef.current < 1000) {
+      // 1 second debounce
+      console.log("Chart generation request debounced");
+      return;
+    }
+    lastGenerationTimeRef.current = now;
+
     // Store the input value before clearing it
     const queryInput = input;
 
     // Clear the input immediately when user submits
     setInput("");
 
-    // Reset processed invocations for new query session
-    setProcessedInvocations(new Set());
-    setProcessedModifyInvocations(new Set());
+    // Reset processed invocations for new query session with logging
+    console.log(
+      "Starting new chart generation - clearing processed invocations",
+    );
+    processedInvocationsRef.current.clear();
+    processedModifyInvocationsRef.current.clear();
+
+    // Also clear any ongoing chart modifications
+    setModifyingChartId(null);
 
     // Create a comprehensive prompt for the AI to understand the context
     const contextPrompt = `
@@ -1564,7 +1619,7 @@ Use the textToSql tool to execute this request.
       setModifyingChartId(chartId);
 
       // Reset processed modification invocations for new modification session
-      setProcessedModifyInvocations(new Set());
+      processedModifyInvocationsRef.current.clear();
 
       // Create a modification prompt with current SQL context
       const modificationPrompt = `
