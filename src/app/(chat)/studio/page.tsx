@@ -36,11 +36,11 @@ import {
   Loader2,
   CheckCircle,
   RefreshCw,
+  Brain,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DatasourceAPI, type DatasourceListItem } from "@/lib/api/datasources";
 import { SelectModel } from "@/components/select-model";
-import { ChatModel } from "app-types/chat";
 import {
   Table,
   TableBody,
@@ -67,6 +67,10 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { generateText } from "ai";
+import { customModelProvider } from "@/lib/ai/models";
+import { appStore } from "@/app/store";
+import { useShallow } from "zustand/shallow";
 
 interface ChartCard {
   id: string;
@@ -110,11 +114,8 @@ export default function AnalyticsStudioPage() {
   const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [expandedSidebar, setExpandedSidebar] = useState(true);
 
-  // Model selection state
-  const [selectedModel, setSelectedModel] = useState<ChatModel>({
-    provider: "openai",
-    model: "gpt-4",
-  });
+  // Get model from app store (same as chat page)
+  const selectedModel = appStore(useShallow((state) => state.chatModel));
 
   // AI Input state
   const [aiInputOpen, setAiInputOpen] = useState<{ [key: string]: boolean }>(
@@ -256,6 +257,49 @@ export default function AnalyticsStudioPage() {
     });
   };
 
+  const generateChartTitle = async (
+    query: string,
+    data: any[],
+    chartType: string,
+  ): Promise<string> => {
+    try {
+      // Analyze the data structure
+      const dataKeys = data.length > 0 ? Object.keys(data[0]) : [];
+      const dataSample = data.slice(0, 3);
+
+      const prompt = `
+        Based on the user query, data structure, and chart type, generate a concise, descriptive title for the chart.
+        
+        User Query: "${query}"
+        Chart Type: ${chartType}
+        Data Columns: ${dataKeys.join(", ")}
+        Sample Data: ${JSON.stringify(dataSample, null, 2)}
+        
+        Generate a clear, professional chart title that describes what the chart shows.
+        Keep it under 10 words and make it specific to the data being visualized.
+        
+        Respond with ONLY the title text, no quotes or additional formatting.
+      `;
+
+      // Use AI SDK instead of direct API call
+      const model = customModelProvider.getModel(selectedModel);
+
+      const { text } = await generateText({
+        model,
+        system:
+          "You are a data visualization expert. Generate concise, professional chart titles. Respond only with the title text.",
+        prompt,
+        temperature: 0.3,
+        maxTokens: 100,
+      });
+
+      return text.trim() || query;
+    } catch (error) {
+      console.error("Error generating chart title:", error);
+      return query; // Fallback to original query
+    }
+  };
+
   const generateChart = async () => {
     if (
       !naturalLanguageQuery.trim() ||
@@ -278,8 +322,8 @@ export default function AnalyticsStudioPage() {
           query: naturalLanguageQuery,
           selectedTables,
           datasourceId: selectedDatasource.id,
-          aiProvider: selectedModel.provider,
-          aiModel: selectedModel.model,
+          aiProvider: selectedModel?.provider || "openai",
+          aiModel: selectedModel?.model || "gpt-4",
           maxRetries: 3,
         }),
       });
@@ -290,10 +334,17 @@ export default function AnalyticsStudioPage() {
         // Determine chart type based on data structure
         const chartType = determineChartType(result.data);
 
+        // Generate AI-powered title for the chart
+        const aiTitle = await generateChartTitle(
+          naturalLanguageQuery,
+          result.data,
+          chartType,
+        );
+
         const newChart: ChartCard = {
           id: Date.now().toString(),
           query: naturalLanguageQuery,
-          title: naturalLanguageQuery,
+          title: aiTitle,
           chartType: chartType,
           sql: result.sql || "",
           data: result.data,
@@ -371,8 +422,8 @@ export default function AnalyticsStudioPage() {
             query: query,
             selectedTables,
             datasourceId: selectedDatasource.id,
-            aiProvider: selectedModel.provider,
-            aiModel: selectedModel.model,
+            aiProvider: selectedModel?.provider || "openai",
+            aiModel: selectedModel?.model || "gpt-4",
             maxRetries: 3,
           }),
         });
@@ -952,16 +1003,15 @@ export default function AnalyticsStudioPage() {
               />
               <div className="flex gap-2">
                 <SelectModel
-                  onSelect={setSelectedModel}
+                  onSelect={(model) => {
+                    appStore.setState({ chatModel: model });
+                  }}
                   defaultModel={selectedModel}
                   align="end"
                 >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="px-3 min-w-[120px]"
-                  >
-                    {selectedModel.model}
+                  <Button variant="outline" className="px-3 min-w-[120px] h-10">
+                    <Brain className="h-4 w-4 mr-2" />
+                    {selectedModel?.model || "Select Model"}
                   </Button>
                 </SelectModel>
                 <Button
@@ -971,7 +1021,7 @@ export default function AnalyticsStudioPage() {
                     selectedTables.length === 0 ||
                     isGenerating
                   }
-                  className="px-8"
+                  className="px-8 h-10"
                 >
                   {isGenerating ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />

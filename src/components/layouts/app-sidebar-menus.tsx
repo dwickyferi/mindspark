@@ -24,6 +24,7 @@ import {
   BarChart3,
   Layers,
   MessageSquare,
+  LayoutDashboard,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -31,7 +32,8 @@ export function AppSidebarMenus() {
   const router = useRouter();
   const t = useTranslations("Layout");
   const { setOpenMobile } = useSidebar();
-  const [isMindsparksOpen, setIsMindsparksOpen] = useState(false);
+  const [isWorkflowOpen, setIsWorkflowOpen] = useState(false);
+  const [isMindsparkStudioOpen, setIsMindsparkStudioOpen] = useState(false);
 
   return (
     <SidebarGroup>
@@ -78,22 +80,24 @@ export function AppSidebarMenus() {
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>
+
+        {/* Workflow Section */}
         <SidebarMenu>
           <Tooltip>
             <SidebarMenuItem>
               <SidebarMenuButton
                 className="font-semibold"
-                onClick={() => setIsMindsparksOpen(!isMindsparksOpen)}
+                onClick={() => setIsWorkflowOpen(!isWorkflowOpen)}
               >
                 <Waypoints className="size-4" />
                 {t("workflow")}
                 <ChevronDown
                   className={`size-4 ml-auto transition-transform ${
-                    isMindsparksOpen ? "transform rotate-180" : ""
+                    isWorkflowOpen ? "transform rotate-180" : ""
                   }`}
                 />
               </SidebarMenuButton>
-              {isMindsparksOpen && (
+              {isWorkflowOpen && (
                 <SidebarMenuSub>
                   <SidebarMenuSubItem>
                     <SidebarMenuSubButton asChild>
@@ -103,6 +107,30 @@ export function AppSidebarMenus() {
                       </Link>
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              )}
+            </SidebarMenuItem>
+          </Tooltip>
+        </SidebarMenu>
+
+        {/* MindSpark Studio Section */}
+        <SidebarMenu>
+          <Tooltip>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                className="font-semibold"
+                onClick={() => setIsMindsparkStudioOpen(!isMindsparkStudioOpen)}
+              >
+                <LayoutDashboard className="size-4" />
+                MindSpark Studio
+                <ChevronDown
+                  className={`size-4 ml-auto transition-transform ${
+                    isMindsparkStudioOpen ? "transform rotate-180" : ""
+                  }`}
+                />
+              </SidebarMenuButton>
+              {isMindsparkStudioOpen && (
+                <SidebarMenuSub>
                   <SidebarMenuSubItem>
                     <SidebarMenuSubButton asChild>
                       <Link href="/studio/datasets">
