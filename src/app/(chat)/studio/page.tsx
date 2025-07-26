@@ -36,7 +36,7 @@ import {
   CheckCircle,
   RefreshCw,
   Brain,
-  Sparkle,
+  Sparkles,
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -483,7 +483,7 @@ const ChartCardComponent = React.memo(
                     size="sm"
                     className="shadow text-purple-700"
                   >
-                    <Sparkle className="h-4 w-4" />
+                    <Sparkles className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-96 p-4">
@@ -524,14 +524,25 @@ const ChartCardComponent = React.memo(
                   </div>
                 </PopoverContent>
               </Popover>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="shadow text-purple-800"
-                onClick={handleToggleClick}
-              >
-                <Search className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="shadow text-purple-800"
+                    onClick={handleToggleClick}
+                  >
+                    {chart.isExpanded ? (
+                      <BarChart3 className="h-4 w-4" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{chart.isExpanded ? "View Chart" : "Inspect Data"}</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </CardHeader>
@@ -1497,21 +1508,23 @@ Use the textToSql tool to execute this updated request.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {chartCards.map((chart) => (
-                <ChartCardComponent
-                  key={chart.id}
-                  chart={chart}
-                  aiInputOpen={aiInputOpen}
-                  aiInputQuery={aiInputQuery}
-                  isModifyLoading={isModifyLoading}
-                  onAiInputOpenChange={handleAiInputOpenChange}
-                  onAiInputQueryChange={handleAiInputQueryChange}
-                  onAiInputSubmit={handleAiInputSubmit}
-                  onToggleExpansion={toggleChartExpansion}
-                />
-              ))}
-            </div>
+            <TooltipProvider>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {chartCards.map((chart) => (
+                  <ChartCardComponent
+                    key={chart.id}
+                    chart={chart}
+                    aiInputOpen={aiInputOpen}
+                    aiInputQuery={aiInputQuery}
+                    isModifyLoading={isModifyLoading}
+                    onAiInputOpenChange={handleAiInputOpenChange}
+                    onAiInputQueryChange={handleAiInputQueryChange}
+                    onAiInputSubmit={handleAiInputSubmit}
+                    onToggleExpansion={toggleChartExpansion}
+                  />
+                ))}
+              </div>
+            </TooltipProvider>
           )}
         </div>
       </div>
