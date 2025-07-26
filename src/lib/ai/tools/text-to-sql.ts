@@ -66,8 +66,45 @@ export const textToSqlTool = tool({
         maxRetries: 3,
       });
 
+      // Pre-validate the SQL to catch common issues
+      if (response.sql) {
+        const preValidationErrors = validateSQLSyntax(response.sql);
+        if (preValidationErrors.length > 0) {
+          console.warn("SQL pre-validation warnings:", preValidationErrors);
+          // Don't throw here, but log for debugging
+        }
+      }
+
       if (!response.success) {
-        throw new Error(response.error || "Failed to execute SQL query");
+        // Log the actual SQL query that failed for debugging
+        console.error("SQL execution failed:", {
+          error: response.error,
+          sql: response.sql,
+          query: query,
+          selectedTables: selectedTables,
+        });
+
+        // Provide more helpful error messages
+        let errorMessage = response.error || "Failed to execute SQL query";
+
+        // Check for common syntax errors and provide suggestions
+        if (errorMessage.includes("syntax error")) {
+          if (errorMessage.includes('near "["')) {
+            errorMessage +=
+              "\n\nSuggestion: The generated SQL contains invalid bracket characters. This might be due to an AI formatting issue.";
+          } else if (
+            errorMessage.includes("relation") &&
+            errorMessage.includes("does not exist")
+          ) {
+            errorMessage +=
+              "\n\nSuggestion: Check if the table names are correct and exist in the selected schema.";
+          } else {
+            errorMessage +=
+              "\n\nSuggestion: Check PostgreSQL syntax rules and ensure the query follows standard SQL format.";
+          }
+        }
+
+        throw new Error(errorMessage);
       }
 
       // Analyze the query and data to determine the best chart type
@@ -237,4 +274,37 @@ function generateChartTitle(query: string, chartType: string): string {
   }
 
   return title;
+}
+
+/**
+ * Pre-validate SQL syntax to catch common issues
+ */
+function validateSQLSyntax(sql: string): string[] {
+  const warnings: string[] = [];
+
+  // Check for brackets that don't belong in SQL
+  if (sql.includes("[") || sql.includes("]")) {
+    warnings.push(
+      "SQL contains bracket characters '[' or ']' which are not valid PostgreSQL syntax",
+    );
+  }
+
+  // Check for JSON-like structure
+  if (sql.trim().startsWith("{") || sql.trim().startsWith("[")) {
+    warnings.push(
+      "SQL appears to be formatted as JSON or array, should be plain SQL",
+    );
+  }
+
+  // Check for markdown formatting
+  if (sql.includes("```")) {
+    warnings.push("SQL contains markdown code block formatting");
+  }
+
+  // Check if it starts with SELECT
+  if (!sql.trim().toUpperCase().startsWith("SELECT")) {
+    warnings.push("SQL should start with SELECT statement");
+  }
+
+  return warnings;
 }

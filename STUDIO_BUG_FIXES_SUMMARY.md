@@ -1,32 +1,185 @@
-# Studio Bug Fixes Implementation Summary
+# Studio Page Bug Fixes Summary
 
 ## Issues Fixed
 
-### 1. Duplicate Chart Generation ✅
+### 1. Modify Query Delay Issue ✅
 
-**Problem**: Charts were being generated multiple times with the same content.
+**Problem**: Chart/table updates had a delay where changes didn't reflect immediately on the second modification, only after the third attempt.
 
-**Root Cause**: The `useEffect` hooks that process tool invocations had `processedInvocations` in their dependency arrays, causing infinite loops when the state was updated.
+**Root Cause**: Stale closure issues in React hooks and missing dependencies in useEffect hooks.
 
-**Solution**:
+**Solution Applied**:
 
-- Removed `processedInvocations` and `processedModifyInvocations` from the dependency arrays
-- Updated the chart creation logic to check for existing charts and prevent duplicates
-- Moved the processed invocation tracking outside the dependency cycle
+- **Fixed dependency arrays**: Added `generateChartProps` to the modification useEffect dependencies
+- **Resolved stale closures**: Used functional state updates in `handleAiInputSubmit` to avoid accessing stale `chartCards` state
+- **Moved function declaration**: Repositioned `generateChartProps` as a memoized `useCallback` before its usage in useEffect hooks
+- **Improved state management**: Used functional state access pattern to get current chart state without relying on stale closures
 
-**Code Changes**:
+### 2. Preserve Existing Chart Title on Modify ✅
 
-```tsx
-// Before: Caused infinite loops
+**Problem**: Chart titles were being regenerated during modifications instead of preserving the original title.
+
+**Root Cause**: Title preservation logic wasn't consistently applied throughout the update process.
+
+**Solution Applied**:
+
+- **Enhanced title preservation**: Added explicit title preservation in the chart update logic
+- **Updated modification prompt**: Added instruction to preserve original chart title unless explicitly changed by user
+- **Fixed database updates**: Ensured preserved titles are saved to the database correctly
+- **Improved chartProps handling**: Merged preserved title into chartProps during updates
+
+## Code Changes Made
+
+### 1. Memoized `generateChartProps` Function
+
+```typescript
+// Moved and memoized chart props generation
+const generateChartProps = useCallback(
+  async (
+    query: string,
+    data: any[],
+    chartType: ChartType,
+    title?: string
+  ): Promise<ChartProps> => {
+    // ... implementation
+  },
+  [] // No dependencies as helper functions are stable
+);
+```
+
+### 2. Fixed useEffect Dependencies
+
+```typescript
+// Added proper dependencies to fix stale closures
 useEffect(() => {
-  // ... processing logic
+  // ... chart generation logic
+}, [messages, selectedDatasource, generateChartProps]); // Added generateChartProps
+
+useEffect(() => {
+  // ... modification logic
+}, [modifyMessages, modifyingChartId, selectedDatasource, generateChartProps]); // Added dependencies
+```
+
+### 3. Enhanced Chart Modification Logic
+
+```typescript
+// Improved title preservation in chart updates
+const preservedTitle =
+  originalChart.chartTitle || originalChart.chartProps.title;
+
+const updatedChart = {
+  ...originalChart,
+  // ... other updates
+  chartProps: {
+    ...chartProps,
+    title: preservedTitle, // Always preserve the original title
+  },
+  chartTitle: preservedTitle, // Preserve original title
+  lastUpdated: Date.now(), // Force re-render
+};
+```
+
+### 4. Fixed Stale Closure in `handleAiInputSubmit`
+
+```typescript
+// Use functional state access to avoid stale closures
+let currentChart: ChartCard | undefined;
+setChartCards((prev) => {
+  currentChart = prev.find((chart) => chart.id === chartId);
+  return prev; // Don't modify state, just capture current chart
+});
+```
+
+### 5. Enhanced Database Update Logic
+
+```typescript
+// Improved database persistence with title preservation
+setChartCards((currentCharts) => {
+  const currentChart = currentCharts.find(
+    (chart) => chart.id === targetChartId
+  );
+
+  if (currentChart) {
+    const preservedTitle =
+      currentChart.chartTitle || currentChart.chartProps.title;
+
+    // Save to database with preserved title
+    StudioAPI.updateChart(targetChartId, {
+      title: preservedTitle, // Always preserve the original title
+      // ... other fields
+    });
+  }
+
+  return currentCharts; // Return unchanged for database sync
+});
+```
+
+## React Best Practices Applied
+
+### 1. Proper Hook Dependencies
+
+- Fixed all useEffect dependency arrays to include all referenced variables
+- Used `useCallback` for stable function references
+- Avoided accessing stale state in closures
+
+### 2. Optimized Memoization
+
+- Kept existing `React.memo` optimizations for chart components
+- Added proper comparison functions to prevent unnecessary re-renders
+- Used `lastUpdated` timestamps to force re-renders when needed
+
+### 3. State Management Improvements
+
+- Used functional state updates to avoid stale closures
+- Implemented proper state synchronization between local and database
+- Added debouncing mechanisms to prevent rapid successive modifications
+
+### 4. Performance Optimizations
+
+- Maintained existing chart deduplication logic
+- Preserved stable chart IDs and references
+- Optimized database operations to run asynchronously without blocking UI
+
+## Testing Recommendations
+
+### 1. Modify Query Flow Testing
+
+1. Create a chart with any query
+2. Modify the chart immediately (should work on first try)
+3. Modify the same chart again immediately (should work without delay)
+4. Verify title is preserved throughout modifications
+
+### 2. Title Preservation Testing
+
+1. Create a chart and note the original title
+2. Perform multiple modifications
+3. Verify the title remains unchanged unless explicitly modified
+4. Check database persistence of preserved titles
+
+### 3. Concurrent Modification Testing
+
+1. Try to modify multiple charts simultaneously
+2. Verify proper error handling and user feedback
+3. Ensure no race conditions or state corruption
+
+## Conclusion
+
+Both reported issues have been successfully resolved:
+
+1. ✅ **Modify Query Delay**: Fixed stale closures and dependency issues
+2. ✅ **Title Preservation**: Enhanced title preservation logic throughout the modification flow
+
+The fixes maintain backward compatibility while improving performance and user experience. All changes follow React best practices and maintain the existing code architecture.
+useEffect(() => {
+// ... processing logic
 }, [messages, processedInvocations]);
 
 // After: Prevents infinite loops
 useEffect(() => {
-  // ... processing logic with immediate state updates
+// ... processing logic with immediate state updates
 }, [messages]);
-```
+
+````
 
 ### 2. Unnecessary Re-rendering Optimization ✅
 
@@ -65,7 +218,7 @@ const ChartCardComponent = React.memo(({ chart, ...otherProps }) => {
   const handleQueryChange = useCallback(/* ... */, [chart.id, onAiInputQueryChange]);
   // ... other memoized handlers
 });
-```
+````
 
 ### 3. Chart Overflowing Card Layout ✅
 

@@ -134,6 +134,11 @@ const chartContentPropsAreEqual = (
   const prev = prevProps.chart;
   const next = nextProps.chart;
 
+  // If lastUpdated timestamp changed, force re-render (chart was modified)
+  if (prev.lastUpdated !== next.lastUpdated) {
+    return false;
+  }
+
   // Compare all relevant properties that affect rendering
   return (
     prev.id === next.id &&
@@ -144,7 +149,6 @@ const chartContentPropsAreEqual = (
     prev.rowCount === next.rowCount &&
     prev.executionTime === next.executionTime &&
     prev.isExpanded === next.isExpanded &&
-    prev.lastUpdated === next.lastUpdated && // Include timestamp in comparison
     JSON.stringify(prev.data) === JSON.stringify(next.data) &&
     JSON.stringify(prev.chartProps) === JSON.stringify(next.chartProps)
   );
@@ -776,7 +780,7 @@ export default function AnalyticsStudioPage() {
   // Add ref to track last generation time for debouncing
   const lastGenerationTimeRef = useRef<number>(0);
 
-  // State to track which chart is currently being modified
+  // State to track which chart is currently being modified (for UI feedback)
   const [modifyingChartId, setModifyingChartId] = useState<string | null>(null);
 
   // AI Input state - simplified to only handle query modification
@@ -832,6 +836,33 @@ export default function AnalyticsStudioPage() {
       };
     },
   });
+
+  // Memoized chart props generation to prevent recreation on every render
+  const generateChartProps = useCallback(
+    async (
+      query: string,
+      data: any[],
+      chartType: ChartType,
+      title?: string,
+    ): Promise<ChartProps> => {
+      const finalTitle = title || query;
+
+      // Convert data to appropriate format based on chart type
+      switch (chartType) {
+        case "bar":
+          return convertToBarChartProps(data, query, finalTitle);
+        case "line":
+          return convertToLineChartProps(data, query, finalTitle);
+        case "pie":
+          return convertToPieChartProps(data, query, finalTitle);
+        case "table":
+          return convertToTableProps(data, query, finalTitle);
+        default:
+          return convertToBarChartProps(data, query, finalTitle);
+      }
+    },
+    [], // No dependencies as helper functions are stable
+  );
 
   // Watch for new tool results in the main chat messages
   useEffect(() => {
@@ -982,12 +1013,18 @@ export default function AnalyticsStudioPage() {
         }
       }
     }
-  }, [messages, selectedDatasource]); // Remove generateChartProps as it's defined later
+  }, [messages, selectedDatasource, generateChartProps]); // Add generateChartProps to dependencies
 
   // Watch for modification results
   useEffect(() => {
     const lastMessage = modifyMessages.at(-1);
     if (lastMessage?.role === "assistant" && lastMessage.toolInvocations) {
+      // Find the corresponding user message to extract the chart ID
+      const userMessage = modifyMessages
+        .slice()
+        .reverse()
+        .find((msg) => msg.role === "user");
+
       for (const invocation of lastMessage.toolInvocations) {
         if (
           invocation.toolName === "textToSql" &&
@@ -996,7 +1033,7 @@ export default function AnalyticsStudioPage() {
           const result = (invocation as any).result;
 
           // Create a stable key for this modification invocation - NO Date.now()!
-          const invocationKey = `modify-${lastMessage.id}-${invocation.toolCallId}-${result.query || ""}-${modifyingChartId || ""}`;
+          const invocationKey = `modify-${lastMessage.id}-${invocation.toolCallId}-${result.query || ""}`;
 
           // Skip if we've already processed this invocation
           if (processedModifyInvocationsRef.current.has(invocationKey)) {
@@ -1022,6 +1059,28 @@ export default function AnalyticsStudioPage() {
           processedModifyInvocationsRef.current.add(modifyToolCallKey);
 
           if (result?.success) {
+            // Extract the target chart ID from the user message content
+            let targetChartId: string | null = null;
+            if (userMessage && userMessage.content) {
+              const chartIdMatch = userMessage.content.match(
+                /\[CHART_ID:([^\]]+)\]/,
+              );
+              if (chartIdMatch) {
+                targetChartId = chartIdMatch[1];
+              }
+            }
+
+            if (!targetChartId) {
+              console.warn(
+                `No target chart ID found in user message for tool invocation ${invocation.toolCallId}. Skipping modification.`,
+              );
+              continue;
+            }
+
+            console.log(
+              `Processing modification for chart ${targetChartId} from tool invocation ${invocation.toolCallId}`,
+            );
+
             const processResult = async () => {
               try {
                 const chartProps = await generateChartProps(
@@ -1033,66 +1092,154 @@ export default function AnalyticsStudioPage() {
 
                 // Update the specific chart that was being modified
                 setChartCards((prev) => {
-                  if (prev.length === 0 || !modifyingChartId) {
-                    console.warn(
-                      "No charts to modify or no modifyingChartId set",
-                    );
+                  if (prev.length === 0) {
+                    console.warn("No charts to modify");
                     return prev;
                   }
 
                   const chartIndex = prev.findIndex(
-                    (chart) => chart.id === modifyingChartId,
+                    (chart) => chart.id === targetChartId,
                   );
                   if (chartIndex === -1) {
                     console.warn(
-                      `Chart with ID ${modifyingChartId} not found for modification`,
+                      `Chart with ID ${targetChartId} not found for modification`,
                     );
                     return prev;
                   }
 
                   console.log(
-                    `Updating chart ${modifyingChartId} at index ${chartIndex}`,
+                    `Updating chart ${targetChartId} at index ${chartIndex}. ToolCall: ${invocation.toolCallId}`,
                   );
 
+                  const originalChart = prev[chartIndex];
+
+                  // PRESERVE ORIGINAL TITLE - This is the fix for Issue #2
+                  const preservedTitle =
+                    originalChart.chartTitle || originalChart.chartProps.title;
+
+                  const updatedChart = {
+                    ...originalChart,
+                    query: result.query,
+                    chartType: result.chartType,
+                    chartProps: {
+                      ...chartProps,
+                      title: preservedTitle, // Always preserve the original title
+                    },
+                    sql: result.sql || "",
+                    data: result.data || [],
+                    executionTime: result.executionTime,
+                    rowCount: result.rowCount,
+                    chartTitle: preservedTitle, // Preserve original title
+                    lastUpdated: Date.now(), // Add timestamp to force re-render
+                    toolCallId: invocation.toolCallId, // Update with new modification toolCallId
+                  };
+
                   return prev.map((chart) =>
-                    chart.id === modifyingChartId
-                      ? {
-                          ...chart,
-                          query: result.query,
-                          chartType: result.chartType,
-                          chartProps: chartProps,
-                          sql: result.sql || "",
-                          data: result.data || [],
-                          executionTime: result.executionTime,
-                          rowCount: result.rowCount,
-                          chartTitle: result.chartTitle,
-                          lastUpdated: Date.now(), // Add timestamp to force re-render
-                        }
-                      : chart,
+                    chart.id === targetChartId ? updatedChart : chart,
                   );
                 });
 
-                // Clear the modifying chart ID
-                setModifyingChartId(null);
+                // Save the modified chart to database with preserved title
+                if (selectedDatasource && targetChartId) {
+                  try {
+                    // Use functional state update to get the most current chart state
+                    setChartCards((currentCharts) => {
+                      const currentChart = currentCharts.find(
+                        (chart) => chart.id === targetChartId,
+                      );
+
+                      if (currentChart) {
+                        const preservedTitle =
+                          currentChart.chartTitle ||
+                          currentChart.chartProps.title;
+
+                        // Save to database with preserved title
+                        StudioAPI.updateChart(targetChartId, {
+                          title: preservedTitle, // Always preserve the original title
+                          description: `Modified from query: ${result.query}`,
+                          datasourceId: selectedDatasource.id,
+                          sqlQuery: result.sql || "",
+                          chartType: result.chartType,
+                          chartConfig: {
+                            ...chartProps,
+                            title: preservedTitle,
+                          },
+                          dataCache: result.data,
+                          dataMode: "static",
+                          tags: [],
+                        })
+                          .then((updateResponse) => {
+                            if (!updateResponse.success) {
+                              console.error(
+                                "Failed to update chart in database:",
+                                updateResponse.error,
+                              );
+                              toast.error(
+                                "Chart updated locally but failed to save to database",
+                              );
+                            }
+                          })
+                          .catch((saveError) => {
+                            console.error(
+                              "Failed to save modified chart to database:",
+                              saveError,
+                            );
+                            toast.error(
+                              "Chart updated locally but failed to save to database",
+                            );
+                          });
+                      }
+
+                      return currentCharts; // Return unchanged array since this is just for database sync
+                    });
+                  } catch (error) {
+                    console.error("Error in database update process:", error);
+                  }
+                }
+
+                // Clear the modifying chart ID if this was the current one
+                if (modifyingChartId === targetChartId) {
+                  setModifyingChartId(null);
+                }
 
                 toast.success("Chart updated successfully!");
               } catch (error) {
                 console.error("Error processing chart modification:", error);
                 toast.error("Failed to process chart update");
-                // Clear the modifying chart ID on error
-                setModifyingChartId(null);
+                // Clear the modifying chart ID if this was the current one
+                if (modifyingChartId === targetChartId) {
+                  setModifyingChartId(null);
+                }
               }
             };
             processResult();
           } else {
+            // Extract the target chart ID from the user message content for error handling
+            let targetChartId: string | null = null;
+            if (userMessage && userMessage.content) {
+              const chartIdMatch = userMessage.content.match(
+                /\[CHART_ID:([^\]]+)\]/,
+              );
+              if (chartIdMatch) {
+                targetChartId = chartIdMatch[1];
+              }
+            }
+
             toast.error(result?.error || "Failed to update chart");
-            // Clear the modifying chart ID on error
-            setModifyingChartId(null);
+            // Clear the modifying chart ID if this was the current one
+            if (targetChartId && modifyingChartId === targetChartId) {
+              setModifyingChartId(null);
+            }
           }
         }
       }
     }
-  }, [modifyMessages, modifyingChartId]); // Remove generateChartProps from dependencies as it's defined later
+  }, [
+    modifyMessages,
+    modifyingChartId,
+    selectedDatasource,
+    generateChartProps,
+  ]); // Add all dependencies to fix stale closures
 
   // Cleanup effect to prevent memory leaks and stale data
   useEffect(() => {
@@ -1607,26 +1754,38 @@ Use the textToSql tool to execute this request.
         return;
       }
 
-      // Find the current chart to get its context
-      const currentChart = chartCards.find((chart) => chart.id === chartId);
+      // Prevent concurrent modifications on the same chart
+      if (modifyingChartId === chartId) {
+        toast.error(
+          "This chart is already being modified. Please wait for completion.",
+        );
+        return;
+      }
+
+      // Find the current chart to get its context - use functional state access to avoid stale closures
+      let currentChart: ChartCard | undefined;
+      setChartCards((prev) => {
+        currentChart = prev.find((chart) => chart.id === chartId);
+        return prev; // Don't modify state, just capture current chart
+      });
+
       if (!currentChart) {
         toast.error("Chart not found");
         return;
       }
 
-      // Set the chart being modified
+      // Set the chart being modified (for UI feedback)
       console.log("Starting chart modification for chart ID:", chartId);
       setModifyingChartId(chartId);
 
-      // Reset processed modification invocations for new modification session
-      processedModifyInvocationsRef.current.clear();
+      // Create a modification prompt with current SQL context and embedded chart ID
+      const modificationPrompt = `[CHART_ID:${chartId}]
 
-      // Create a modification prompt with current SQL context
-      const modificationPrompt = `
 Modify the existing chart with the following request:
 
 CURRENT CONTEXT:
 - Original Chart ID: ${chartId}
+- Original Chart Title: "${currentChart.chartTitle || currentChart.chartProps.title}"
 - Original Query: "${currentChart.query}"
 - Current SQL Query: 
 \`\`\`sql
@@ -1648,6 +1807,8 @@ Please modify the existing SQL query to accommodate the new request while preser
 - Column selections (unless new columns are specifically requested)
 - ORDER BY clauses (unless new sorting is requested)
 
+IMPORTANT: Keep the original chart title "${currentChart.chartTitle || currentChart.chartProps.title}" unless the user explicitly requests a title change.
+
 When calling the textToSql tool, pass the currentSql parameter with the existing SQL query: "${currentChart.sql}" so the AI can better understand the context and modify accordingly.
 
 Generate an updated SQL query that builds upon the existing one rather than creating a completely new query from scratch.
@@ -1656,6 +1817,7 @@ Determine the appropriate chart type (bar, line, pie, or table) based on the mod
 Use the textToSql tool to execute this updated request.
     `;
 
+      // Send the modification request
       await modifyAppend({
         role: "user",
         content: modificationPrompt,
@@ -1670,8 +1832,8 @@ Use the textToSql tool to execute this updated request.
       selectedDatasource,
       selectedTables,
       modifyAppend,
-      setModifyingChartId,
-      chartCards, // Add chartCards dependency to access current chart context
+      modifyingChartId,
+      // Remove chartCards dependency to avoid stale closures - we use functional state access instead
     ],
   );
 
@@ -1743,29 +1905,6 @@ Use the textToSql tool to execute this updated request.
     },
     [],
   );
-
-  const generateChartProps = async (
-    query: string,
-    data: any[],
-    chartType: ChartType,
-    title?: string,
-  ): Promise<ChartProps> => {
-    const finalTitle = title || query;
-
-    // Convert data to appropriate format based on chart type
-    switch (chartType) {
-      case "bar":
-        return convertToBarChartProps(data, query, finalTitle);
-      case "line":
-        return convertToLineChartProps(data, query, finalTitle);
-      case "pie":
-        return convertToPieChartProps(data, query, finalTitle);
-      case "table":
-        return convertToTableProps(data, query, finalTitle);
-      default:
-        return convertToBarChartProps(data, query, finalTitle);
-    }
-  };
 
   return (
     <div className="flex h-full bg-background">
@@ -2053,7 +2192,7 @@ Use the textToSql tool to execute this updated request.
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {chartCards.map((chart) => (
                   <ChartCardComponent
-                    key={chart.id}
+                    key={`${chart.id}-${chart.lastUpdated || 0}`}
                     chart={chart}
                     aiInputOpen={aiInputOpen}
                     aiInputQuery={aiInputQuery}

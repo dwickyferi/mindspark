@@ -160,17 +160,22 @@ Indexes: ${schema.indexes.join(", ")}`;
 Database Schema:
 ${schemaContext}
 
-IMPORTANT RULES:
-1. Generate ONLY valid PostgreSQL syntax
-2. Use proper JOINs when accessing multiple tables
-3. Include appropriate WHERE clauses for filtering
-4. Use aggregate functions (COUNT, SUM, AVG, etc.) when needed for summaries
-5. Handle NULL values appropriately with COALESCE or IS NULL checks
-6. Use table aliases for readability when joining multiple tables
-7. Optimize for performance - avoid SELECT * when possible
-8. Return only the SQL query without any explanation, markdown formatting, or code blocks
-9. Use double quotes for table/column names if they contain special characters
-10. Include LIMIT clauses for potentially large result sets (default: LIMIT 1000)
+CRITICAL REQUIREMENTS:
+1. Generate ONLY valid PostgreSQL syntax - no brackets [], parentheses that don't belong, or special characters
+2. Return ONLY the SQL query - no explanations, markdown, code blocks, or formatting
+3. Start with SELECT keyword - no other statement types allowed
+4. Use proper table and column names exactly as shown in the schema
+5. Use double quotes for identifiers only when necessary (spaces, special chars)
+6. Do NOT include any JSON arrays, brackets [], or non-SQL syntax
+
+SQL GENERATION RULES:
+1. Use proper JOINs when accessing multiple tables
+2. Include appropriate WHERE clauses for filtering
+3. Use aggregate functions (COUNT, SUM, AVG, etc.) when needed for summaries
+4. Handle NULL values appropriately with COALESCE or IS NULL checks
+5. Use table aliases for readability when joining multiple tables
+6. Optimize for performance - avoid SELECT * when possible
+7. Include LIMIT clauses for potentially large result sets (default: LIMIT 1000)
 
 Query Guidelines:
 - For "show me" or "list" queries: Use SELECT with appropriate columns
@@ -184,12 +189,21 @@ Query Guidelines:
 Date/Time Handling:
 - Use proper date functions like DATE_TRUNC, NOW(), INTERVAL
 - For "last week/month/year": Use date arithmetic
-- Format dates as needed with TO_CHAR()`;
+- Format dates as needed with TO_CHAR()
+
+EXAMPLE GOOD OUTPUT:
+SELECT column1, column2 FROM schema.table WHERE condition LIMIT 100
+
+EXAMPLE BAD OUTPUT:
+[SELECT column1, column2 FROM schema.table]
+{"query": "SELECT..."}
+\`\`\`sql SELECT...`;
 
     if (previousError) {
       prompt += `\n\nPREVIOUS ERROR TO FIX:
 The previous query failed with: ${previousError}
-Please generate a corrected query that addresses this specific error.`;
+Please generate a corrected query that addresses this specific error.
+Make sure to avoid any syntax that could cause PostgreSQL parsing errors.`;
     }
 
     return prompt;
@@ -199,13 +213,32 @@ Please generate a corrected query that addresses this specific error.`;
    * Clean up generated SQL text
    */
   private cleanupSQL(sqlText: string): string {
-    return sqlText
+    let cleaned = sqlText;
+
+    // Remove markdown code blocks and SQL prefixes
+    cleaned = cleaned
       .replace(/```sql\n?/g, "")
       .replace(/```\n?/g, "")
       .replace(/^\s*sql\s*/i, "")
-      .trim()
-      .replace(/;+$/, "") // Remove trailing semicolons
       .trim();
+
+    // Remove any potential problematic characters that might cause syntax errors
+    // Remove any stray brackets that don't belong in SQL
+    cleaned = cleaned.replace(/^\[|\]$/g, ""); // Remove leading/trailing brackets
+
+    // Remove multiple consecutive whitespace
+    cleaned = cleaned.replace(/\s+/g, " ");
+
+    // Remove trailing semicolons (we'll let the database handle statement termination)
+    cleaned = cleaned.replace(/;+$/, "");
+
+    // Ensure the query starts with SELECT (security check)
+    const trimmedUpper = cleaned.trim().toUpperCase();
+    if (!trimmedUpper.startsWith("SELECT")) {
+      throw new Error("Generated query must start with SELECT statement");
+    }
+
+    return cleaned.trim();
   }
 
   /**

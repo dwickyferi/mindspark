@@ -91,6 +91,20 @@ export class StudioAPI {
     });
   }
 
+  static async updateChart(
+    chartId: string,
+    chart: CreateChartRequest,
+  ): Promise<{
+    success: boolean;
+    data?: ChartData;
+    error?: string;
+  }> {
+    return this.request<ChartData>(`/api/studio/charts/${chartId}`, {
+      method: "PUT",
+      body: JSON.stringify(chart),
+    });
+  }
+
   static async deleteChart(
     chartId: string,
   ): Promise<{ success: boolean; error?: string }> {
