@@ -67,8 +67,6 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { generateText } from "ai";
-import { customModelProvider } from "@/lib/ai/models";
 import { appStore } from "@/app/store";
 import { useShallow } from "zustand/shallow";
 
@@ -263,37 +261,35 @@ export default function AnalyticsStudioPage() {
     chartType: string,
   ): Promise<string> => {
     try {
-      // Analyze the data structure
-      const dataKeys = data.length > 0 ? Object.keys(data[0]) : [];
-      const dataSample = data.slice(0, 3);
-
-      const prompt = `
-        Based on the user query, data structure, and chart type, generate a concise, descriptive title for the chart.
-        
-        User Query: "${query}"
-        Chart Type: ${chartType}
-        Data Columns: ${dataKeys.join(", ")}
-        Sample Data: ${JSON.stringify(dataSample, null, 2)}
-        
-        Generate a clear, professional chart title that describes what the chart shows.
-        Keep it under 10 words and make it specific to the data being visualized.
-        
-        Respond with ONLY the title text, no quotes or additional formatting.
-      `;
-
-      // Use AI SDK instead of direct API call
-      const model = customModelProvider.getModel(selectedModel);
-
-      const { text } = await generateText({
-        model,
-        system:
-          "You are a data visualization expert. Generate concise, professional chart titles. Respond only with the title text.",
-        prompt,
-        temperature: 0.3,
-        maxTokens: 100,
+      // Call the server-side API endpoint instead of using generateText directly
+      const response = await fetch("/api/studio/generate-title", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query,
+          data,
+          chartType,
+          chatModel: selectedModel,
+        }),
       });
 
-      return text.trim() || query;
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.details ||
+            result.error ||
+            `HTTP error! status: ${response.status}`,
+        );
+      }
+
+      return result.title || query;
     } catch (error) {
       console.error("Error generating chart title:", error);
       return query; // Fallback to original query
