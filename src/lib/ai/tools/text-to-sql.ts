@@ -12,7 +12,7 @@ const textToSqlSchema = z.object({
     .describe("List of selected table names in schema.table format"),
   datasourceId: z.string().describe("The ID of the datasource to query"),
   chartType: z
-    .enum(["bar", "line", "pie", "auto"])
+    .enum(["bar", "line", "pie", "table", "auto"])
     .optional()
     .describe(
       "Preferred chart type for visualization, or 'auto' to determine automatically",
@@ -87,7 +87,7 @@ export const textToSqlTool = tool({
         error:
           error instanceof Error ? error.message : "Unknown error occurred",
         data: [],
-        chartType: "bar",
+        chartType: "table" as "bar" | "line" | "pie" | "table",
         chartTitle: "Error",
         rowCount: 0,
       };
@@ -102,12 +102,24 @@ function analyzeChartTypeFromQuery(
   query: string,
   data: any[],
   preferredType?: string,
-): "bar" | "line" | "pie" {
+): "bar" | "line" | "pie" | "table" {
   if (preferredType && preferredType !== "auto") {
-    return preferredType as "bar" | "line" | "pie";
+    return preferredType as "bar" | "line" | "pie" | "table";
   }
 
   const lowerQuery = query.toLowerCase();
+
+  // Explicit chart type mentions for table
+  if (
+    lowerQuery.includes("table") ||
+    lowerQuery.includes("raw data") ||
+    lowerQuery.includes("show me the data") ||
+    lowerQuery.includes("all columns") ||
+    lowerQuery.includes("detailed data") ||
+    lowerQuery.includes("inspect data")
+  ) {
+    return "table";
+  }
 
   // Explicit chart type mentions
   if (
@@ -208,6 +220,7 @@ function generateChartTitle(query: string, chartType: string): string {
       bar: "Bar Chart",
       line: "Trend",
       pie: "Distribution",
+      table: "Data Table",
     };
     return `${title} - ${chartTypeMap[chartType as keyof typeof chartTypeMap] || "Chart"}`;
   }

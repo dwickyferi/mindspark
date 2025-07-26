@@ -23,6 +23,7 @@ export type ChartType =
   | "bar"
   | "line"
   | "pie"
+  | "table"
   | "scatter"
   | "area"
   | "heatmap"

@@ -83,10 +83,18 @@ import type { PieChartProps } from "@/components/tool-invocation/pie-chart";
 import type { BarChartProps } from "@/components/tool-invocation/bar-chart";
 import type { LineChartProps } from "@/components/tool-invocation/line-chart";
 
-type ChartType = "line" | "bar" | "pie";
+type ChartType = "line" | "bar" | "pie" | "table";
+
+// Table chart props interface
+interface TableProps {
+  title: string;
+  data: any[];
+  description?: string;
+  columns?: string[];
+}
 
 // Union type for chart props
-type ChartProps = PieChartProps | BarChartProps | LineChartProps;
+type ChartProps = PieChartProps | BarChartProps | LineChartProps | TableProps;
 
 interface ChartCard {
   id: string;
@@ -397,6 +405,37 @@ const ChartContent = React.memo(({ chart }: { chart: ChartCard }) => {
             </RechartsLineChart>
           </ResponsiveContainer>
         </ChartContainer>
+      </div>
+    );
+  }
+
+  if (chartType === "table") {
+    const tableProps = chartProps as TableProps;
+    return (
+      <div className="w-full h-full">
+        <div className="max-h-[280px] overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {tableProps.data.length > 0 &&
+                  Object.keys(tableProps.data[0]).map((key) => (
+                    <TableHead key={key}>{key}</TableHead>
+                  ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tableProps.data.map((row, index) => (
+                <TableRow key={index}>
+                  {Object.values(row).map((value: any, cellIndex) => (
+                    <TableCell key={cellIndex}>
+                      {value?.toString() || ""}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     );
   }
@@ -1105,6 +1144,28 @@ export default function AnalyticsStudioPage() {
     };
   };
 
+  const convertToTableProps = (
+    data: any[],
+    query: string,
+    title?: string,
+  ): TableProps => {
+    if (!data || data.length === 0) {
+      return {
+        title: title || "Data Table",
+        data: [],
+      };
+    }
+
+    const columns = Object.keys(data[0]);
+
+    return {
+      title: title || `Data Table - ${query}`,
+      data: data,
+      columns: columns,
+      description: `Generated from query: ${query}`,
+    };
+  };
+
   const generateChart = async () => {
     if (!input.trim() || selectedTables.length === 0 || !selectedDatasource) {
       toast.error("Please select tables and enter a query");
@@ -1123,12 +1184,14 @@ Query: "${input}"
 Selected Tables: ${selectedTables.join(", ")}
 Datasource ID: ${selectedDatasource.id}
 
-Please analyze the user's request and determine the most appropriate chart type (bar, line, or pie) based on:
+Please analyze the user's request and determine the most appropriate chart type (bar, line, pie, or table) based on:
 1. Explicit chart type mentions in the query
 2. The nature of the data being requested
 3. Time-based patterns (use line charts)
 4. Categorical distributions (use pie charts for ≤10 items)
 5. Comparisons and counts (use bar charts)
+6. Raw data analysis or detailed data inspection (use table format)
+7. When user asks for "table", "raw data", "show me the data", or wants to see all columns
 
 Use the textToSql tool to execute this request.
     `;
@@ -1171,7 +1234,7 @@ Modification Request: "${query}"
 Selected Tables: ${selectedTables.join(", ")}
 Datasource ID: ${selectedDatasource.id}
 
-Please generate a new SQL query and determine the appropriate chart type based on the modification request.
+Please generate a new SQL query and determine the appropriate chart type (bar, line, pie, or table) based on the modification request.
 Use the textToSql tool to execute this updated request.
     `;
 
@@ -1234,6 +1297,8 @@ Use the textToSql tool to execute this updated request.
         return convertToLineChartProps(data, query, finalTitle);
       case "pie":
         return convertToPieChartProps(data, query, finalTitle);
+      case "table":
+        return convertToTableProps(data, query, finalTitle);
       default:
         return convertToBarChartProps(data, query, finalTitle);
     }
@@ -1456,7 +1521,7 @@ Use the textToSql tool to execute this updated request.
             </label>
             <div className="flex gap-3">
               <Textarea
-                placeholder="Get me a line chart of monthly revenue, for premium and enterprise in EMEA - bar chart of monthly user signups, clustered by plan. Also in EMEA, all tiers except free for the last 6 months"
+                placeholder="Get me a line chart of monthly revenue, for premium and enterprise in EMEA - bar chart of monthly user signups, clustered by plan. Also in EMEA, all tiers except free for the last 6 months. Or show me raw data in a table format."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 className="flex-1 min-h-[60px] resize-none"

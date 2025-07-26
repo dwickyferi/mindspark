@@ -319,7 +319,7 @@ export const ChartSchema = pgTable(
       .notNull()
       .references(() => DatasourceSchema.id, { onDelete: "cascade" }),
     sqlQuery: text("sql_query").notNull(),
-    chartType: text("chart_type").notNull(), // "bar" | "line" | "pie" | "scatter" | etc.
+    chartType: text("chart_type").notNull(), // "bar" | "line" | "pie" | "table" | "scatter" | etc.
     chartConfig: json("chart_config").notNull(), // ECharts configuration
     dataCache: json("data_cache"), // Cached query results for static charts
     dataMode: text("data_mode").notNull().default("static"), // "static" | "realtime"
