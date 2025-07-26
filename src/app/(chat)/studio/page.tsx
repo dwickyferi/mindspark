@@ -1218,6 +1218,13 @@ Use the textToSql tool to execute this request.
         return;
       }
 
+      // Find the current chart to get its context
+      const currentChart = chartCards.find((chart) => chart.id === chartId);
+      if (!currentChart) {
+        toast.error("Chart not found");
+        return;
+      }
+
       // Set the chart being modified
       console.log("Starting chart modification for chart ID:", chartId);
       setModifyingChartId(chartId);
@@ -1225,16 +1232,38 @@ Use the textToSql tool to execute this request.
       // Reset processed modification invocations for new modification session
       setProcessedModifyInvocations(new Set());
 
-      // Create a modification prompt
+      // Create a modification prompt with current SQL context
       const modificationPrompt = `
 Modify the existing chart with the following request:
 
-Original Chart ID: ${chartId}
-Modification Request: "${query}"
-Selected Tables: ${selectedTables.join(", ")}
-Datasource ID: ${selectedDatasource.id}
+CURRENT CONTEXT:
+- Original Chart ID: ${chartId}
+- Original Query: "${currentChart.query}"
+- Current SQL Query: 
+\`\`\`sql
+${currentChart.sql}
+\`\`\`
+- Current Chart Type: ${currentChart.chartType}
+- Current Data Rows: ${currentChart.rowCount}
 
-Please generate a new SQL query and determine the appropriate chart type (bar, line, pie, or table) based on the modification request.
+MODIFICATION REQUEST: "${query}"
+
+AVAILABLE DATA:
+- Selected Tables: ${selectedTables.join(", ")}
+- Datasource ID: ${selectedDatasource.id}
+
+INSTRUCTIONS:
+Please modify the existing SQL query to accommodate the new request while preserving important elements from the original query such as:
+- LIMIT clauses (unless specifically asked to change)
+- WHERE conditions (unless modification requires different filtering)
+- Column selections (unless new columns are specifically requested)
+- ORDER BY clauses (unless new sorting is requested)
+
+When calling the textToSql tool, pass the currentSql parameter with the existing SQL query: "${currentChart.sql}" so the AI can better understand the context and modify accordingly.
+
+Generate an updated SQL query that builds upon the existing one rather than creating a completely new query from scratch.
+Determine the appropriate chart type (bar, line, pie, or table) based on the modification request.
+
 Use the textToSql tool to execute this updated request.
     `;
 
@@ -1253,6 +1282,7 @@ Use the textToSql tool to execute this updated request.
       selectedTables,
       modifyAppend,
       setModifyingChartId,
+      chartCards, // Add chartCards dependency to access current chart context
     ],
   );
 

@@ -18,6 +18,10 @@ const textToSqlSchema = z.object({
       "Preferred chart type for visualization, or 'auto' to determine automatically",
     ),
   chartTitle: z.string().optional().describe("Custom title for the chart"),
+  currentSql: z
+    .string()
+    .optional()
+    .describe("Current SQL query for context when modifying existing charts"),
 });
 
 export const textToSqlTool = tool({
@@ -30,6 +34,7 @@ export const textToSqlTool = tool({
     datasourceId,
     chartType = "auto",
     chartTitle,
+    currentSql,
   }) => {
     try {
       // Get datasource configuration
@@ -45,8 +50,14 @@ export const textToSqlTool = tool({
 
       // Generate and execute SQL
       const textToSQLService = new TextToSQLService();
+
+      // If we have current SQL context, enhance the query with it
+      const enhancedQuery = currentSql
+        ? `${query}\n\nCONTEXT: The current SQL query is: ${currentSql}\nPlease modify this query to accommodate the new request while preserving important elements like LIMIT, WHERE conditions, and column selections unless specifically asked to change them.`
+        : query;
+
       const response = await textToSQLService.generateAndExecuteSQL({
-        query,
+        query: enhancedQuery,
         selectedTables,
         datasourceId,
         datasourceConfig: datasourceResponse.data.connectionConfig,
