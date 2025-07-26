@@ -3,6 +3,7 @@ export enum AppDefaultToolkit {
   WebSearch = "webSearch",
   Http = "http",
   Code = "code",
+  Analytics = "analytics",
 }
 
 export enum DefaultToolName {
@@ -14,4 +15,5 @@ export enum DefaultToolName {
   Http = "http",
   JavascriptExecution = "mini-javascript-execution",
   PythonExecution = "python-execution",
+  TextToSql = "textToSql",
 }

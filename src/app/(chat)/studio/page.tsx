@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,19 +25,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Label } from "@/components/ui/label";
+import { Label as FormLabel } from "@/components/ui/label";
 import {
   ChevronDown,
   ChevronRight,
   Database,
-  Play,
-  Eye,
   BarChart3,
   Table as TableIcon,
   Loader2,
   CheckCircle,
   RefreshCw,
   Brain,
+  Sparkle,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DatasourceAPI, type DatasourceListItem } from "@/lib/api/datasources";
@@ -49,37 +50,55 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { appStore } from "@/app/store";
+import { useShallow } from "zustand/shallow";
+import { useChat } from "@ai-sdk/react";
+import { generateUUID } from "@/lib/utils";
+
+// Import Recharts components
+import {
+  ResponsiveContainer,
+  BarChart as RechartsBarChart,
+  LineChart as RechartsLineChart,
+  PieChart as RechartsPieChart,
+  Bar,
+  Line,
+  Pie,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+  Label,
+} from "recharts";
+
+// Import chart UI components
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import {
-  ResponsiveContainer,
-  LineChart as RechartsLineChart,
-  BarChart as RechartsBarChart,
-  PieChart as RechartsPieChart,
-  Line,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Pie,
-  Cell,
-} from "recharts";
-import { appStore } from "@/app/store";
-import { useShallow } from "zustand/shallow";
+
+// Import types for the tool-invocation charts
+import type { PieChartProps } from "@/components/tool-invocation/pie-chart";
+import type { BarChartProps } from "@/components/tool-invocation/bar-chart";
+import type { LineChartProps } from "@/components/tool-invocation/line-chart";
+
+type ChartType = "line" | "bar" | "pie";
+
+// Union type for chart props
+type ChartProps = PieChartProps | BarChartProps | LineChartProps;
 
 interface ChartCard {
   id: string;
   query: string;
   sql: string;
   data: any[];
-  chartType: "line" | "bar" | "pie";
-  title: string;
+  chartType: ChartType;
+  chartProps: ChartProps;
   isExpanded: boolean;
   executionTime?: number;
   rowCount?: number;
+  chartTitle?: string;
 }
 
 interface DatabaseTable {
@@ -94,6 +113,485 @@ interface DatabaseSchema {
   tableCount?: number;
 }
 
+// Optimized ChartContent component with React.memo
+const ChartContent = React.memo(({ chart }: { chart: ChartCard }) => {
+  const { chartType, chartProps, data } = chart;
+
+  // Calculate all possible chart configurations at the top level
+  const pieConfig = useMemo(() => {
+    if (chartType !== "pie" || !chartProps || !data || data.length === 0)
+      return null;
+    const pieProps = chartProps as PieChartProps;
+    const config: any = {};
+    if (pieProps.unit) {
+      config.value = { label: pieProps.unit };
+    }
+    pieProps.data.forEach((item, index) => {
+      const colorIndex = index % 5;
+      const colors = [
+        "var(--chart-1)",
+        "var(--chart-2)",
+        "var(--chart-3)",
+        "var(--chart-4)",
+        "var(--chart-5)",
+      ];
+      config[item.label.replace(/[^a-zA-Z0-9]/g, "_")] = {
+        label: item.label,
+        color: colors[colorIndex],
+      };
+    });
+    return config;
+  }, [chartType, chartProps, data]);
+
+  const pieChartData = useMemo(() => {
+    if (chartType !== "pie" || !chartProps || !data || data.length === 0)
+      return null;
+    const pieProps = chartProps as PieChartProps;
+    return pieProps.data.map((item) => ({
+      name: item.label,
+      label: item.label,
+      value: item.value,
+      fill: `var(--color-${item.label.replace(/[^a-zA-Z0-9]/g, "_")})`,
+    }));
+  }, [chartType, chartProps, data]);
+
+  const pieTotal = useMemo(() => {
+    if (chartType !== "pie" || !chartProps || !data || data.length === 0)
+      return 0;
+    const pieProps = chartProps as PieChartProps;
+    return pieProps.data.reduce((acc, curr) => acc + curr.value, 0);
+  }, [chartType, chartProps, data]);
+
+  const barConfig = useMemo(() => {
+    if (chartType !== "bar" || !chartProps || !data || data.length === 0)
+      return null;
+    const barProps = chartProps as BarChartProps;
+    const seriesNames =
+      barProps.data[0]?.series.map((item) => item.seriesName) || [];
+    const config: any = {};
+    const colors = [
+      "var(--chart-1)",
+      "var(--chart-2)",
+      "var(--chart-3)",
+      "var(--chart-4)",
+      "var(--chart-5)",
+    ];
+    seriesNames.forEach((seriesName, index) => {
+      const colorIndex = index % colors.length;
+      config[seriesName.replace(/[^a-zA-Z0-9]/g, "_")] = {
+        label: seriesName,
+        color: colors[colorIndex],
+      };
+    });
+    return { config, seriesNames };
+  }, [chartType, chartProps, data]);
+
+  const barChartData = useMemo(() => {
+    if (chartType !== "bar" || !chartProps || !data || data.length === 0)
+      return null;
+    const barProps = chartProps as BarChartProps;
+    return barProps.data.map((item) => {
+      const result: any = { name: item.xAxisLabel };
+      item.series.forEach(({ seriesName, value }) => {
+        result[seriesName.replace(/[^a-zA-Z0-9]/g, "_")] = value;
+      });
+      return result;
+    });
+  }, [chartType, chartProps, data]);
+
+  const lineConfig = useMemo(() => {
+    if (chartType !== "line" || !chartProps || !data || data.length === 0)
+      return null;
+    const lineProps = chartProps as LineChartProps;
+    const seriesNames =
+      lineProps.data[0]?.series.map((item) => item.seriesName) || [];
+    const config: any = {};
+    const colors = [
+      "var(--chart-1)",
+      "var(--chart-2)",
+      "var(--chart-3)",
+      "var(--chart-4)",
+      "var(--chart-5)",
+    ];
+    seriesNames.forEach((seriesName, index) => {
+      const colorIndex = index % colors.length;
+      config[seriesName.replace(/[^a-zA-Z0-9]/g, "_")] = {
+        label: seriesName,
+        color: colors[colorIndex],
+      };
+    });
+    return { config, seriesNames };
+  }, [chartType, chartProps, data]);
+
+  const lineChartData = useMemo(() => {
+    if (chartType !== "line" || !chartProps || !data || data.length === 0)
+      return null;
+    const lineProps = chartProps as LineChartProps;
+    return lineProps.data.map((item) => {
+      const result: any = { name: item.xAxisLabel };
+      item.series.forEach(({ seriesName, value }) => {
+        result[seriesName.replace(/[^a-zA-Z0-9]/g, "_")] = value;
+      });
+      return result;
+    });
+  }, [chartType, chartProps, data]);
+
+  if (!chartProps || !data || data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        No data available
+      </div>
+    );
+  }
+
+  // Render based on chart type
+  if (chartType === "pie" && pieConfig && pieChartData) {
+    const pieProps = chartProps as PieChartProps;
+    return (
+      <div className="flex-1 pb-0">
+        <ChartContainer
+          config={pieConfig}
+          className="mx-auto aspect-square max-h-[280px] w-full"
+        >
+          <RechartsPieChart>
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent hideLabel />}
+            />
+            <Pie
+              data={pieChartData}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={60}
+              strokeWidth={5}
+            >
+              <Label
+                content={({ viewBox }) => {
+                  if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                    return (
+                      <text
+                        x={viewBox.cx}
+                        y={viewBox.cy}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        <tspan
+                          x={viewBox.cx}
+                          y={viewBox.cy}
+                          className="fill-foreground text-3xl font-bold"
+                        >
+                          {pieTotal.toLocaleString()}
+                        </tspan>
+                        <tspan
+                          x={viewBox.cx}
+                          y={(viewBox.cy || 0) + 24}
+                          className="fill-muted-foreground"
+                        >
+                          {pieProps.unit || "Total"}
+                        </tspan>
+                      </text>
+                    );
+                  }
+                }}
+              />
+            </Pie>
+          </RechartsPieChart>
+        </ChartContainer>
+      </div>
+    );
+  }
+
+  if (chartType === "bar" && barConfig && barChartData) {
+    const barProps = chartProps as BarChartProps;
+    return (
+      <div className="w-full h-full">
+        <ChartContainer config={barConfig.config} className="w-full h-full">
+          <ResponsiveContainer width="100%" height={280}>
+            <RechartsBarChart
+              data={barChartData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="name"
+                tickLine={false}
+                tickMargin={10}
+                axisLine={false}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={10}
+                label={
+                  barProps.yAxisLabel
+                    ? {
+                        value: barProps.yAxisLabel,
+                        angle: -90,
+                        position: "insideLeft",
+                      }
+                    : undefined
+                }
+              />
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent indicator="dashed" />}
+              />
+              {barConfig.seriesNames.map((seriesName, index) => (
+                <Bar
+                  key={index}
+                  dataKey={seriesName.replace(/[^a-zA-Z0-9]/g, "_")}
+                  fill={`var(--color-${seriesName.replace(/[^a-zA-Z0-9]/g, "_")})`}
+                  radius={4}
+                />
+              ))}
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </div>
+    );
+  }
+
+  if (chartType === "line" && lineConfig && lineChartData) {
+    const lineProps = chartProps as LineChartProps;
+    return (
+      <div className="w-full h-full">
+        <ChartContainer config={lineConfig.config} className="w-full h-full">
+          <ResponsiveContainer width="100%" height={280}>
+            <RechartsLineChart
+              data={lineChartData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="name"
+                tickLine={false}
+                tickMargin={10}
+                axisLine={false}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={10}
+                label={
+                  lineProps.yAxisLabel
+                    ? {
+                        value: lineProps.yAxisLabel,
+                        angle: -90,
+                        position: "insideLeft",
+                      }
+                    : undefined
+                }
+              />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <Legend />
+              {lineConfig.seriesNames.map((seriesName, index) => (
+                <Line
+                  key={index}
+                  type="monotone"
+                  dataKey={seriesName.replace(/[^a-zA-Z0-9]/g, "_")}
+                  stroke={`var(--color-${seriesName.replace(/[^a-zA-Z0-9]/g, "_")})`}
+                  strokeWidth={2}
+                  dot={false}
+                />
+              ))}
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center h-full text-muted-foreground">
+      Unsupported chart type
+    </div>
+  );
+});
+
+ChartContent.displayName = "ChartContent";
+
+// Optimized ChartCardComponent with React.memo
+interface ChartCardProps {
+  chart: ChartCard;
+  aiInputOpen: { [key: string]: boolean };
+  aiInputQuery: { [key: string]: string };
+  isModifyLoading: boolean;
+  onAiInputOpenChange: (chartId: string, open: boolean) => void;
+  onAiInputQueryChange: (chartId: string, value: string) => void;
+  onAiInputSubmit: (chartId: string) => void;
+  onToggleExpansion: (chartId: string) => void;
+}
+
+const ChartCardComponent = React.memo(
+  ({
+    chart,
+    aiInputOpen,
+    aiInputQuery,
+    isModifyLoading,
+    onAiInputOpenChange,
+    onAiInputQueryChange,
+    onAiInputSubmit,
+    onToggleExpansion,
+  }: ChartCardProps) => {
+    // Memoized handlers to prevent unnecessary re-renders and focus loss
+    const handleQueryChange = useCallback(
+      (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        onAiInputQueryChange(chart.id, e.target.value);
+      },
+      [chart.id, onAiInputQueryChange],
+    );
+
+    const handleCancelClick = useCallback(() => {
+      onAiInputOpenChange(chart.id, false);
+      onAiInputQueryChange(chart.id, "");
+    }, [chart.id, onAiInputOpenChange, onAiInputQueryChange]);
+
+    const handleUpdateClick = useCallback(() => {
+      onAiInputSubmit(chart.id);
+    }, [chart.id, onAiInputSubmit]);
+
+    const handleToggleClick = useCallback(() => {
+      onToggleExpansion(chart.id);
+    }, [chart.id, onToggleExpansion]);
+
+    const handlePopoverOpenChange = useCallback(
+      (open: boolean) => {
+        onAiInputOpenChange(chart.id, open);
+      },
+      [chart.id, onAiInputOpenChange],
+    );
+
+    return (
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">{chart.chartProps.title}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">
+                {chart.rowCount} rows
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                {chart.executionTime}ms
+              </Badge>
+              <Popover
+                open={aiInputOpen[chart.id] || false}
+                onOpenChange={handlePopoverOpenChange}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="shadow text-purple-700"
+                  >
+                    <Sparkle className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-96 p-4">
+                  <div className="space-y-4">
+                    <div>
+                      <FormLabel
+                        htmlFor={`ai-query-${chart.id}`}
+                        className="text-sm font-medium"
+                      >
+                        Modify Query
+                      </FormLabel>
+                      <Textarea
+                        id={`ai-query-${chart.id}`}
+                        placeholder="Enter a new query or modifications to the current query..."
+                        value={aiInputQuery[chart.id] || ""}
+                        onChange={handleQueryChange}
+                        className="mt-1"
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCancelClick}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleUpdateClick}
+                        disabled={isModifyLoading}
+                      >
+                        {isModifyLoading ? "Updating..." : "Update Chart"}
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shadow text-purple-800"
+                onClick={handleToggleClick}
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4">
+          {!chart.isExpanded ? (
+            <div className="h-[300px] w-full overflow-hidden">
+              <ChartContent chart={chart} />
+            </div>
+          ) : (
+            <Tabs defaultValue="data" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="data">Data</TabsTrigger>
+                <TabsTrigger value="sql">SQL Query</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="data" className="mt-4">
+                <div className="max-h-[400px] overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {chart.data.length > 0 &&
+                          Object.keys(chart.data[0]).map((key) => (
+                            <TableHead key={key}>{key}</TableHead>
+                          ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {chart.data.map((row, index) => (
+                        <TableRow key={index}>
+                          {Object.values(row).map((value: any, cellIndex) => (
+                            <TableCell key={cellIndex}>
+                              {value?.toString() || ""}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="sql" className="mt-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <pre className="text-sm bg-muted p-4 rounded overflow-auto">
+                      <code>{chart.sql}</code>
+                    </pre>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
+    );
+  },
+);
+
+ChartCardComponent.displayName = "ChartCardComponent";
+
 export default function AnalyticsStudioPage() {
   // State management
   const [datasources, setDatasources] = useState<DatasourceListItem[]>([]);
@@ -105,8 +603,6 @@ export default function AnalyticsStudioPage() {
   const [selectedSchema, setSelectedSchema] = useState<string>("");
   const [availableTables, setAvailableTables] = useState<DatabaseTable[]>([]);
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
-  const [naturalLanguageQuery, setNaturalLanguageQuery] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
   const [chartCards, setChartCards] = useState<ChartCard[]>([]);
   const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
   const [isLoadingTables, setIsLoadingTables] = useState(false);
@@ -115,16 +611,270 @@ export default function AnalyticsStudioPage() {
   // Get model from app store (same as chat page)
   const selectedModel = appStore(useShallow((state) => state.chatModel));
 
-  // AI Input state
+  // State to track processed tool invocations to prevent infinite loops
+  const [processedInvocations, setProcessedInvocations] = useState<Set<string>>(
+    new Set(),
+  );
+  const [processedModifyInvocations, setProcessedModifyInvocations] = useState<
+    Set<string>
+  >(new Set());
+
+  // State to track which chart is currently being modified
+  const [modifyingChartId, setModifyingChartId] = useState<string | null>(null);
+
+  // AI Input state - simplified to only handle query modification
   const [aiInputOpen, setAiInputOpen] = useState<{ [key: string]: boolean }>(
     {},
   );
   const [aiInputQuery, setAiInputQuery] = useState<{ [key: string]: string }>(
     {},
   );
-  const [aiChartType, setAiChartType] = useState<{
-    [key: string]: "line" | "bar" | "pie";
-  }>({});
+
+  // Use AI SDK's useChat for main query generation
+  const {
+    messages,
+    input,
+    setInput,
+    append,
+    isLoading: isChatLoading,
+  } = useChat({
+    api: "/api/chat",
+    generateId: generateUUID,
+    experimental_prepareRequestBody: ({ messages, requestBody }) => {
+      const lastMessage = messages.at(-1)!;
+      return {
+        id: generateUUID(),
+        chatModel: selectedModel || { provider: "openai", model: "gpt-4" },
+        toolChoice: "auto" as const,
+        allowedAppDefaultToolkit: ["analytics"],
+        allowedMcpServers: {},
+        mentions: [],
+        message: lastMessage,
+      };
+    },
+  });
+
+  // Use AI SDK's useChat for chart modifications
+  const {
+    messages: modifyMessages,
+    append: modifyAppend,
+    isLoading: isModifyLoading,
+  } = useChat({
+    api: "/api/chat",
+    generateId: generateUUID,
+    experimental_prepareRequestBody: ({ messages, requestBody }) => {
+      const lastMessage = messages.at(-1)!;
+      return {
+        id: generateUUID(),
+        chatModel: selectedModel || { provider: "openai", model: "gpt-4" },
+        toolChoice: "auto" as const,
+        allowedAppDefaultToolkit: ["analytics"],
+        allowedMcpServers: {},
+        mentions: [],
+        message: lastMessage,
+      };
+    },
+  });
+
+  // Watch for new tool results in the main chat messages
+  useEffect(() => {
+    const lastMessage = messages.at(-1);
+    if (lastMessage?.role === "assistant" && lastMessage.toolInvocations) {
+      for (const invocation of lastMessage.toolInvocations) {
+        if (
+          invocation.toolName === "textToSql" &&
+          invocation.state === "result"
+        ) {
+          const result = (invocation as any).result;
+
+          // Create a unique key for this invocation to prevent duplicate processing
+          const invocationKey = `${lastMessage.id}-${invocation.toolCallId}-${result.query || ""}-${result.chartType || ""}`;
+
+          // Skip if we've already processed this invocation
+          if (processedInvocations.has(invocationKey)) {
+            continue;
+          }
+
+          if (result?.success) {
+            const processResult = async () => {
+              try {
+                const chartProps = await generateChartProps(
+                  result.query,
+                  result.data,
+                  result.chartType,
+                  result.chartTitle,
+                );
+
+                const newChart: ChartCard = {
+                  id: generateUUID(),
+                  query: result.query,
+                  chartType: result.chartType,
+                  chartProps: chartProps,
+                  sql: result.sql || "",
+                  data: result.data,
+                  isExpanded: false,
+                  executionTime: result.executionTime,
+                  rowCount: result.rowCount,
+                  chartTitle: result.chartTitle,
+                };
+
+                // Use functional update to prevent duplicate charts
+                setChartCards((prev) => {
+                  // Check if chart with same query, chartType, and similar data already exists
+                  const exists = prev.some(
+                    (chart) =>
+                      chart.query === result.query &&
+                      chart.chartType === result.chartType &&
+                      JSON.stringify(chart.data) ===
+                        JSON.stringify(result.data),
+                  );
+                  if (exists) {
+                    console.log("Duplicate chart prevented:", {
+                      query: result.query,
+                      chartType: result.chartType,
+                      existingCharts: prev.length,
+                    });
+                    return prev;
+                  }
+                  console.log("Adding new chart:", {
+                    query: result.query,
+                    chartType: result.chartType,
+                    totalCharts: prev.length + 1,
+                  });
+                  return [...prev, newChart];
+                });
+
+                // Mark this invocation as processed immediately
+                setProcessedInvocations(
+                  (prev) => new Set([...prev, invocationKey]),
+                );
+
+                toast.success("Chart generated successfully!");
+              } catch (error) {
+                console.error("Error processing chart result:", error);
+                toast.error("Failed to process chart data");
+                // Still mark as processed to prevent retry loops
+                setProcessedInvocations(
+                  (prev) => new Set([...prev, invocationKey]),
+                );
+              }
+            };
+            processResult();
+          } else {
+            toast.error(result?.error || "Failed to generate chart");
+            // Mark failed invocations as processed too
+            setProcessedInvocations(
+              (prev) => new Set([...prev, invocationKey]),
+            );
+          }
+        }
+      }
+    }
+  }, [messages]); // Remove processedInvocations from dependency array
+
+  // Watch for modification results
+  useEffect(() => {
+    const lastMessage = modifyMessages.at(-1);
+    if (lastMessage?.role === "assistant" && lastMessage.toolInvocations) {
+      for (const invocation of lastMessage.toolInvocations) {
+        if (
+          invocation.toolName === "textToSql" &&
+          invocation.state === "result"
+        ) {
+          const result = (invocation as any).result;
+
+          // Create a unique key for this modification invocation
+          const invocationKey = `modify-${lastMessage.id}-${invocation.toolCallId}-${result.query || ""}-${modifyingChartId || ""}`;
+
+          // Skip if we've already processed this invocation
+          if (processedModifyInvocations.has(invocationKey)) {
+            continue;
+          }
+
+          if (result?.success) {
+            const processResult = async () => {
+              try {
+                const chartProps = await generateChartProps(
+                  result.query,
+                  result.data,
+                  result.chartType,
+                  result.chartTitle,
+                );
+
+                // Update the specific chart that was being modified
+                setChartCards((prev) => {
+                  if (prev.length === 0 || !modifyingChartId) {
+                    console.warn(
+                      "No charts to modify or no modifyingChartId set",
+                    );
+                    return prev;
+                  }
+
+                  const chartIndex = prev.findIndex(
+                    (chart) => chart.id === modifyingChartId,
+                  );
+                  if (chartIndex === -1) {
+                    console.warn(
+                      `Chart with ID ${modifyingChartId} not found for modification`,
+                    );
+                    return prev;
+                  }
+
+                  console.log(
+                    `Updating chart ${modifyingChartId} at index ${chartIndex}`,
+                  );
+
+                  return prev.map((chart) =>
+                    chart.id === modifyingChartId
+                      ? {
+                          ...chart,
+                          query: result.query,
+                          chartType: result.chartType,
+                          chartProps: chartProps,
+                          sql: result.sql || "",
+                          data: result.data || [],
+                          executionTime: result.executionTime,
+                          rowCount: result.rowCount,
+                          chartTitle: result.chartTitle,
+                        }
+                      : chart,
+                  );
+                });
+
+                // Clear the modifying chart ID
+                setModifyingChartId(null);
+
+                // Mark this invocation as processed immediately
+                setProcessedModifyInvocations(
+                  (prev) => new Set([...prev, invocationKey]),
+                );
+
+                toast.success("Chart updated successfully!");
+              } catch (error) {
+                console.error("Error processing chart modification:", error);
+                toast.error("Failed to process chart update");
+                // Clear the modifying chart ID on error
+                setModifyingChartId(null);
+                // Still mark as processed to prevent retry loops
+                setProcessedModifyInvocations(
+                  (prev) => new Set([...prev, invocationKey]),
+                );
+              }
+            };
+            processResult();
+          } else {
+            toast.error(result?.error || "Failed to update chart");
+            // Clear the modifying chart ID on error
+            setModifyingChartId(null);
+            // Mark failed invocations as processed too
+            setProcessedModifyInvocations(
+              (prev) => new Set([...prev, invocationKey]),
+            );
+          }
+        }
+      }
+    }
+  }, [modifyMessages, modifyingChartId]); // Include modifyingChartId for proper updates
 
   // Load datasources on mount
   useEffect(() => {
@@ -140,6 +890,10 @@ export default function AnalyticsStudioPage() {
       setSelectedSchema("");
       setAvailableTables([]);
       setSelectedTables([]);
+      // Clear any ongoing modifications when datasource changes
+      setModifyingChartId(null);
+      setProcessedInvocations(new Set());
+      setProcessedModifyInvocations(new Set());
     }
   }, [selectedDatasource]);
 
@@ -255,132 +1009,180 @@ export default function AnalyticsStudioPage() {
     });
   };
 
-  const generateChartTitle = async (
-    query: string,
+  // Helper functions to convert data to chart props
+  const convertToBarChartProps = (
     data: any[],
-    chartType: string,
-  ): Promise<string> => {
-    try {
-      // Call the server-side API endpoint instead of using generateText directly
-      const response = await fetch("/api/studio/generate-title", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query,
-          data,
-          chartType,
-          chatModel: selectedModel,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.details ||
-            result.error ||
-            `HTTP error! status: ${response.status}`,
-        );
-      }
-
-      return result.title || query;
-    } catch (error) {
-      console.error("Error generating chart title:", error);
-      return query; // Fallback to original query
+    query: string,
+    title?: string,
+  ): BarChartProps => {
+    if (!data || data.length === 0) {
+      return {
+        title: title || "Bar Chart",
+        data: [],
+      };
     }
+
+    const keys = Object.keys(data[0]);
+    const xAxisKey = keys[0];
+    const valueKeys = keys.slice(1);
+
+    return {
+      title: title || `Bar Chart - ${query}`,
+      data: data.map((item) => ({
+        xAxisLabel: String(item[xAxisKey]),
+        series: valueKeys.map((key) => ({
+          seriesName: key,
+          value: Number(item[key]) || 0,
+        })),
+      })),
+      description: `Generated from query: ${query}`,
+    };
+  };
+
+  const convertToLineChartProps = (
+    data: any[],
+    query: string,
+    title?: string,
+  ): LineChartProps => {
+    if (!data || data.length === 0) {
+      return {
+        title: title || "Line Chart",
+        data: [],
+      };
+    }
+
+    const keys = Object.keys(data[0]);
+    const xAxisKey = keys[0];
+    const valueKeys = keys.slice(1);
+
+    return {
+      title: title || `Line Chart - ${query}`,
+      data: data.map((item) => ({
+        xAxisLabel: String(item[xAxisKey]),
+        series: valueKeys.map((key) => ({
+          seriesName: key,
+          value: Number(item[key]) || 0,
+        })),
+      })),
+      description: `Generated from query: ${query}`,
+    };
+  };
+
+  const convertToPieChartProps = (
+    data: any[],
+    query: string,
+    title?: string,
+  ): PieChartProps => {
+    if (!data || data.length === 0) {
+      return {
+        title: title || "Pie Chart",
+        data: [],
+      };
+    }
+
+    const keys = Object.keys(data[0]);
+    const labelKey = keys[0];
+    const valueKey = keys[1] || keys[0];
+
+    return {
+      title: title || `Pie Chart - ${query}`,
+      data: data.map((item) => ({
+        label: String(item[labelKey]),
+        value: Number(item[valueKey]) || 0,
+      })),
+      description: `Generated from query: ${query}`,
+    };
   };
 
   const generateChart = async () => {
-    if (
-      !naturalLanguageQuery.trim() ||
-      selectedTables.length === 0 ||
-      !selectedDatasource
-    ) {
+    if (!input.trim() || selectedTables.length === 0 || !selectedDatasource) {
       toast.error("Please select tables and enter a query");
       return;
     }
 
-    setIsGenerating(true);
-    try {
-      // Use API route to generate and execute SQL
-      const response = await fetch("/api/analytics/text-to-sql", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: naturalLanguageQuery,
-          selectedTables,
-          datasourceId: selectedDatasource.id,
-          aiProvider: selectedModel?.provider || "openai",
-          aiModel: selectedModel?.model || "gpt-4",
-          maxRetries: 3,
-        }),
+    // Reset processed invocations for new query session
+    setProcessedInvocations(new Set());
+    setProcessedModifyInvocations(new Set());
+
+    // Create a comprehensive prompt for the AI to understand the context
+    const contextPrompt = `
+Generate and execute a SQL query for the following request:
+
+Query: "${input}"
+Selected Tables: ${selectedTables.join(", ")}
+Datasource ID: ${selectedDatasource.id}
+
+Please analyze the user's request and determine the most appropriate chart type (bar, line, or pie) based on:
+1. Explicit chart type mentions in the query
+2. The nature of the data being requested
+3. Time-based patterns (use line charts)
+4. Categorical distributions (use pie charts for ≤10 items)
+5. Comparisons and counts (use bar charts)
+
+Use the textToSql tool to execute this request.
+    `;
+
+    await append({
+      role: "user",
+      content: contextPrompt,
+    });
+
+    setInput("");
+  };
+
+  const handleAiInputSubmit = useCallback(
+    async (chartId: string) => {
+      const query = aiInputQuery[chartId];
+
+      if (!query.trim()) {
+        toast.error("Please provide a query modification");
+        return;
+      }
+
+      if (!selectedDatasource) {
+        toast.error("No datasource selected");
+        return;
+      }
+
+      // Set the chart being modified
+      console.log("Starting chart modification for chart ID:", chartId);
+      setModifyingChartId(chartId);
+
+      // Reset processed modification invocations for new modification session
+      setProcessedModifyInvocations(new Set());
+
+      // Create a modification prompt
+      const modificationPrompt = `
+Modify the existing chart with the following request:
+
+Original Chart ID: ${chartId}
+Modification Request: "${query}"
+Selected Tables: ${selectedTables.join(", ")}
+Datasource ID: ${selectedDatasource.id}
+
+Please generate a new SQL query and determine the appropriate chart type based on the modification request.
+Use the textToSql tool to execute this updated request.
+    `;
+
+      await modifyAppend({
+        role: "user",
+        content: modificationPrompt,
       });
 
-      const result = await response.json();
+      // Close the AI Input popover and clear the input
+      setAiInputOpen((prev) => ({ ...prev, [chartId]: false }));
+      setAiInputQuery((prev) => ({ ...prev, [chartId]: "" }));
+    },
+    [
+      aiInputQuery,
+      selectedDatasource,
+      selectedTables,
+      modifyAppend,
+      setModifyingChartId,
+    ],
+  );
 
-      if (result.success && result.data) {
-        // Determine chart type based on data structure
-        const chartType = determineChartType(result.data);
-
-        // Generate AI-powered title for the chart
-        const aiTitle = await generateChartTitle(
-          naturalLanguageQuery,
-          result.data,
-          chartType,
-        );
-
-        const newChart: ChartCard = {
-          id: Date.now().toString(),
-          query: naturalLanguageQuery,
-          title: aiTitle,
-          chartType: chartType,
-          sql: result.sql || "",
-          data: result.data,
-          isExpanded: false,
-          executionTime: result.executionTime,
-          rowCount: result.data.length,
-        };
-
-        setChartCards((prev) => [...prev, newChart]);
-        setNaturalLanguageQuery("");
-        toast.success("Chart generated successfully!");
-      } else {
-        toast.error(result.error || "Failed to generate chart");
-      }
-    } catch (error) {
-      console.error("Error generating chart:", error);
-      toast.error("Failed to generate chart");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const determineChartType = (data: any[]): "line" | "bar" | "pie" => {
-    if (data.length === 0) return "bar";
-
-    const keys = Object.keys(data[0]);
-    const hasDateColumn = keys.some(
-      (key) =>
-        key.toLowerCase().includes("date") ||
-        key.toLowerCase().includes("time") ||
-        key.toLowerCase().includes("month") ||
-        key.toLowerCase().includes("year"),
-    );
-
-    if (hasDateColumn) return "line";
-    if (data.length <= 10 && keys.length === 2) return "pie";
-    return "bar";
-  };
-
-  const toggleChartExpansion = (chartId: string) => {
+  const toggleChartExpansion = useCallback((chartId: string) => {
     setChartCards((prev) =>
       prev.map((chart) =>
         chart.id === chartId
@@ -388,390 +1190,42 @@ export default function AnalyticsStudioPage() {
           : chart,
       ),
     );
-  };
+  }, []);
 
-  const handleAiInputSubmit = async (chartId: string) => {
-    const query = aiInputQuery[chartId];
-    const chartType = aiChartType[chartId];
+  // New optimized callback handlers for the ChartCardComponent
+  const handleAiInputOpenChange = useCallback(
+    (chartId: string, open: boolean) => {
+      setAiInputOpen((prev) => ({ ...prev, [chartId]: open }));
+    },
+    [],
+  );
 
-    if (!query && !chartType) {
-      toast.error("Please provide a query modification or select a chart type");
-      return;
-    }
+  const handleAiInputQueryChange = useCallback(
+    (chartId: string, value: string) => {
+      setAiInputQuery((prev) => ({ ...prev, [chartId]: value }));
+    },
+    [],
+  );
 
-    setIsGenerating(true);
-    try {
-      // If user provided a new query, regenerate with the modified query
-      if (query) {
-        if (!selectedDatasource) {
-          toast.error("No datasource selected");
-          return;
-        }
+  const generateChartProps = async (
+    query: string,
+    data: any[],
+    chartType: ChartType,
+    title?: string,
+  ): Promise<ChartProps> => {
+    const finalTitle = title || query;
 
-        // Use API route to generate and execute SQL
-        const response = await fetch("/api/analytics/text-to-sql", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query: query,
-            selectedTables,
-            datasourceId: selectedDatasource.id,
-            aiProvider: selectedModel?.provider || "openai",
-            aiModel: selectedModel?.model || "gpt-4",
-            maxRetries: 3,
-          }),
-        });
-
-        const result = await response.json();
-
-        if (result.success && result.data) {
-          const newChartType = chartType || determineChartType(result.data);
-
-          setChartCards((prev) =>
-            prev.map((chart) =>
-              chart.id === chartId
-                ? {
-                    ...chart,
-                    query: query,
-                    title: query,
-                    sql: result.sql || "",
-                    data: result.data || [],
-                    chartType: newChartType,
-                    executionTime: result.executionTime,
-                    rowCount: result.data?.length || 0,
-                  }
-                : chart,
-            ),
-          );
-
-          toast.success("Chart updated successfully!");
-        } else {
-          toast.error(result.error || "Failed to update chart");
-        }
-      } else if (chartType) {
-        // Just update the chart type without regenerating data
-        setChartCards((prev) =>
-          prev.map((chart) =>
-            chart.id === chartId ? { ...chart, chartType: chartType } : chart,
-          ),
-        );
-        toast.success("Chart type updated!");
-      }
-
-      // Close the AI Input popover and clear the input
-      setAiInputOpen((prev) => ({ ...prev, [chartId]: false }));
-      setAiInputQuery((prev) => ({ ...prev, [chartId]: "" }));
-      setAiChartType((prev) => ({ ...prev, [chartId]: "bar" }));
-    } catch (error) {
-      console.error("Error updating chart:", error);
-      toast.error("Failed to update chart");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const renderChart = (chart: ChartCard) => {
-    const { data, chartType } = chart;
-
-    if (!data || data.length === 0) return <div>No data available</div>;
-
-    const keys = Object.keys(data[0]);
-    const xKey = keys[0];
-    const yKey = keys[1];
-
-    // Use proper color values instead of CSS variables that might not exist
-    const colors = ["#8884d8", "#82ca9d", "#ffc658", "#ff7300", "#00ff00"];
-
-    // Chart configuration for ChartContainer
-    const chartConfig = {
-      [yKey]: {
-        label: yKey,
-        color: colors[0],
-      },
-    };
-
+    // Convert data to appropriate format based on chart type
     switch (chartType) {
-      case "line":
-        return (
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsLineChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey={xKey} />
-                <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line
-                  type="monotone"
-                  dataKey={yKey}
-                  stroke={colors[0]}
-                  strokeWidth={2}
-                />
-              </RechartsLineChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        );
-
       case "bar":
-        return (
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsBarChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey={xKey} />
-                <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey={yKey} fill={colors[0]} />
-              </RechartsBarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        );
-
+        return convertToBarChartProps(data, query, finalTitle);
+      case "line":
+        return convertToLineChartProps(data, query, finalTitle);
       case "pie":
-        return (
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsPieChart>
-                <Pie
-                  data={data}
-                  dataKey={yKey}
-                  nameKey={xKey}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill={colors[0]}
-                  label
-                >
-                  {data.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={colors[index % colors.length]}
-                    />
-                  ))}
-                </Pie>
-                <ChartTooltip content={<ChartTooltipContent />} />
-              </RechartsPieChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        );
-
+        return convertToPieChartProps(data, query, finalTitle);
       default:
-        return <div>Unsupported chart type</div>;
+        return convertToBarChartProps(data, query, finalTitle);
     }
-  };
-
-  const ChartCard = ({ chart }: { chart: ChartCard }) => {
-    // Memoized handlers to prevent unnecessary re-renders and focus loss
-    const handleQueryChange = useCallback(
-      (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const value = e.target.value;
-        setAiInputQuery((prev) => ({
-          ...prev,
-          [chart.id]: value,
-        }));
-      },
-      [chart.id],
-    );
-
-    const handleChartTypeChange = useCallback(
-      (value: "line" | "bar" | "pie") => {
-        setAiChartType((prev) => ({
-          ...prev,
-          [chart.id]: value,
-        }));
-      },
-      [chart.id],
-    );
-
-    return (
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">{chart.title}</CardTitle>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="text-xs">
-                {chart.rowCount} rows
-              </Badge>
-              <Badge variant="outline" className="text-xs">
-                {chart.executionTime}ms
-              </Badge>
-              <Popover
-                open={aiInputOpen[chart.id] || false}
-                onOpenChange={(open) =>
-                  setAiInputOpen((prev) => ({ ...prev, [chart.id]: open }))
-                }
-              >
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-primary">
-                    <Play className="h-4 w-4 mr-1" />
-                    AI Input
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-96 p-4">
-                  <div className="space-y-4">
-                    <div>
-                      <Label
-                        htmlFor={`ai-query-${chart.id}`}
-                        className="text-sm font-medium"
-                      >
-                        Modify Query
-                      </Label>
-                      <Textarea
-                        id={`ai-query-${chart.id}`}
-                        placeholder="Enter a new query or modifications to the current query..."
-                        value={aiInputQuery[chart.id] || ""}
-                        onChange={handleQueryChange}
-                        className="mt-1"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div>
-                      <Label
-                        htmlFor={`chart-type-${chart.id}`}
-                        className="text-sm font-medium"
-                      >
-                        Chart Type
-                      </Label>
-                      <Select
-                        value={aiChartType[chart.id] || chart.chartType}
-                        onValueChange={handleChartTypeChange}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="line">Line Chart</SelectItem>
-                          <SelectItem value="bar">Bar Chart</SelectItem>
-                          <SelectItem value="pie">Pie Chart</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setAiInputOpen((prev) => ({
-                            ...prev,
-                            [chart.id]: false,
-                          }));
-                          setAiInputQuery((prev) => ({
-                            ...prev,
-                            [chart.id]: "",
-                          }));
-                          setAiChartType((prev) => ({
-                            ...prev,
-                            [chart.id]: chart.chartType,
-                          }));
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleAiInputSubmit(chart.id)}
-                        disabled={isGenerating}
-                      >
-                        {isGenerating ? "Updating..." : "Update Chart"}
-                      </Button>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleChartExpansion(chart.id)}
-              >
-                <Eye className="h-4 w-4 mr-1" />
-                Inspect Chart
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {!chart.isExpanded ? (
-            <div className="h-[300px]">{renderChart(chart)}</div>
-          ) : (
-            <Tabs defaultValue="data" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="data">Data</TabsTrigger>
-                <TabsTrigger value="sql">SQL Query</TabsTrigger>
-                <TabsTrigger value="config">Configuration</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="data" className="mt-4">
-                <div className="max-h-[400px] overflow-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        {chart.data.length > 0 &&
-                          Object.keys(chart.data[0]).map((key) => (
-                            <TableHead key={key}>{key}</TableHead>
-                          ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {chart.data.map((row, index) => (
-                        <TableRow key={index}>
-                          {Object.values(row).map((value: any, cellIndex) => (
-                            <TableCell key={cellIndex}>
-                              {value?.toString() || ""}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="sql" className="mt-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <pre className="text-sm bg-muted p-4 rounded overflow-auto">
-                      <code>{chart.sql}</code>
-                    </pre>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="config" className="mt-4">
-                <Card>
-                  <CardContent className="p-4 space-y-4">
-                    <div>
-                      <label className="text-sm font-medium">Chart Type</label>
-                      <Select value={chart.chartType}>
-                        <SelectTrigger className="w-full mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="line">Line Chart</SelectItem>
-                          <SelectItem value="bar">Bar Chart</SelectItem>
-                          <SelectItem value="pie">Pie Chart</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Title</label>
-                      <input
-                        type="text"
-                        value={chart.title}
-                        className="w-full mt-1 px-3 py-2 border rounded-md"
-                        readOnly
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          )}
-        </CardContent>
-      </Card>
-    );
   };
 
   return (
@@ -992,10 +1446,10 @@ export default function AnalyticsStudioPage() {
             <div className="flex gap-3">
               <Textarea
                 placeholder="Get me a line chart of monthly revenue, for premium and enterprise in EMEA - bar chart of monthly user signups, clustered by plan. Also in EMEA, all tiers except free for the last 6 months"
-                value={naturalLanguageQuery}
-                onChange={(e) => setNaturalLanguageQuery(e.target.value)}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
                 className="flex-1 min-h-[60px] resize-none"
-                disabled={isGenerating}
+                disabled={isChatLoading}
               />
               <div className="flex gap-2">
                 <SelectModel
@@ -1013,13 +1467,13 @@ export default function AnalyticsStudioPage() {
                 <Button
                   onClick={generateChart}
                   disabled={
-                    !naturalLanguageQuery.trim() ||
+                    !input.trim() ||
                     selectedTables.length === 0 ||
-                    isGenerating
+                    isChatLoading
                   }
                   className="px-8 h-10"
                 >
-                  {isGenerating ? (
+                  {isChatLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   ) : (
                     <BarChart3 className="h-4 w-4 mr-2" />
@@ -1045,7 +1499,17 @@ export default function AnalyticsStudioPage() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {chartCards.map((chart) => (
-                <ChartCard key={chart.id} chart={chart} />
+                <ChartCardComponent
+                  key={chart.id}
+                  chart={chart}
+                  aiInputOpen={aiInputOpen}
+                  aiInputQuery={aiInputQuery}
+                  isModifyLoading={isModifyLoading}
+                  onAiInputOpenChange={handleAiInputOpenChange}
+                  onAiInputQueryChange={handleAiInputQueryChange}
+                  onAiInputSubmit={handleAiInputSubmit}
+                  onToggleExpansion={toggleChartExpansion}
+                />
               ))}
             </div>
           )}
