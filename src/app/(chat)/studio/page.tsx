@@ -107,6 +107,7 @@ interface ChartCard {
   executionTime?: number;
   rowCount?: number;
   chartTitle?: string;
+  lastUpdated?: number; // Add timestamp to force re-renders
 }
 
 interface DatabaseTable {
@@ -121,7 +122,31 @@ interface DatabaseSchema {
   tableCount?: number;
 }
 
-// Optimized ChartContent component with React.memo
+// Custom comparison function for ChartContent memo
+const chartContentPropsAreEqual = (
+  prevProps: { chart: ChartCard },
+  nextProps: { chart: ChartCard },
+) => {
+  const prev = prevProps.chart;
+  const next = nextProps.chart;
+
+  // Compare all relevant properties that affect rendering
+  return (
+    prev.id === next.id &&
+    prev.chartType === next.chartType &&
+    prev.chartTitle === next.chartTitle &&
+    prev.query === next.query &&
+    prev.sql === next.sql &&
+    prev.rowCount === next.rowCount &&
+    prev.executionTime === next.executionTime &&
+    prev.isExpanded === next.isExpanded &&
+    prev.lastUpdated === next.lastUpdated && // Include timestamp in comparison
+    JSON.stringify(prev.data) === JSON.stringify(next.data) &&
+    JSON.stringify(prev.chartProps) === JSON.stringify(next.chartProps)
+  );
+};
+
+// Optimized ChartContent component with React.memo and custom comparison
 const ChartContent = React.memo(({ chart }: { chart: ChartCard }) => {
   const { chartType, chartProps, data } = chart;
 
@@ -149,7 +174,7 @@ const ChartContent = React.memo(({ chart }: { chart: ChartCard }) => {
       };
     });
     return config;
-  }, [chartType, chartProps, data]);
+  }, [chartType, chartProps, data, chart.id, chart.lastUpdated]); // Add lastUpdated to dependencies
 
   const pieChartData = useMemo(() => {
     if (chartType !== "pie" || !chartProps || !data || data.length === 0)
@@ -161,14 +186,14 @@ const ChartContent = React.memo(({ chart }: { chart: ChartCard }) => {
       value: item.value,
       fill: `var(--color-${item.label.replace(/[^a-zA-Z0-9]/g, "_")})`,
     }));
-  }, [chartType, chartProps, data]);
+  }, [chartType, chartProps, data, chart.id, chart.lastUpdated]); // Add lastUpdated to dependencies
 
   const pieTotal = useMemo(() => {
     if (chartType !== "pie" || !chartProps || !data || data.length === 0)
       return 0;
     const pieProps = chartProps as PieChartProps;
     return pieProps.data.reduce((acc, curr) => acc + curr.value, 0);
-  }, [chartType, chartProps, data]);
+  }, [chartType, chartProps, data, chart.id, chart.lastUpdated]); // Add lastUpdated to dependencies
 
   const barConfig = useMemo(() => {
     if (chartType !== "bar" || !chartProps || !data || data.length === 0)
@@ -192,7 +217,7 @@ const ChartContent = React.memo(({ chart }: { chart: ChartCard }) => {
       };
     });
     return { config, seriesNames };
-  }, [chartType, chartProps, data]);
+  }, [chartType, chartProps, data, chart.id, chart.lastUpdated]); // Add lastUpdated to dependencies
 
   const barChartData = useMemo(() => {
     if (chartType !== "bar" || !chartProps || !data || data.length === 0)
@@ -205,7 +230,7 @@ const ChartContent = React.memo(({ chart }: { chart: ChartCard }) => {
       });
       return result;
     });
-  }, [chartType, chartProps, data]);
+  }, [chartType, chartProps, data, chart.id, chart.lastUpdated]); // Add lastUpdated to dependencies
 
   const lineConfig = useMemo(() => {
     if (chartType !== "line" || !chartProps || !data || data.length === 0)
@@ -229,7 +254,7 @@ const ChartContent = React.memo(({ chart }: { chart: ChartCard }) => {
       };
     });
     return { config, seriesNames };
-  }, [chartType, chartProps, data]);
+  }, [chartType, chartProps, data, chart.id, chart.lastUpdated]); // Add lastUpdated to dependencies
 
   const lineChartData = useMemo(() => {
     if (chartType !== "line" || !chartProps || !data || data.length === 0)
@@ -242,7 +267,7 @@ const ChartContent = React.memo(({ chart }: { chart: ChartCard }) => {
       });
       return result;
     });
-  }, [chartType, chartProps, data]);
+  }, [chartType, chartProps, data, chart.id, chart.lastUpdated]); // Add lastUpdated to dependencies
 
   if (!chartProps || !data || data.length === 0) {
     return (
@@ -445,9 +470,35 @@ const ChartContent = React.memo(({ chart }: { chart: ChartCard }) => {
       Unsupported chart type
     </div>
   );
-});
+}, chartContentPropsAreEqual);
 
 ChartContent.displayName = "ChartContent";
+
+// Custom comparison function for ChartCardComponent memo
+const chartCardPropsAreEqual = (
+  prevProps: ChartCardProps,
+  nextProps: ChartCardProps,
+) => {
+  // Compare chart properties that affect rendering
+  const chartEqual = chartContentPropsAreEqual(
+    { chart: prevProps.chart },
+    { chart: nextProps.chart },
+  );
+
+  // Compare other props
+  return (
+    chartEqual &&
+    prevProps.isModifyLoading === nextProps.isModifyLoading &&
+    prevProps.aiInputOpen[prevProps.chart.id] ===
+      nextProps.aiInputOpen[nextProps.chart.id] &&
+    prevProps.aiInputQuery[prevProps.chart.id] ===
+      nextProps.aiInputQuery[nextProps.chart.id] &&
+    prevProps.onAiInputOpenChange === nextProps.onAiInputOpenChange &&
+    prevProps.onAiInputQueryChange === nextProps.onAiInputQueryChange &&
+    prevProps.onAiInputSubmit === nextProps.onAiInputSubmit &&
+    prevProps.onToggleExpansion === nextProps.onToggleExpansion
+  );
+};
 
 // Optimized ChartCardComponent with React.memo
 interface ChartCardProps {
@@ -638,6 +689,7 @@ const ChartCardComponent = React.memo(
       </Card>
     );
   },
+  chartCardPropsAreEqual,
 );
 
 ChartCardComponent.displayName = "ChartCardComponent";
@@ -766,6 +818,7 @@ export default function AnalyticsStudioPage() {
                   executionTime: result.executionTime,
                   rowCount: result.rowCount,
                   chartTitle: result.chartTitle,
+                  lastUpdated: Date.now(), // Add timestamp for re-render tracking
                 };
 
                 // Use functional update to prevent duplicate charts
@@ -886,6 +939,7 @@ export default function AnalyticsStudioPage() {
                           executionTime: result.executionTime,
                           rowCount: result.rowCount,
                           chartTitle: result.chartTitle,
+                          lastUpdated: Date.now(), // Add timestamp to force re-render
                         }
                       : chart,
                   );
@@ -1290,7 +1344,7 @@ Use the textToSql tool to execute this updated request.
     setChartCards((prev) =>
       prev.map((chart) =>
         chart.id === chartId
-          ? { ...chart, isExpanded: !chart.isExpanded }
+          ? { ...chart, isExpanded: !chart.isExpanded, lastUpdated: Date.now() }
           : chart,
       ),
     );
