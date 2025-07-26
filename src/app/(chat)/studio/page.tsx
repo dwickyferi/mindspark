@@ -590,6 +590,17 @@ const ChartCardComponent = React.memo(
                         placeholder="Enter a new query or modifications to the current query..."
                         value={aiInputQuery[chart.id] || ""}
                         onChange={handleQueryChange}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            if (
+                              !aiInputQuery[chart.id]?.trim() ||
+                              isModifyLoading
+                            )
+                              return;
+                            handleUpdateClick();
+                          }
+                        }}
                         className="mt-1"
                         rows={3}
                       />
@@ -1226,6 +1237,12 @@ export default function AnalyticsStudioPage() {
       return;
     }
 
+    // Store the input value before clearing it
+    const queryInput = input;
+
+    // Clear the input immediately when user submits
+    setInput("");
+
     // Reset processed invocations for new query session
     setProcessedInvocations(new Set());
     setProcessedModifyInvocations(new Set());
@@ -1234,7 +1251,7 @@ export default function AnalyticsStudioPage() {
     const contextPrompt = `
 Generate and execute a SQL query for the following request:
 
-Query: "${input}"
+Query: "${queryInput}"
 Selected Tables: ${selectedTables.join(", ")}
 Datasource ID: ${selectedDatasource.id}
 
@@ -1254,8 +1271,6 @@ Use the textToSql tool to execute this request.
       role: "user",
       content: contextPrompt,
     });
-
-    setInput("");
   };
 
   const handleAiInputSubmit = useCallback(
@@ -1608,6 +1623,18 @@ Use the textToSql tool to execute this updated request.
                 placeholder="Get me a line chart of monthly revenue, for premium and enterprise in EMEA - bar chart of monthly user signups, clustered by plan. Also in EMEA, all tiers except free for the last 6 months. Or show me raw data in a table format."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (
+                      !input.trim() ||
+                      selectedTables.length === 0 ||
+                      isChatLoading
+                    )
+                      return;
+                    generateChart();
+                  }
+                }}
                 className="flex-1 min-h-[60px] resize-none"
                 disabled={isChatLoading}
               />
