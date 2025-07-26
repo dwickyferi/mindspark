@@ -749,7 +749,7 @@ export default function AnalyticsStudioPage() {
 
   // Persistent storage state
   const [isLoadingSession, setIsLoadingSession] = useState(true);
-  const [isLoadingCharts, setIsLoadingCharts] = useState(true);
+  const [_, setIsLoadingCharts] = useState(true);
   const [isRestoringSession, setIsRestoringSession] = useState(false);
 
   // Delete confirmation modal state
@@ -1151,21 +1151,6 @@ export default function AnalyticsStudioPage() {
                               }),
                           );
                           setSelectedTables(validTables);
-
-                          // Show success message when session is fully restored
-                          toast.success(
-                            `Session restored: ${datasource.name} → ${session.selectedSchema} → ${validTables.length} table(s)`,
-                            {
-                              duration: 3000,
-                            },
-                          );
-                        } else {
-                          toast.success(
-                            `Session restored: ${datasource.name} → ${session.selectedSchema}`,
-                            {
-                              duration: 3000,
-                            },
-                          );
                         }
                       } catch (error) {
                         console.error(
@@ -1191,15 +1176,6 @@ export default function AnalyticsStudioPage() {
                         expandedSidebar: session.expandedSidebar,
                         sessionMetadata: {},
                       }).catch(console.error);
-
-                      toast.success(`Session restored: ${datasource.name}`, {
-                        duration: 3000,
-                      });
-                    } else {
-                      // No saved schema, just show datasource restored
-                      toast.success(`Session restored: ${datasource.name}`, {
-                        duration: 3000,
-                      });
                     }
                   }
                 } catch (error) {
