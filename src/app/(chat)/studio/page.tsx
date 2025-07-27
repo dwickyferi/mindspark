@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -39,6 +40,9 @@ import {
   Sparkles,
   Search,
   Trash2,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DatasourceAPI, type DatasourceListItem } from "@/lib/api/datasources";
@@ -497,6 +501,9 @@ const chartCardPropsAreEqual = (
   return (
     chartEqual &&
     prevProps.isModifyLoading === nextProps.isModifyLoading &&
+    prevProps.editingTitleId === nextProps.editingTitleId &&
+    prevProps.editingTitleValue === nextProps.editingTitleValue &&
+    prevProps.isSavingTitle === nextProps.isSavingTitle &&
     prevProps.aiInputOpen[prevProps.chart.id] ===
       nextProps.aiInputOpen[nextProps.chart.id] &&
     prevProps.aiInputQuery[prevProps.chart.id] ===
@@ -505,7 +512,11 @@ const chartCardPropsAreEqual = (
     prevProps.onAiInputQueryChange === nextProps.onAiInputQueryChange &&
     prevProps.onAiInputSubmit === nextProps.onAiInputSubmit &&
     prevProps.onToggleExpansion === nextProps.onToggleExpansion &&
-    prevProps.onDeleteChart === nextProps.onDeleteChart
+    prevProps.onDeleteChart === nextProps.onDeleteChart &&
+    prevProps.onStartTitleEdit === nextProps.onStartTitleEdit &&
+    prevProps.onCancelTitleEdit === nextProps.onCancelTitleEdit &&
+    prevProps.onSaveTitle === nextProps.onSaveTitle &&
+    prevProps.onTitleValueChange === nextProps.onTitleValueChange
   );
 };
 
@@ -515,11 +526,18 @@ interface ChartCardProps {
   aiInputOpen: { [key: string]: boolean };
   aiInputQuery: { [key: string]: string };
   isModifyLoading: boolean;
+  editingTitleId: string | null;
+  editingTitleValue: string;
+  isSavingTitle: string | null;
   onAiInputOpenChange: (chartId: string, open: boolean) => void;
   onAiInputQueryChange: (chartId: string, value: string) => void;
   onAiInputSubmit: (chartId: string) => void;
   onToggleExpansion: (chartId: string) => void;
   onDeleteChart: (chartId: string, chartTitle: string) => void;
+  onStartTitleEdit: (chartId: string, currentTitle: string) => void;
+  onCancelTitleEdit: () => void;
+  onSaveTitle: (chartId: string) => void;
+  onTitleValueChange: (value: string) => void;
 }
 
 const ChartCardComponent = React.memo(
@@ -528,11 +546,18 @@ const ChartCardComponent = React.memo(
     aiInputOpen,
     aiInputQuery,
     isModifyLoading,
+    editingTitleId,
+    editingTitleValue,
+    isSavingTitle,
     onAiInputOpenChange,
     onAiInputQueryChange,
     onAiInputSubmit,
     onToggleExpansion,
     onDeleteChart,
+    onStartTitleEdit,
+    onCancelTitleEdit,
+    onSaveTitle,
+    onTitleValueChange,
   }: ChartCardProps) => {
     // Memoized handlers to prevent unnecessary re-renders and focus loss
     const handleQueryChange = useCallback(
@@ -556,8 +581,8 @@ const ChartCardComponent = React.memo(
     }, [chart.id, onToggleExpansion]);
 
     const handleDeleteClick = useCallback(() => {
-      onDeleteChart(chart.id, chart.chartProps.title);
-    }, [chart.id, chart.chartProps.title, onDeleteChart]);
+      onDeleteChart(chart.id, chart.chartTitle || chart.chartProps.title);
+    }, [chart.id, chart.chartTitle, chart.chartProps.title, onDeleteChart]);
 
     const handlePopoverOpenChange = useCallback(
       (open: boolean) => {
@@ -570,7 +595,66 @@ const ChartCardComponent = React.memo(
       <Card className="mb-4">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">{chart.chartProps.title}</CardTitle>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {editingTitleId === chart.id ? (
+                <div className="flex items-center gap-1 flex-1">
+                  <Input
+                    value={editingTitleValue}
+                    onChange={(e) => onTitleValueChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        onSaveTitle(chart.id);
+                      } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        onCancelTitleEdit();
+                      }
+                    }}
+                    className="text-lg font-semibold"
+                    autoFocus
+                    disabled={isSavingTitle === chart.id}
+                  />
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onSaveTitle(chart.id)}
+                      disabled={isSavingTitle === chart.id || !editingTitleValue.trim()}
+                      className="h-6 w-6 p-0"
+                    >
+                      {isSavingTitle === chart.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Check className="h-3 w-3 text-green-600" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={onCancelTitleEdit}
+                      disabled={isSavingTitle === chart.id}
+                      className="h-6 w-6 p-0"
+                    >
+                      <X className="h-3 w-3 text-red-600" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <CardTitle className="text-lg truncate">
+                    {chart.chartTitle || chart.chartProps.title}
+                  </CardTitle>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onStartTitleEdit(chart.id, chart.chartTitle || chart.chartProps.title)}
+                    className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">
                 {chart.rowCount} rows
@@ -790,6 +874,11 @@ export default function AnalyticsStudioPage() {
   const [aiInputQuery, setAiInputQuery] = useState<{ [key: string]: string }>(
     {},
   );
+
+  // Title editing state
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+  const [editingTitleValue, setEditingTitleValue] = useState<string>("");
+  const [isSavingTitle, setIsSavingTitle] = useState<string | null>(null);
 
   // Use AI SDK's useChat for main query generation
   const {
@@ -1392,19 +1481,28 @@ export default function AnalyticsStudioPage() {
         if (chartsResponse.success && chartsResponse.data) {
           // Convert database charts to ChartCard format
           const loadedCharts: ChartCard[] = chartsResponse.data.map(
-            (chart) => ({
-              id: chart.id,
-              query: chart.title, // Use title as query for display
-              sql: chart.sqlQuery,
-              data: chart.dataCache || [],
-              chartType: chart.chartType as ChartType,
-              chartProps: chart.chartConfig as any, // Use any for now since we store different formats
-              isExpanded: false,
-              executionTime: undefined,
-              rowCount: chart.dataCache?.length || 0,
-              chartTitle: chart.title,
-              lastUpdated: Date.now(),
-            }),
+            (chart) => {
+              // Ensure chartProps.title matches the database title
+              const chartConfig = chart.chartConfig as any;
+              const updatedChartProps = {
+                ...chartConfig,
+                title: chart.title, // Always use the database title as the source of truth
+              };
+
+              return {
+                id: chart.id,
+                query: chart.title, // Use title as query for display
+                sql: chart.sqlQuery,
+                data: chart.dataCache || [],
+                chartType: chart.chartType as ChartType,
+                chartProps: updatedChartProps,
+                isExpanded: false,
+                executionTime: undefined,
+                rowCount: chart.dataCache?.length || 0,
+                chartTitle: chart.title,
+                lastUpdated: Date.now(),
+              };
+            },
           );
           setChartCards(loadedCharts);
         }
@@ -1739,6 +1837,73 @@ Use the textToSql tool to execute this request.
       content: contextPrompt,
     });
   };
+
+  // Title editing handlers
+  const handleStartTitleEdit = useCallback((chartId: string, currentTitle: string) => {
+    setEditingTitleId(chartId);
+    setEditingTitleValue(currentTitle);
+  }, []);
+
+  const handleCancelTitleEdit = useCallback(() => {
+    setEditingTitleId(null);
+    setEditingTitleValue("");
+  }, []);
+
+  const handleSaveTitle = useCallback(async (chartId: string) => {
+    const newTitle = editingTitleValue.trim();
+
+    if (!newTitle) {
+      toast.error("Title cannot be empty");
+      return;
+    }
+
+    if (newTitle.length > 255) {
+      toast.error("Title cannot exceed 255 characters");
+      return;
+    }
+
+    setIsSavingTitle(chartId);
+
+    try {
+      // Update chart title in database
+      const response = await StudioAPI.updateChartTitle(chartId, newTitle);
+
+      if (response.success) {
+        // Update local state
+        setChartCards((prev) =>
+          prev.map((chart) =>
+            chart.id === chartId
+              ? {
+                  ...chart,
+                  chartTitle: newTitle,
+                  chartProps: {
+                    ...chart.chartProps,
+                    title: newTitle,
+                  },
+                }
+              : chart,
+          ),
+        );
+
+        // Clear editing state
+        setEditingTitleId(null);
+        setEditingTitleValue("");
+        
+        toast.success("Chart title updated successfully!");
+      } else {
+        toast.error(response.error || "Failed to update chart title");
+      }
+    } catch (error) {
+      console.error("Error updating chart title:", error);
+      toast.error("Failed to update chart title");
+    } finally {
+      setIsSavingTitle(null);
+    }
+  }, [editingTitleValue]);
+
+  const handleTitleValueChange = useCallback((value: string) => {
+    setEditingTitleValue(value);
+  }, []);
 
   const handleAiInputSubmit = useCallback(
     async (chartId: string) => {
@@ -2197,11 +2362,18 @@ Use the textToSql tool to execute this updated request.
                     aiInputOpen={aiInputOpen}
                     aiInputQuery={aiInputQuery}
                     isModifyLoading={isModifyLoading}
+                    editingTitleId={editingTitleId}
+                    editingTitleValue={editingTitleValue}
+                    isSavingTitle={isSavingTitle}
                     onAiInputOpenChange={handleAiInputOpenChange}
                     onAiInputQueryChange={handleAiInputQueryChange}
                     onAiInputSubmit={handleAiInputSubmit}
                     onToggleExpansion={toggleChartExpansion}
                     onDeleteChart={handleDeleteChart}
+                    onStartTitleEdit={handleStartTitleEdit}
+                    onCancelTitleEdit={handleCancelTitleEdit}
+                    onSaveTitle={handleSaveTitle}
+                    onTitleValueChange={handleTitleValueChange}
                   />
                 ))}
               </div>

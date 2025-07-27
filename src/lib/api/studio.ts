@@ -112,4 +112,18 @@ export class StudioAPI {
       method: "DELETE",
     });
   }
+
+  static async updateChartTitle(
+    chartId: string,
+    title: string,
+  ): Promise<{
+    success: boolean;
+    data?: { id: string; title: string; updatedAt: Date };
+    error?: string;
+  }> {
+    return this.request(`/api/studio/charts/${chartId}/title`, {
+      method: "PATCH",
+      body: JSON.stringify({ title }),
+    });
+  }
 }
