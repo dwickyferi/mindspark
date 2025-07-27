@@ -21,6 +21,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -906,6 +911,16 @@ export default function AnalyticsStudioPage() {
   >(null);
   const [currentGenerationTime, setCurrentGenerationTime] = useState<number>(0);
 
+  // Table details state for hover cards
+  const [tableDetails, setTableDetails] = useState<{
+    [key: string]: {
+      columns?: { name: string; type: string }[];
+      sampleData?: any[];
+      loading?: boolean;
+      error?: string;
+    };
+  }>({});
+
   // Use AI SDK's useChat for main query generation
   const {
     messages,
@@ -1774,6 +1789,67 @@ export default function AnalyticsStudioPage() {
     toast.success("Tables refreshed successfully");
   };
 
+  // Function to fetch table details (columns and sample data)
+  const fetchTableDetails = async (table: DatabaseTable) => {
+    if (!selectedDatasource) return;
+
+    const tableKey = `${table.schema}.${table.name}`;
+
+    // Don't fetch if already loading or already have data
+    if (tableDetails[tableKey]?.loading || tableDetails[tableKey]?.columns) {
+      return;
+    }
+
+    // Set loading state
+    setTableDetails((prev) => ({
+      ...prev,
+      [tableKey]: { ...prev[tableKey], loading: true },
+    }));
+
+    try {
+      // Fetch table schema (columns)
+      const schemaResponse = await fetch(
+        `/api/analytics/table-details?datasourceId=${selectedDatasource.id}&schema=${table.schema}&table=${table.name}`,
+      );
+
+      if (!schemaResponse.ok) {
+        throw new Error(
+          `Failed to fetch table details: ${schemaResponse.statusText}`,
+        );
+      }
+
+      const schemaResult = await schemaResponse.json();
+
+      if (schemaResult.success) {
+        setTableDetails((prev) => ({
+          ...prev,
+          [tableKey]: {
+            ...prev[tableKey],
+            columns: schemaResult.columns || [],
+            sampleData: schemaResult.sampleData || [],
+            loading: false,
+            error: undefined,
+          },
+        }));
+      } else {
+        throw new Error(schemaResult.error || "Failed to fetch table details");
+      }
+    } catch (error) {
+      console.error(`Error fetching details for table ${tableKey}:`, error);
+      setTableDetails((prev) => ({
+        ...prev,
+        [tableKey]: {
+          ...prev[tableKey],
+          loading: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to fetch table details",
+        },
+      }));
+    }
+  };
+
   const handleTableSelection = (table: DatabaseTable) => {
     const fullTableName = table.schema
       ? `${table.schema}.${table.name}`
@@ -2413,21 +2489,31 @@ Use the textToSql tool to execute this updated request.
                     <div className="flex-1 min-h-0">
                       <div className="h-full overflow-y-auto">
                         <div className="space-y-2 pr-2">
-                          <TooltipProvider>
-                            {availableTables.map((table) => (
-                              <Tooltip key={table.name}>
-                                <TooltipTrigger asChild>
+                          {availableTables.map((table) => {
+                            const tableKey = `${table.schema}.${table.name}`;
+                            const isSelected = selectedTables.includes(
+                              table.schema
+                                ? `${table.schema}.${table.name}`
+                                : table.name,
+                            );
+
+                            return (
+                              <HoverCard
+                                key={table.name}
+                                openDelay={400}
+                                closeDelay={100}
+                              >
+                                <HoverCardTrigger asChild>
                                   <div
                                     className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                                      selectedTables.includes(
-                                        table.schema
-                                          ? `${table.schema}.${table.name}`
-                                          : table.name,
-                                      )
+                                      isSelected
                                         ? "bg-primary/10 border-primary"
                                         : "bg-background hover:bg-muted"
                                     }`}
                                     onClick={() => handleTableSelection(table)}
+                                    onMouseEnter={() =>
+                                      fetchTableDetails(table)
+                                    }
                                   >
                                     <div className="flex items-center gap-2">
                                       <TableIcon className="h-4 w-4 flex-shrink-0" />
@@ -2436,22 +2522,170 @@ Use the textToSql tool to execute this updated request.
                                           {table.name}
                                         </div>
                                       </div>
-                                      {selectedTables.includes(
-                                        table.schema
-                                          ? `${table.schema}.${table.name}`
-                                          : table.name,
-                                      ) && (
+                                      {isSelected && (
                                         <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
                                       )}
                                     </div>
                                   </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{table.name}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            ))}
-                          </TooltipProvider>
+                                </HoverCardTrigger>
+                                <HoverCardContent
+                                  className="w-96"
+                                  side="right"
+                                  align="start"
+                                >
+                                  <div className="space-y-3">
+                                    <div>
+                                      <h4 className="text-sm font-semibold">
+                                        {table.name}
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground">
+                                        Schema: {table.schema}
+                                      </p>
+                                    </div>
+
+                                    <Tabs
+                                      defaultValue="schema"
+                                      className="w-full"
+                                    >
+                                      <TabsList className="grid w-full grid-cols-2">
+                                        <TabsTrigger value="schema">
+                                          Schema
+                                        </TabsTrigger>
+                                        <TabsTrigger value="sample">
+                                          Sample Data
+                                        </TabsTrigger>
+                                      </TabsList>
+
+                                      <TabsContent
+                                        value="schema"
+                                        className="mt-3"
+                                      >
+                                        <div className="space-y-2">
+                                          <h5 className="text-xs font-medium text-muted-foreground">
+                                            Columns
+                                          </h5>
+                                          {tableDetails[tableKey]?.loading ? (
+                                            <div className="flex items-center justify-center py-4">
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                              <span className="ml-2 text-xs text-muted-foreground">
+                                                Loading schema...
+                                              </span>
+                                            </div>
+                                          ) : tableDetails[tableKey]?.error ? (
+                                            <div className="text-xs text-red-500 py-2">
+                                              {tableDetails[tableKey]?.error}
+                                            </div>
+                                          ) : tableDetails[tableKey]
+                                              ?.columns ? (
+                                            <div className="max-h-48 overflow-y-auto">
+                                              <div className="space-y-1">
+                                                {tableDetails[
+                                                  tableKey
+                                                ]?.columns?.map(
+                                                  (column, idx) => (
+                                                    <div
+                                                      key={idx}
+                                                      className="flex justify-between items-center py-1 px-2 bg-muted/50 rounded text-xs"
+                                                    >
+                                                      <span className="font-mono">
+                                                        {column.name}
+                                                      </span>
+                                                      <span className="text-muted-foreground">
+                                                        {column.type}
+                                                      </span>
+                                                    </div>
+                                                  ),
+                                                )}
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div className="text-xs text-muted-foreground py-2">
+                                              Hover to load schema information
+                                            </div>
+                                          )}
+                                        </div>
+                                      </TabsContent>
+
+                                      <TabsContent
+                                        value="sample"
+                                        className="mt-3"
+                                      >
+                                        <div className="space-y-2">
+                                          <h5 className="text-xs font-medium text-muted-foreground">
+                                            Sample Data (First 5 rows)
+                                          </h5>
+                                          {tableDetails[tableKey]?.loading ? (
+                                            <div className="flex items-center justify-center py-4">
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                              <span className="ml-2 text-xs text-muted-foreground">
+                                                Loading sample data...
+                                              </span>
+                                            </div>
+                                          ) : tableDetails[tableKey]?.error ? (
+                                            <div className="text-xs text-red-500 py-2">
+                                              {tableDetails[tableKey]?.error}
+                                            </div>
+                                          ) : tableDetails[tableKey]
+                                              ?.sampleData ? (
+                                            <div className="max-h-48 overflow-auto">
+                                              <Table>
+                                                <TableHeader>
+                                                  <TableRow>
+                                                    {tableDetails[tableKey]
+                                                      ?.sampleData?.[0] &&
+                                                      Object.keys(
+                                                        tableDetails[tableKey]
+                                                          ?.sampleData?.[0] ||
+                                                          {},
+                                                      ).map((key) => (
+                                                        <TableHead
+                                                          key={key}
+                                                          className="text-xs px-2 py-1"
+                                                        >
+                                                          {key}
+                                                        </TableHead>
+                                                      ))}
+                                                  </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                  {tableDetails[
+                                                    tableKey
+                                                  ]?.sampleData?.map(
+                                                    (row, idx) => (
+                                                      <TableRow key={idx}>
+                                                        {Object.values(row).map(
+                                                          (
+                                                            value: any,
+                                                            cellIdx,
+                                                          ) => (
+                                                            <TableCell
+                                                              key={cellIdx}
+                                                              className="text-xs px-2 py-1 max-w-24 truncate"
+                                                            >
+                                                              {value?.toString() ||
+                                                                ""}
+                                                            </TableCell>
+                                                          ),
+                                                        )}
+                                                      </TableRow>
+                                                    ),
+                                                  )}
+                                                </TableBody>
+                                              </Table>
+                                            </div>
+                                          ) : (
+                                            <div className="text-xs text-muted-foreground py-2">
+                                              Hover to load sample data
+                                            </div>
+                                          )}
+                                        </div>
+                                      </TabsContent>
+                                    </Tabs>
+                                  </div>
+                                </HoverCardContent>
+                              </HoverCard>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
