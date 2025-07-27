@@ -619,7 +619,9 @@ const ChartCardComponent = React.memo(
                       size="sm"
                       variant="ghost"
                       onClick={() => onSaveTitle(chart.id)}
-                      disabled={isSavingTitle === chart.id || !editingTitleValue.trim()}
+                      disabled={
+                        isSavingTitle === chart.id || !editingTitleValue.trim()
+                      }
                       className="h-6 w-6 p-0"
                     >
                       {isSavingTitle === chart.id ? (
@@ -647,7 +649,12 @@ const ChartCardComponent = React.memo(
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => onStartTitleEdit(chart.id, chart.chartTitle || chart.chartProps.title)}
+                    onClick={() =>
+                      onStartTitleEdit(
+                        chart.id,
+                        chart.chartTitle || chart.chartProps.title,
+                      )
+                    }
                     className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
                   >
                     <Pencil className="h-3 w-3" />
@@ -1480,30 +1487,28 @@ export default function AnalyticsStudioPage() {
         const chartsResponse = await StudioAPI.getCharts();
         if (chartsResponse.success && chartsResponse.data) {
           // Convert database charts to ChartCard format
-          const loadedCharts: ChartCard[] = chartsResponse.data.map(
-            (chart) => {
-              // Ensure chartProps.title matches the database title
-              const chartConfig = chart.chartConfig as any;
-              const updatedChartProps = {
-                ...chartConfig,
-                title: chart.title, // Always use the database title as the source of truth
-              };
+          const loadedCharts: ChartCard[] = chartsResponse.data.map((chart) => {
+            // Ensure chartProps.title matches the database title
+            const chartConfig = chart.chartConfig as any;
+            const updatedChartProps = {
+              ...chartConfig,
+              title: chart.title, // Always use the database title as the source of truth
+            };
 
-              return {
-                id: chart.id,
-                query: chart.title, // Use title as query for display
-                sql: chart.sqlQuery,
-                data: chart.dataCache || [],
-                chartType: chart.chartType as ChartType,
-                chartProps: updatedChartProps,
-                isExpanded: false,
-                executionTime: undefined,
-                rowCount: chart.dataCache?.length || 0,
-                chartTitle: chart.title,
-                lastUpdated: Date.now(),
-              };
-            },
-          );
+            return {
+              id: chart.id,
+              query: chart.title, // Use title as query for display
+              sql: chart.sqlQuery,
+              data: chart.dataCache || [],
+              chartType: chart.chartType as ChartType,
+              chartProps: updatedChartProps,
+              isExpanded: false,
+              executionTime: undefined,
+              rowCount: chart.dataCache?.length || 0,
+              chartTitle: chart.title,
+              lastUpdated: Date.now(),
+            };
+          });
           setChartCards(loadedCharts);
         }
       } catch (error) {
@@ -1839,67 +1844,73 @@ Use the textToSql tool to execute this request.
   };
 
   // Title editing handlers
-  const handleStartTitleEdit = useCallback((chartId: string, currentTitle: string) => {
-    setEditingTitleId(chartId);
-    setEditingTitleValue(currentTitle);
-  }, []);
+  const handleStartTitleEdit = useCallback(
+    (chartId: string, currentTitle: string) => {
+      setEditingTitleId(chartId);
+      setEditingTitleValue(currentTitle);
+    },
+    [],
+  );
 
   const handleCancelTitleEdit = useCallback(() => {
     setEditingTitleId(null);
     setEditingTitleValue("");
   }, []);
 
-  const handleSaveTitle = useCallback(async (chartId: string) => {
-    const newTitle = editingTitleValue.trim();
+  const handleSaveTitle = useCallback(
+    async (chartId: string) => {
+      const newTitle = editingTitleValue.trim();
 
-    if (!newTitle) {
-      toast.error("Title cannot be empty");
-      return;
-    }
-
-    if (newTitle.length > 255) {
-      toast.error("Title cannot exceed 255 characters");
-      return;
-    }
-
-    setIsSavingTitle(chartId);
-
-    try {
-      // Update chart title in database
-      const response = await StudioAPI.updateChartTitle(chartId, newTitle);
-
-      if (response.success) {
-        // Update local state
-        setChartCards((prev) =>
-          prev.map((chart) =>
-            chart.id === chartId
-              ? {
-                  ...chart,
-                  chartTitle: newTitle,
-                  chartProps: {
-                    ...chart.chartProps,
-                    title: newTitle,
-                  },
-                }
-              : chart,
-          ),
-        );
-
-        // Clear editing state
-        setEditingTitleId(null);
-        setEditingTitleValue("");
-        
-        toast.success("Chart title updated successfully!");
-      } else {
-        toast.error(response.error || "Failed to update chart title");
+      if (!newTitle) {
+        toast.error("Title cannot be empty");
+        return;
       }
-    } catch (error) {
-      console.error("Error updating chart title:", error);
-      toast.error("Failed to update chart title");
-    } finally {
-      setIsSavingTitle(null);
-    }
-  }, [editingTitleValue]);
+
+      if (newTitle.length > 255) {
+        toast.error("Title cannot exceed 255 characters");
+        return;
+      }
+
+      setIsSavingTitle(chartId);
+
+      try {
+        // Update chart title in database
+        const response = await StudioAPI.updateChartTitle(chartId, newTitle);
+
+        if (response.success) {
+          // Update local state
+          setChartCards((prev) =>
+            prev.map((chart) =>
+              chart.id === chartId
+                ? {
+                    ...chart,
+                    chartTitle: newTitle,
+                    chartProps: {
+                      ...chart.chartProps,
+                      title: newTitle,
+                    },
+                  }
+                : chart,
+            ),
+          );
+
+          // Clear editing state
+          setEditingTitleId(null);
+          setEditingTitleValue("");
+
+          toast.success("Chart title updated successfully!");
+        } else {
+          toast.error(response.error || "Failed to update chart title");
+        }
+      } catch (error) {
+        console.error("Error updating chart title:", error);
+        toast.error("Failed to update chart title");
+      } finally {
+        setIsSavingTitle(null);
+      }
+    },
+    [editingTitleValue],
+  );
 
   const handleTitleValueChange = useCallback((value: string) => {
     setEditingTitleValue(value);
@@ -2272,12 +2283,26 @@ Use the textToSql tool to execute this updated request.
                 Generate insights from your data using natural language
               </p>
             </div>
-            {selectedTables.length > 0 && (
-              <Badge variant="secondary">
-                {selectedTables.length} table
-                {selectedTables.length !== 1 ? "s" : ""} selected
-              </Badge>
-            )}
+            <div className="flex flex-col items-end gap-2">
+              {selectedTables.length > 0 && (
+                <Badge variant="secondary">
+                  {selectedTables.length} table
+                  {selectedTables.length !== 1 ? "s" : ""} selected
+                </Badge>
+              )}
+              <SelectModel
+                onSelect={(model) => {
+                  appStore.setState({ chatModel: model });
+                }}
+                defaultModel={selectedModel}
+                align="end"
+              >
+                <Button variant="outline" className="px-3 min-w-[120px] h-8">
+                  <Brain className="h-4 w-4 mr-2" />
+                  {selectedModel?.model || "Select Model"}
+                </Button>
+              </SelectModel>
+            </div>
           </div>
         </div>
 
@@ -2308,18 +2333,6 @@ Use the textToSql tool to execute this updated request.
                 disabled={isChatLoading}
               />
               <div className="flex gap-2">
-                <SelectModel
-                  onSelect={(model) => {
-                    appStore.setState({ chatModel: model });
-                  }}
-                  defaultModel={selectedModel}
-                  align="end"
-                >
-                  <Button variant="outline" className="px-3 min-w-[120px] h-10">
-                    <Brain className="h-4 w-4 mr-2" />
-                    {selectedModel?.model || "Select Model"}
-                  </Button>
-                </SelectModel>
                 <Button
                   onClick={generateChart}
                   disabled={

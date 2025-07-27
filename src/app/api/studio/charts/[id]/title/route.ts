@@ -36,10 +36,7 @@ export async function PATCH(
     // Trim and validate title length
     const trimmedTitle = title.trim();
     if (trimmedTitle.length === 0) {
-      return Response.json(
-        { error: "Title cannot be empty" },
-        { status: 400 },
-      );
+      return Response.json({ error: "Title cannot be empty" }, { status: 400 });
     }
 
     if (trimmedTitle.length > 255) {
