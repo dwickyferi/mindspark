@@ -2,12 +2,26 @@
 import type { ChartData } from "@/types/charts";
 
 export interface StudioSession {
+  id?: string;
+  sessionName?: string;
   selectedDatasourceId: string | null;
   selectedDatabase: string;
   selectedSchema: string;
   selectedTables: string[];
   expandedSidebar: boolean;
   sessionMetadata: any;
+  chartCards?: any[];
+  isActive?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface MultiStudioSession extends StudioSession {
+  id: string;
+  sessionName: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface CreateChartRequest {
@@ -53,7 +67,7 @@ export class StudioAPI {
     }
   }
 
-  // Session Management
+  // Session Management (Legacy - for backward compatibility)
   static async getSession(): Promise<{
     success: boolean;
     data?: StudioSession;
@@ -69,6 +83,76 @@ export class StudioAPI {
       method: "POST",
       body: JSON.stringify(session),
     });
+  }
+
+  // Multi-Session Management
+  static async getAllSessions(): Promise<{
+    success: boolean;
+    data?: MultiStudioSession[];
+    error?: string;
+  }> {
+    return this.request<MultiStudioSession[]>("/api/studio/sessions/multi");
+  }
+
+  static async createSession(sessionName?: string): Promise<{
+    success: boolean;
+    data?: MultiStudioSession;
+    error?: string;
+  }> {
+    return this.request<MultiStudioSession>("/api/studio/sessions/multi", {
+      method: "POST",
+      body: JSON.stringify({ sessionName: sessionName || "New Sheet" }),
+    });
+  }
+
+  static async getSessionById(sessionId: string): Promise<{
+    success: boolean;
+    data?: MultiStudioSession;
+    error?: string;
+  }> {
+    return this.request<MultiStudioSession>(
+      `/api/studio/sessions/${sessionId}`,
+    );
+  }
+
+  static async updateSession(
+    sessionId: string,
+    session: Partial<StudioSession>,
+  ): Promise<{
+    success: boolean;
+    data?: MultiStudioSession;
+    error?: string;
+  }> {
+    return this.request<MultiStudioSession>(
+      `/api/studio/sessions/${sessionId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(session),
+      },
+    );
+  }
+
+  static async deleteSession(sessionId: string): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
+    return this.request(`/api/studio/sessions/${sessionId}`, {
+      method: "DELETE",
+    });
+  }
+
+  static async setActiveSession(sessionId: string): Promise<{
+    success: boolean;
+    data?: MultiStudioSession;
+    error?: string;
+  }> {
+    return this.request<MultiStudioSession>(
+      `/api/studio/sessions/${sessionId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ isActive: true }),
+      },
+    );
   }
 
   // Chart Management

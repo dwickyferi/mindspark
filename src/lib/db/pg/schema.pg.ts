@@ -455,6 +455,7 @@ export const StudioSessionSchema = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => UserSchema.id, { onDelete: "cascade" }),
+    sessionName: text("session_name").notNull().default("New Sheet"),
     selectedDatasourceId: uuid("selected_datasource_id").references(
       () => DatasourceSchema.id,
     ),
@@ -463,6 +464,8 @@ export const StudioSessionSchema = pgTable(
     selectedTables: json("selected_tables").$type<string[]>().default([]),
     expandedSidebar: boolean("expanded_sidebar").notNull().default(true),
     sessionMetadata: json("session_metadata").default({}), // Additional session data
+    chartCards: json("chart_cards").default([]), // Store chart cards data for each session
+    isActive: boolean("is_active").notNull().default(false), // Track active session
     createdAt: timestamp("created_at")
       .notNull()
       .default(sql`CURRENT_TIMESTAMP`),
@@ -471,9 +474,9 @@ export const StudioSessionSchema = pgTable(
       .default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => [
-    unique("studio_session_user_unique").on(table.userId), // One session per user
     index("studio_session_user_idx").on(table.userId),
     index("studio_session_datasource_idx").on(table.selectedDatasourceId),
+    index("studio_session_user_active_idx").on(table.userId, table.isActive),
   ],
 );
 

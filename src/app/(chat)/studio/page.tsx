@@ -1,13 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { appStore } from "@/app/store";
+import { ConfirmationModal } from "@/components/confirmation-modal";
+import { SelectModel } from "@/components/select-model";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label as FormLabel } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -16,46 +26,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Label as FormLabel } from "@/components/ui/label";
-import {
-  ChevronDown,
-  ChevronRight,
-  Database,
-  BarChart3,
-  Table as TableIcon,
-  Loader2,
-  CheckCircle,
-  RefreshCw,
-  Brain,
-  Sparkles,
-  Search,
-  Trash2,
-  Pencil,
-  Check,
-  X,
-  RotateCcw,
-} from "lucide-react";
-import { toast } from "sonner";
-import { DatasourceAPI, type DatasourceListItem } from "@/lib/api/datasources";
-import { StudioAPI } from "@/lib/api/studio";
-import { ConfirmationModal } from "@/components/confirmation-modal";
-import { SelectModel } from "@/components/select-model";
-import {
   Table,
   TableBody,
   TableCell,
@@ -63,25 +33,57 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { appStore } from "@/app/store";
-import { useShallow } from "zustand/shallow";
-import { useChat } from "@ai-sdk/react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { DatasourceAPI, type DatasourceListItem } from "@/lib/api/datasources";
+import { type MultiStudioSession, StudioAPI } from "@/lib/api/studio";
 import { generateUUID } from "@/lib/utils";
+import { useChat } from "@ai-sdk/react";
+import {
+  BarChart3,
+  Brain,
+  Check,
+  CheckCircle,
+  ChevronDown,
+  ChevronRight,
+  Database,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Sparkles,
+  Table as TableIcon,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React from "react";
+import { toast } from "sonner";
+import { useShallow } from "zustand/shallow";
 
 // Import Recharts components
 import {
-  ResponsiveContainer,
+  Bar,
+  CartesianGrid,
+  Label,
+  Legend,
+  Line,
+  Pie,
   BarChart as RechartsBarChart,
   LineChart as RechartsLineChart,
   PieChart as RechartsPieChart,
-  Bar,
-  Line,
-  Pie,
+  ResponsiveContainer,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Legend,
-  Label,
 } from "recharts";
 
 // Import chart UI components
@@ -91,10 +93,10 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-// Import types for the tool-invocation charts
-import type { PieChartProps } from "@/components/tool-invocation/pie-chart";
 import type { BarChartProps } from "@/components/tool-invocation/bar-chart";
 import type { LineChartProps } from "@/components/tool-invocation/line-chart";
+// Import types for the tool-invocation charts
+import type { PieChartProps } from "@/components/tool-invocation/pie-chart";
 
 type ChartType = "line" | "bar" | "pie" | "table";
 
@@ -854,6 +856,35 @@ export default function AnalyticsStudioPage() {
   const [_, setIsLoadingCharts] = useState(true);
   const [isRestoringSession, setIsRestoringSession] = useState(false);
 
+  // Multi-session state
+  const [sessions, setSessions] = useState<MultiStudioSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
+  const [renameSessionModal, setRenameSessionModal] = useState<{
+    isOpen: boolean;
+    sessionId: string | null;
+    currentName: string;
+    newName: string;
+    isRenaming: boolean;
+  }>({
+    isOpen: false,
+    sessionId: null,
+    currentName: "",
+    newName: "",
+    isRenaming: false,
+  });
+  const [closeSessionModal, setCloseSessionModal] = useState<{
+    isOpen: boolean;
+    sessionId: string | null;
+    sessionName: string;
+    isClosing: boolean;
+  }>({
+    isOpen: false,
+    sessionId: null,
+    sessionName: "",
+    isClosing: false,
+  });
+
   // Delete confirmation modal state
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -1127,7 +1158,17 @@ export default function AnalyticsStudioPage() {
                     chartType: result.chartType,
                     totalCharts: prev.length + 1,
                   });
-                  return [...prev, newChart];
+                  const updatedCharts = [...prev, newChart];
+
+                  // Immediate save after chart creation to prevent data loss
+                  setTimeout(() => {
+                    console.log(
+                      "[Session Debug] Immediate save after chart creation",
+                    );
+                    saveCurrentSessionState();
+                  }, 100);
+
+                  return updatedCharts;
                 });
 
                 // Calculate and update generation duration
@@ -1347,6 +1388,14 @@ export default function AnalyticsStudioPage() {
                   setModifyingChartId(null);
                 }
 
+                // Immediate save after chart modification to prevent data loss
+                setTimeout(() => {
+                  console.log(
+                    "[Session Debug] Immediate save after chart modification",
+                  );
+                  saveCurrentSessionState();
+                }, 100);
+
                 toast.success("Chart updated successfully!");
               } catch (error) {
                 console.error("Error processing chart modification:", error);
@@ -1403,6 +1452,374 @@ export default function AnalyticsStudioPage() {
     };
   }, [generationStartTime]);
 
+  // Multi-session management functions
+  const loadSessions = useCallback(async () => {
+    try {
+      setIsLoadingSessions(true);
+      const response = await StudioAPI.getAllSessions();
+      if (response.success && response.data) {
+        setSessions(response.data);
+
+        // Find active session or set first session as active if none
+        const activeSession = response.data.find((session) => session.isActive);
+        if (activeSession) {
+          setActiveSessionId(activeSession.id);
+        } else if (response.data.length > 0) {
+          const firstSession = response.data[0];
+          setActiveSessionId(firstSession.id);
+          // Make first session active
+          await StudioAPI.setActiveSession(firstSession.id);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load sessions:", error);
+      toast.error("Failed to load sessions");
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, []);
+
+  const loadActiveSession = useCallback(async (sessionId: string) => {
+    try {
+      setIsRestoringSession(true);
+      const response = await StudioAPI.getSessionById(sessionId);
+      if (response.success && response.data) {
+        const session = response.data;
+
+        // Restore session state
+        if (session.selectedDatasourceId) {
+          const datasourcesResponse = await DatasourceAPI.listDatasources();
+          if (datasourcesResponse.success && datasourcesResponse.data) {
+            const datasource = datasourcesResponse.data.find(
+              (ds) => ds.id === session.selectedDatasourceId,
+            );
+            if (datasource) {
+              setSelectedDatasource(datasource);
+              setSelectedDatabase(session.selectedDatabase || "");
+              setSelectedSchema(session.selectedSchema || "");
+              setSelectedTables(session.selectedTables || []);
+              setExpandedSidebar(session.expandedSidebar);
+
+              // Restore chart cards
+              console.log("[Session Debug] Loading session chart cards:", {
+                sessionId: session.id,
+                chartCardsCount: session.chartCards?.length || 0,
+                hasChartCards: !!(
+                  session.chartCards && session.chartCards.length > 0
+                ),
+              });
+
+              if (session.chartCards && session.chartCards.length > 0) {
+                setChartCards(session.chartCards as ChartCard[]);
+                console.log(
+                  "[Session Debug] Chart cards restored:",
+                  session.chartCards.length,
+                );
+              } else {
+                setChartCards([]);
+                console.log(
+                  "[Session Debug] No chart cards found, cleared state",
+                );
+              }
+
+              // Load schema and tables if needed
+              if (session.selectedSchema) {
+                await loadSchemasAndTablesForSession(
+                  datasource.id,
+                  session.selectedSchema,
+                );
+              } else if (datasource) {
+                await loadSchemasForSession(datasource.id);
+              }
+            }
+          }
+        } else {
+          // Clear state for new session
+          setSelectedDatasource(null);
+          setSelectedDatabase("");
+          setSelectedSchema("");
+          setSelectedTables([]);
+          setChartCards([]);
+          setAvailableSchemas([]);
+          setAvailableTables([]);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load active session:", error);
+      toast.error("Failed to load session");
+    } finally {
+      setIsRestoringSession(false);
+    }
+  }, []);
+
+  const createNewSession = useCallback(async () => {
+    try {
+      const response = await StudioAPI.createSession();
+      if (response.success && response.data) {
+        // Add new session to list and make it active
+        setSessions((prev) => [
+          response.data!,
+          ...prev.map((s) => ({ ...s, isActive: false })),
+        ]);
+        setActiveSessionId(response.data.id);
+
+        // Clear current state for new session
+        setSelectedDatasource(null);
+        setSelectedDatabase("");
+        setSelectedSchema("");
+        setSelectedTables([]);
+        setChartCards([]);
+        setAvailableSchemas([]);
+        setAvailableTables([]);
+
+        toast.success("New sheet created!");
+      }
+    } catch (error) {
+      console.error("Failed to create session:", error);
+      toast.error("Failed to create new sheet");
+    }
+  }, []);
+
+  const saveCurrentSessionState = useCallback(async () => {
+    if (!activeSessionId) return;
+
+    try {
+      console.log("[Session Debug] Saving session state:", {
+        sessionId: activeSessionId,
+        chartCardsCount: chartCards.length,
+        datasource: selectedDatasource?.name,
+      });
+
+      await StudioAPI.updateSession(activeSessionId, {
+        selectedDatasourceId: selectedDatasource?.id || null,
+        selectedDatabase,
+        selectedSchema,
+        selectedTables,
+        expandedSidebar,
+        chartCards: chartCards,
+        sessionMetadata: {},
+      });
+
+      console.log("[Session Debug] Session state saved successfully");
+    } catch (error) {
+      console.error("Failed to save session state:", error);
+    }
+  }, [
+    activeSessionId,
+    selectedDatasource,
+    selectedDatabase,
+    selectedSchema,
+    selectedTables,
+    expandedSidebar,
+    chartCards,
+  ]);
+
+  const switchToSession = useCallback(
+    async (sessionId: string) => {
+      if (sessionId === activeSessionId) return;
+
+      try {
+        console.log("[Session Debug] Switching sessions:", {
+          from: activeSessionId,
+          to: sessionId,
+          currentChartCards: chartCards.length,
+        });
+
+        // Save current session state before switching
+        if (activeSessionId) {
+          await saveCurrentSessionState();
+          console.log(
+            "[Session Debug] Current session state saved before switch",
+          );
+        }
+
+        // Set new active session
+        await StudioAPI.setActiveSession(sessionId);
+
+        // Update local state
+        setSessions((prev) =>
+          prev.map((s) => ({ ...s, isActive: s.id === sessionId })),
+        );
+        setActiveSessionId(sessionId);
+
+        // Load new session
+        await loadActiveSession(sessionId);
+        console.log("[Session Debug] New session loaded");
+
+        toast.success("Switched to sheet");
+      } catch (error) {
+        console.error("Failed to switch session:", error);
+        toast.error("Failed to switch sheet");
+      }
+    },
+    [activeSessionId, loadActiveSession, saveCurrentSessionState],
+  );
+
+  const renameSession = useCallback(
+    async (sessionId: string, newName: string) => {
+      try {
+        setRenameSessionModal((prev) => ({ ...prev, isRenaming: true }));
+        const response = await StudioAPI.updateSession(sessionId, {
+          sessionName: newName,
+        });
+
+        if (response.success && response.data) {
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.id === sessionId ? { ...s, sessionName: newName } : s,
+            ),
+          );
+          toast.success("Sheet renamed successfully!");
+          setRenameSessionModal({
+            isOpen: false,
+            sessionId: null,
+            currentName: "",
+            newName: "",
+            isRenaming: false,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to rename session:", error);
+        toast.error("Failed to rename sheet");
+      } finally {
+        setRenameSessionModal((prev) => ({ ...prev, isRenaming: false }));
+      }
+    },
+    [],
+  );
+
+  const deleteSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        setCloseSessionModal((prev) => ({ ...prev, isClosing: true }));
+
+        // Don't allow deleting the last session
+        if (sessions.length <= 1) {
+          toast.error("Cannot delete the last sheet");
+          return;
+        }
+
+        const response = await StudioAPI.deleteSession(sessionId);
+        if (response.success) {
+          // Remove session from list
+          const updatedSessions = sessions.filter((s) => s.id !== sessionId);
+          setSessions(updatedSessions);
+
+          // If this was the active session, switch to another one
+          if (sessionId === activeSessionId && updatedSessions.length > 0) {
+            const newActiveSession = updatedSessions[0];
+            setActiveSessionId(newActiveSession.id);
+            await loadActiveSession(newActiveSession.id);
+            await StudioAPI.setActiveSession(newActiveSession.id);
+          }
+
+          toast.success("Sheet closed successfully!");
+          setCloseSessionModal({
+            isOpen: false,
+            sessionId: null,
+            sessionName: "",
+            isClosing: false,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to delete session:", error);
+        toast.error("Failed to close sheet");
+      } finally {
+        setCloseSessionModal((prev) => ({ ...prev, isClosing: false }));
+      }
+    },
+    [sessions, activeSessionId, loadActiveSession],
+  );
+
+  // Helper functions for schema and table loading
+  const loadSchemasForSession = useCallback(async (datasourceId: string) => {
+    setIsLoadingSchemas(true);
+    try {
+      const response = await fetch(
+        `/api/analytics/schema?datasourceId=${datasourceId}`,
+      );
+      const result = await response.json();
+
+      if (result.success && result.schema) {
+        const schemas = result.schema.schemas || [];
+        const schemaList = schemas.map((schema: string) => ({
+          name: schema,
+          tableCount:
+            result.schema.tables?.filter(
+              (table: any) => table.schema === schema,
+            )?.length || 0,
+        }));
+        setAvailableSchemas(schemaList);
+      }
+    } catch (error) {
+      console.error("Failed to load schemas:", error);
+    } finally {
+      setIsLoadingSchemas(false);
+    }
+  }, []);
+
+  const loadSchemasAndTablesForSession = useCallback(
+    async (datasourceId: string, schemaName: string) => {
+      await loadSchemasForSession(datasourceId);
+
+      setIsLoadingTables(true);
+      try {
+        const response = await fetch(
+          `/api/analytics/schema?datasourceId=${datasourceId}`,
+        );
+        const result = await response.json();
+
+        if (result.success && result.schema) {
+          const filteredTables =
+            result.schema.tables?.filter(
+              (table: any) => table.schema === schemaName,
+            ) || [];
+          setAvailableTables(filteredTables);
+        }
+      } catch (error) {
+        console.error("Failed to load tables:", error);
+      } finally {
+        setIsLoadingTables(false);
+      }
+    },
+    [loadSchemasForSession],
+  );
+
+  // Datasource loading function
+  const loadDatasources = useCallback(async () => {
+    try {
+      const response = await DatasourceAPI.listDatasources();
+      if (response.success && response.data) {
+        setDatasources(response.data.filter((ds) => ds.status === "connected"));
+      }
+    } catch (error) {
+      console.error("Error loading datasources:", error);
+      toast.error("Failed to load datasources");
+    }
+  }, []);
+
+  // Auto-save current session state when it changes
+  useEffect(() => {
+    if (!isRestoringSession && activeSessionId && !isLoadingSessions) {
+      const timeoutId = setTimeout(() => {
+        saveCurrentSessionState();
+      }, 1000); // Debounce saves by 1 second
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [
+    selectedDatasource,
+    selectedDatabase,
+    selectedSchema,
+    selectedTables,
+    expandedSidebar,
+    chartCards,
+    activeSessionId,
+    isRestoringSession,
+    isLoadingSessions,
+    saveCurrentSessionState,
+  ]);
+
   // Cleanup effect to prevent memory leaks and stale data
   useEffect(() => {
     return () => {
@@ -1413,212 +1830,34 @@ export default function AnalyticsStudioPage() {
     };
   }, []);
 
-  // Load datasources on mount and restore session
+  // Initialize multi-session system on mount
   useEffect(() => {
     const initializeStudio = async () => {
       try {
         // Load datasources first
         await loadDatasources();
 
-        // Load session state
-        setIsLoadingSession(true);
-        const sessionResponse = await StudioAPI.getSession();
-        if (sessionResponse.success && sessionResponse.data) {
-          const session = sessionResponse.data;
-
-          // Find and set the selected datasource
-          if (session.selectedDatasourceId) {
-            const response = await DatasourceAPI.listDatasources();
-            if (response.success && response.data) {
-              const datasource = response.data.find(
-                (ds) => ds.id === session.selectedDatasourceId,
-              );
-              if (datasource) {
-                // Set restoration flag to prevent useEffect conflicts
-                setIsRestoringSession(true);
-
-                // Show toast notification that session is being restored
-                toast.success("Restoring your previous session...", {
-                  duration: 2000,
-                });
-
-                // Step 1: Set datasource and wait
-                setSelectedDatasource(datasource);
-                setSelectedDatabase(session.selectedDatabase || "");
-                setExpandedSidebar(session.expandedSidebar);
-
-                // Step 2: Load schemas and wait
-                setIsLoadingSchemas(true);
-                try {
-                  const response = await fetch(
-                    `/api/analytics/schema?datasourceId=${datasource.id}`,
-                  );
-                  const result = await response.json();
-
-                  if (result.success && result.schema) {
-                    // Extract unique schemas from the schema response
-                    const schemas = result.schema.schemas || [];
-                    const schemaList = schemas.map((schema: string) => ({
-                      name: schema,
-                      tableCount:
-                        result.schema.tables?.filter(
-                          (table: any) => table.schema === schema,
-                        )?.length || 0,
-                    }));
-                    setAvailableSchemas(schemaList);
-
-                    // Step 3: Set saved schema if it exists, then load tables
-                    if (
-                      session.selectedSchema &&
-                      schemaList.find((s) => s.name === session.selectedSchema)
-                    ) {
-                      setSelectedSchema(session.selectedSchema);
-
-                      // Step 4: Load tables for the selected schema and wait
-                      setIsLoadingTables(true);
-                      try {
-                        // Filter tables by selected schema
-                        const filteredTables =
-                          result.schema.tables?.filter(
-                            (table: any) =>
-                              table.schema === session.selectedSchema,
-                          ) || [];
-                        setAvailableTables(filteredTables);
-
-                        // Step 5: Set saved tables if they exist
-                        if (
-                          session.selectedTables &&
-                          session.selectedTables.length > 0
-                        ) {
-                          const validTables = session.selectedTables.filter(
-                            (tableName) =>
-                              filteredTables.some((table: any) => {
-                                const fullTableName = table.schema
-                                  ? `${table.schema}.${table.name}`
-                                  : table.name;
-                                return fullTableName === tableName;
-                              }),
-                          );
-                          setSelectedTables(validTables);
-                        }
-                      } catch (error) {
-                        console.error(
-                          "Failed to load tables during session restore:",
-                          error,
-                        );
-                      } finally {
-                        setIsLoadingTables(false);
-                      }
-                    } else if (session.selectedSchema) {
-                      // Schema from session no longer exists, clear it and save updated session
-                      console.warn(
-                        `Saved schema "${session.selectedSchema}" no longer exists, clearing selection`,
-                      );
-                      setSelectedSchema("");
-                      setSelectedTables([]);
-                      // Update the session to clear the invalid schema
-                      StudioAPI.saveSession({
-                        selectedDatasourceId: datasource.id,
-                        selectedDatabase: session.selectedDatabase || "",
-                        selectedSchema: "",
-                        selectedTables: [],
-                        expandedSidebar: session.expandedSidebar,
-                        sessionMetadata: {},
-                      }).catch(console.error);
-                    }
-                  }
-                } catch (error) {
-                  console.error(
-                    "Failed to load schemas during session restore:",
-                    error,
-                  );
-                } finally {
-                  setIsLoadingSchemas(false);
-                  // Clear restoration flag after all steps are complete
-                  setIsRestoringSession(false);
-                }
-              }
-            }
-          } else {
-            // No saved datasource, clear restoration flag
-            setIsRestoringSession(false);
-          }
-        } else {
-          // No saved session, clear restoration flag
-          setIsRestoringSession(false);
-        }
-
-        // Load existing charts
-        setIsLoadingCharts(true);
-        const chartsResponse = await StudioAPI.getCharts();
-        if (chartsResponse.success && chartsResponse.data) {
-          // Convert database charts to ChartCard format
-          const loadedCharts: ChartCard[] = chartsResponse.data.map((chart) => {
-            // Ensure chartProps.title matches the database title
-            const chartConfig = chart.chartConfig as any;
-            const updatedChartProps = {
-              ...chartConfig,
-              title: chart.title, // Always use the database title as the source of truth
-            };
-
-            return {
-              id: chart.id,
-              query: chart.title, // Use title as query for display
-              sql: chart.sqlQuery,
-              data: chart.dataCache || [],
-              chartType: chart.chartType as ChartType,
-              chartProps: updatedChartProps,
-              isExpanded: false,
-              executionTime: undefined,
-              rowCount: chart.dataCache?.length || 0,
-              chartTitle: chart.title,
-              lastUpdated: Date.now(),
-            };
-          });
-          setChartCards(loadedCharts);
-        }
+        // Load all sessions and set up the active one
+        await loadSessions();
       } catch (error) {
-        console.error("Error initializing studio:", error);
-        toast.error("Failed to load studio session");
-        // Make sure to clear restoration flag on error
-        setIsRestoringSession(false);
+        console.error("Failed to initialize studio:", error);
+        toast.error("Failed to initialize studio");
       } finally {
         setIsLoadingSession(false);
-        setIsLoadingCharts(false);
       }
     };
 
     initializeStudio();
-  }, []);
+  }, [loadDatasources, loadSessions]);
 
-  // Auto-save session state when key values change
+  // Load active session when activeSessionId changes
   useEffect(() => {
-    if (!isLoadingSession) {
-      const saveSession = async () => {
-        try {
-          await StudioAPI.saveSession({
-            selectedDatasourceId: selectedDatasource?.id || null,
-            selectedDatabase: selectedDatabase,
-            selectedSchema: selectedSchema,
-            selectedTables: selectedTables,
-            expandedSidebar: expandedSidebar,
-            sessionMetadata: {},
-          });
-        } catch (error) {
-          console.error("Failed to save session:", error);
-        }
-      };
-
-      saveSession();
+    if (activeSessionId && !isLoadingSessions) {
+      loadActiveSession(activeSessionId);
     }
-  }, [
-    selectedDatasource,
-    selectedDatabase,
-    selectedSchema,
-    selectedTables,
-    expandedSidebar,
-    isLoadingSession,
-  ]);
+  }, [activeSessionId, isLoadingSessions, loadActiveSession]);
+
+  // Auto-save is now handled in the new multi-session system above
 
   // Load schemas when datasource is selected (but not during session restoration)
   useEffect(() => {
@@ -1645,18 +1884,6 @@ export default function AnalyticsStudioPage() {
       setSelectedTables([]);
     }
   }, [selectedDatasource, selectedSchema, isRestoringSession]);
-
-  const loadDatasources = async () => {
-    try {
-      const response = await DatasourceAPI.listDatasources();
-      if (response.success && response.data) {
-        setDatasources(response.data.filter((ds) => ds.status === "connected"));
-      }
-    } catch (error) {
-      console.error("Error loading datasources:", error);
-      toast.error("Failed to load datasources");
-    }
-  };
 
   const loadSchemas = async () => {
     if (!selectedDatasource) return;
@@ -2699,6 +2926,96 @@ Use the textToSql tool to execute this updated request.
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
+        {/* Multi-Session Tabs */}
+        {!isLoadingSessions && sessions.length > 0 && (
+          <div className="border-b bg-background">
+            <div className="flex items-center px-6 py-2 gap-2">
+              {/* Session Tabs */}
+              <div className="flex items-center gap-1 flex-1 overflow-x-auto">
+                {sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-t-lg border-b-2 transition-colors cursor-pointer min-w-0 ${
+                      session.id === activeSessionId
+                        ? "bg-muted border-primary text-primary"
+                        : "hover:bg-muted/50 border-transparent"
+                    }`}
+                    onClick={() => switchToSession(session.id)}
+                  >
+                    <span className="text-sm font-medium truncate min-w-0">
+                      {session.sessionName}
+                    </span>
+
+                    {/* Three-dot menu for session options */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:bg-background/80"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="h-3 w-3" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-40 p-1" align="start">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start h-8 px-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRenameSessionModal({
+                              isOpen: true,
+                              sessionId: session.id,
+                              currentName: session.sessionName,
+                              newName: session.sessionName,
+                              isRenaming: false,
+                            });
+                          }}
+                        >
+                          <Pencil className="h-3 w-3 mr-2" />
+                          Rename Sheet
+                        </Button>
+                        {sessions.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start h-8 px-2 text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCloseSessionModal({
+                                isOpen: true,
+                                sessionId: session.id,
+                                sessionName: session.sessionName,
+                                isClosing: false,
+                              });
+                            }}
+                          >
+                            <X className="h-3 w-3 mr-2" />
+                            Close Sheet
+                          </Button>
+                        )}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add New Session Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={createNewSession}
+                className="h-8 w-8 p-0 flex-shrink-0"
+                title="Create new sheet"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="border-b p-6">
           <div className="flex items-center justify-between">
@@ -2907,6 +3224,124 @@ Use the textToSql tool to execute this updated request.
         cancelText="Cancel"
         variant="destructive"
         isLoading={resetModal.isResetting}
+      />
+
+      {/* Rename session modal */}
+      {renameSessionModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() =>
+              setRenameSessionModal({
+                isOpen: false,
+                sessionId: null,
+                currentName: "",
+                newName: "",
+                isRenaming: false,
+              })
+            }
+          />
+          <Card className="relative z-10 w-full max-w-md mx-4">
+            <CardHeader>
+              <CardTitle>Rename Sheet</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Enter a new name for the sheet:
+              </p>
+              <Input
+                value={renameSessionModal.newName}
+                onChange={(e) =>
+                  setRenameSessionModal((prev) => ({
+                    ...prev,
+                    newName: e.target.value,
+                  }))
+                }
+                placeholder="Sheet name"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && renameSessionModal.newName.trim()) {
+                    e.preventDefault();
+                    if (renameSessionModal.sessionId) {
+                      renameSession(
+                        renameSessionModal.sessionId,
+                        renameSessionModal.newName.trim(),
+                      );
+                    }
+                  }
+                }}
+                autoFocus
+                disabled={renameSessionModal.isRenaming}
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setRenameSessionModal({
+                      isOpen: false,
+                      sessionId: null,
+                      currentName: "",
+                      newName: "",
+                      isRenaming: false,
+                    })
+                  }
+                  disabled={renameSessionModal.isRenaming}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (
+                      renameSessionModal.sessionId &&
+                      renameSessionModal.newName.trim()
+                    ) {
+                      renameSession(
+                        renameSessionModal.sessionId,
+                        renameSessionModal.newName.trim(),
+                      );
+                    }
+                  }}
+                  disabled={
+                    !renameSessionModal.newName.trim() ||
+                    renameSessionModal.isRenaming
+                  }
+                >
+                  {renameSessionModal.isRenaming ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Renaming...
+                    </>
+                  ) : (
+                    "Rename"
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Close session confirmation modal */}
+      <ConfirmationModal
+        isOpen={closeSessionModal.isOpen}
+        onClose={() =>
+          setCloseSessionModal({
+            isOpen: false,
+            sessionId: null,
+            sessionName: "",
+            isClosing: false,
+          })
+        }
+        onConfirm={() => {
+          if (closeSessionModal.sessionId) {
+            deleteSession(closeSessionModal.sessionId);
+          }
+        }}
+        title="Close Sheet"
+        description={`Are you sure you want to close "${closeSessionModal.sessionName}"? All charts and data in this sheet will be permanently deleted. This action cannot be undone.`}
+        confirmText="Close Sheet"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={closeSessionModal.isClosing}
       />
     </div>
   );
