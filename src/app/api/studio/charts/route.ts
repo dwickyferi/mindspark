@@ -95,3 +95,33 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Failed to save chart" }, { status: 500 });
   }
 }
+
+// DELETE - Delete all user's charts (for reset functionality)
+export async function DELETE() {
+  try {
+    const session = await getSession();
+    if (!session?.user?.id) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+
+    // Delete all user's charts
+    const deletedCharts = await db
+      .delete(ChartSchema)
+      .where(eq(ChartSchema.userId, userId))
+      .returning({ id: ChartSchema.id });
+
+    return Response.json({
+      success: true,
+      data: { deletedCount: deletedCharts.length },
+      message: `Successfully deleted ${deletedCharts.length} chart${deletedCharts.length !== 1 ? "s" : ""}`,
+    });
+  } catch (error) {
+    console.error("Failed to delete all charts:", error);
+    return Response.json(
+      { error: "Failed to delete all charts" },
+      { status: 500 },
+    );
+  }
+}

@@ -43,6 +43,7 @@ import {
   Pencil,
   Check,
   X,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DatasourceAPI, type DatasourceListItem } from "@/lib/api/datasources";
@@ -859,6 +860,15 @@ export default function AnalyticsStudioPage() {
     chartId: null,
     chartTitle: "",
     isDeleting: false,
+  });
+
+  // Reset confirmation modal state
+  const [resetModal, setResetModal] = useState<{
+    isOpen: boolean;
+    isResetting: boolean;
+  }>({
+    isOpen: false,
+    isResetting: false,
   });
 
   // Get model from app store (same as chat page)
@@ -2067,6 +2077,85 @@ Use the textToSql tool to execute this updated request.
     }
   }, [deleteModal.chartId]);
 
+  // Reset functionality
+  const handleReset = useCallback(() => {
+    setResetModal({
+      isOpen: true,
+      isResetting: false,
+    });
+  }, []);
+
+  const confirmReset = useCallback(async () => {
+    setResetModal((prev) => ({ ...prev, isResetting: true }));
+
+    try {
+      // Delete all charts from database first
+      const deleteResponse = await StudioAPI.deleteAllCharts();
+      if (deleteResponse.success) {
+        toast.success(
+          `Deleted ${deleteResponse.data?.deletedCount || 0} chart${
+            (deleteResponse.data?.deletedCount || 0) !== 1 ? "s" : ""
+          } from database`,
+        );
+      } else {
+        console.error("Failed to delete charts:", deleteResponse.error);
+        toast.error("Failed to delete charts from database");
+      }
+
+      // Clear all local state
+      setSelectedDatasource(null);
+      setSelectedDatabase("");
+      setAvailableSchemas([]);
+      setSelectedSchema("");
+      setAvailableTables([]);
+      setSelectedTables([]);
+      setChartCards([]);
+      setInput("");
+
+      // Clear AI input states
+      setAiInputOpen({});
+      setAiInputQuery({});
+
+      // Clear title editing states
+      setEditingTitleId(null);
+      setEditingTitleValue("");
+      setIsSavingTitle(null);
+
+      // Clear modification tracking
+      setModifyingChartId(null);
+
+      // Clear processed invocations
+      processedInvocationsRef.current.clear();
+      processedModifyInvocationsRef.current.clear();
+
+      // Save empty session to database
+      const emptySession = {
+        selectedDatasourceId: null,
+        selectedDatabase: "",
+        selectedSchema: "",
+        selectedTables: [],
+        expandedSidebar: true,
+        sessionMetadata: {},
+      };
+
+      const saveResponse = await StudioAPI.saveSession(emptySession);
+      if (!saveResponse.success) {
+        console.error("Failed to save reset session:", saveResponse.error);
+        // Continue anyway as local state is already cleared
+      }
+
+      toast.success("Studio reset successfully!");
+    } catch (error) {
+      console.error("Error resetting studio:", error);
+      toast.error("Failed to reset studio");
+    } finally {
+      setResetModal({
+        isOpen: false,
+        isResetting: false,
+      });
+    }
+  }, [setInput]);
+
   // New optimized callback handlers for the ChartCardComponent
   const handleAiInputOpenChange = useCallback(
     (chartId: string, open: boolean) => {
@@ -2290,18 +2379,37 @@ Use the textToSql tool to execute this updated request.
                   {selectedTables.length !== 1 ? "s" : ""} selected
                 </Badge>
               )}
-              <SelectModel
-                onSelect={(model) => {
-                  appStore.setState({ chatModel: model });
-                }}
-                defaultModel={selectedModel}
-                align="end"
-              >
-                <Button variant="outline" className="px-3 min-w-[120px] h-8">
-                  <Brain className="h-4 w-4 mr-2" />
-                  {selectedModel?.model || "Select Model"}
-                </Button>
-              </SelectModel>
+              <div className="flex items-center gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleReset}
+                        className="px-3 h-8"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Reset Studio</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <SelectModel
+                  onSelect={(model) => {
+                    appStore.setState({ chatModel: model });
+                  }}
+                  defaultModel={selectedModel}
+                  align="end"
+                >
+                  <Button variant="outline" className="px-3 min-w-[120px] h-8">
+                    <Brain className="h-4 w-4 mr-2" />
+                    {selectedModel?.model || "Select Model"}
+                  </Button>
+                </SelectModel>
+              </div>
             </div>
           </div>
         </div>
@@ -2413,6 +2521,24 @@ Use the textToSql tool to execute this updated request.
         cancelText="Cancel"
         variant="destructive"
         isLoading={deleteModal.isDeleting}
+      />
+
+      {/* Reset confirmation modal */}
+      <ConfirmationModal
+        isOpen={resetModal.isOpen}
+        onClose={() =>
+          setResetModal({
+            isOpen: false,
+            isResetting: false,
+          })
+        }
+        onConfirm={confirmReset}
+        title="Reset Studio"
+        description="Are you sure you want to reset the studio? This will clear all selected data sources, tables, charts, and start fresh. This action cannot be undone."
+        confirmText="Reset"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={resetModal.isResetting}
       />
     </div>
   );

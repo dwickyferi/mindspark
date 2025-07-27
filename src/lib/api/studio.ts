@@ -113,6 +113,16 @@ export class StudioAPI {
     });
   }
 
+  static async deleteAllCharts(): Promise<{
+    success: boolean;
+    data?: { deletedCount: number };
+    error?: string;
+  }> {
+    return this.request<{ deletedCount: number }>("/api/studio/charts", {
+      method: "DELETE",
+    });
+  }
+
   static async updateChartTitle(
     chartId: string,
     title: string,
