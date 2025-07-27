@@ -852,8 +852,7 @@ export default function AnalyticsStudioPage() {
   const [expandedSidebar, setExpandedSidebar] = useState(true);
 
   // Persistent storage state
-  const [isLoadingSession, setIsLoadingSession] = useState(true);
-  const [_, setIsLoadingCharts] = useState(true);
+  const [_, setIsLoadingSession] = useState(true);
   const [isRestoringSession, setIsRestoringSession] = useState(false);
 
   // Multi-session state
@@ -952,7 +951,9 @@ export default function AnalyticsStudioPage() {
     };
   }>({});
 
-  // Use AI SDK's useChat for main query generation
+  // Use AI SDK's useChat for main query generation (Studio-specific endpoint)
+  // NOTE: This uses /api/studio/chat which is a separate endpoint that does NOT persist
+  // conversations to the database, keeping Studio interactions isolated from chatbot history
   const {
     messages,
     input,
@@ -960,7 +961,7 @@ export default function AnalyticsStudioPage() {
     append,
     isLoading: isChatLoading,
   } = useChat({
-    api: "/api/chat",
+    api: "/api/studio/chat", // Studio-specific endpoint that doesn't persist to database
     generateId: generateUUID,
     experimental_prepareRequestBody: ({ messages, requestBody }) => {
       const lastMessage = messages.at(-1)!;
@@ -972,17 +973,20 @@ export default function AnalyticsStudioPage() {
         allowedMcpServers: {},
         mentions: [],
         message: lastMessage,
+        messages: messages, // Include all messages for context
       };
     },
   });
 
-  // Use AI SDK's useChat for chart modifications
+  // Use AI SDK's useChat for chart modifications (Studio-specific endpoint)
+  // NOTE: This uses /api/studio/chat which is a separate endpoint that does NOT persist
+  // conversations to the database, keeping Studio interactions isolated from chatbot history
   const {
     messages: modifyMessages,
     append: modifyAppend,
     isLoading: isModifyLoading,
   } = useChat({
-    api: "/api/chat",
+    api: "/api/studio/chat", // Studio-specific endpoint that doesn't persist to database
     generateId: generateUUID,
     experimental_prepareRequestBody: ({ messages, requestBody }) => {
       const lastMessage = messages.at(-1)!;
@@ -994,6 +998,7 @@ export default function AnalyticsStudioPage() {
         allowedMcpServers: {},
         mentions: [],
         message: lastMessage,
+        messages: messages, // Include all messages for context
       };
     },
   });

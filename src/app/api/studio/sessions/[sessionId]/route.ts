@@ -4,14 +4,11 @@ import { StudioSessionSchema } from "lib/db/pg/schema.pg";
 import { eq, and } from "drizzle-orm";
 import { getSession } from "lib/auth/server";
 
-interface RouteParams {
-  params: {
-    sessionId: string;
-  };
-}
-
 // GET - Fetch specific session
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> },
+) {
   try {
     const session = await getSession();
     if (!session?.user?.id) {
@@ -19,7 +16,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const userId = session.user.id;
-    const { sessionId } = params;
+    const { sessionId } = await params;
 
     // Get the specific session
     const studioSession = await db
@@ -64,7 +61,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // PUT - Update specific session
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> },
+) {
   try {
     const session = await getSession();
     if (!session?.user?.id) {
@@ -72,7 +72,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const userId = session.user.id;
-    const { sessionId } = params;
+    const { sessionId } = await params;
     const body = await request.json();
 
     const {
@@ -150,7 +150,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE - Delete specific session
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> },
+) {
   try {
     const session = await getSession();
     if (!session?.user?.id) {
@@ -158,7 +161,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const userId = session.user.id;
-    const { sessionId } = params;
+    const { sessionId } = await params;
 
     // Check if session exists and belongs to user
     const existingSession = await db
