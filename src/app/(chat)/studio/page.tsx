@@ -897,6 +897,15 @@ export default function AnalyticsStudioPage() {
   const [editingTitleValue, setEditingTitleValue] = useState<string>("");
   const [isSavingTitle, setIsSavingTitle] = useState<string | null>(null);
 
+  // Generation tracking state
+  const [generationStartTime, setGenerationStartTime] = useState<number | null>(
+    null,
+  );
+  const [lastGenerationDuration, setLastGenerationDuration] = useState<
+    number | null
+  >(null);
+  const [currentGenerationTime, setCurrentGenerationTime] = useState<number>(0);
+
   // Use AI SDK's useChat for main query generation
   const {
     messages,
@@ -1106,15 +1115,30 @@ export default function AnalyticsStudioPage() {
                   return [...prev, newChart];
                 });
 
+                // Calculate and update generation duration
+                const endTime = Date.now();
+                if (generationStartTime) {
+                  const duration = endTime - generationStartTime;
+                  setLastGenerationDuration(duration);
+                  setGenerationStartTime(null);
+                  setCurrentGenerationTime(0);
+                }
+
                 toast.success("Chart generated successfully!");
               } catch (error) {
                 console.error("Error processing chart result:", error);
                 toast.error("Failed to process chart data");
+                // Reset generation tracking on error
+                setGenerationStartTime(null);
+                setCurrentGenerationTime(0);
               }
             };
             processResult();
           } else {
             toast.error(result?.error || "Failed to generate chart");
+            // Reset generation tracking on error
+            setGenerationStartTime(null);
+            setCurrentGenerationTime(0);
           }
         }
       }
@@ -1346,6 +1370,23 @@ export default function AnalyticsStudioPage() {
     selectedDatasource,
     generateChartProps,
   ]); // Add all dependencies to fix stale closures
+
+  // Real-time generation timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (generationStartTime) {
+      interval = setInterval(() => {
+        setCurrentGenerationTime(Date.now() - generationStartTime);
+      }, 100);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [generationStartTime]);
 
   // Cleanup effect to prevent memory leaks and stale data
   useEffect(() => {
@@ -1666,14 +1707,71 @@ export default function AnalyticsStudioPage() {
     }
   };
 
-  const refreshData = async () => {
-    if (selectedDatasource && selectedSchema) {
-      await loadTables();
-    } else if (selectedDatasource) {
-      await loadSchemas();
-    } else {
-      await loadDatasources();
+  const refreshSchemas = async () => {
+    if (!selectedDatasource) {
+      toast.error("No datasource selected");
+      return;
     }
+
+    console.log("Refreshing schemas for datasource:", selectedDatasource.id);
+
+    // Clear current schema-related state to prevent stale data
+    setAvailableSchemas([]);
+    setSelectedSchema("");
+    setAvailableTables([]);
+    setSelectedTables([]);
+
+    setIsLoadingSchemas(true);
+    try {
+      // Use API route to get fresh database schema
+      const response = await fetch(
+        `/api/analytics/schema?datasourceId=${selectedDatasource.id}`,
+      );
+      const result = await response.json();
+
+      if (result.success && result.schema) {
+        // Extract unique schemas from the fresh schema response
+        const schemas = result.schema.schemas || [];
+        const schemaList = schemas.map((schema: string) => ({
+          name: schema,
+          tableCount:
+            result.schema.tables?.filter(
+              (table: any) => table.schema === schema,
+            )?.length || 0,
+        }));
+
+        setAvailableSchemas(schemaList);
+
+        console.log(`Successfully refreshed ${schemaList.length} schemas`);
+        toast.success(
+          `Refreshed ${schemaList.length} schema${schemaList.length !== 1 ? "s" : ""}`,
+        );
+      } else {
+        console.error("Schema refresh failed:", result.error);
+        toast.error(result.error || "Failed to refresh database schemas");
+      }
+    } catch (error) {
+      console.error("Error refreshing schemas:", error);
+      toast.error("Failed to refresh database schemas");
+    } finally {
+      setIsLoadingSchemas(false);
+    }
+  };
+
+  const refreshTables = async () => {
+    if (!selectedDatasource || !selectedSchema) {
+      toast.error("No datasource or schema selected");
+      return;
+    }
+
+    console.log("Refreshing tables for schema:", selectedSchema);
+
+    // Clear current table-related state
+    setAvailableTables([]);
+    setSelectedTables([]);
+
+    await loadTables();
+    toast.success("Tables refreshed successfully");
   };
 
   const handleTableSelection = (table: DatabaseTable) => {
@@ -1813,6 +1911,12 @@ export default function AnalyticsStudioPage() {
 
     // Store the input value before clearing it
     const queryInput = input;
+
+    // Track generation start time
+    const startTime = Date.now();
+    setGenerationStartTime(startTime);
+    setLastGenerationDuration(null);
+    setCurrentGenerationTime(0);
 
     // Clear the input immediately when user submits
     setInput("");
@@ -2203,14 +2307,6 @@ Use the textToSql tool to execute this updated request.
               <div className="mb-6 flex-shrink-0">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium">Database</label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={refreshData}
-                    className="h-6 w-6 p-0"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                  </Button>
                 </div>
                 <Select
                   value={selectedDatasource?.id}
@@ -2248,10 +2344,13 @@ Use the textToSql tool to execute this updated request.
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={refreshData}
+                      onClick={refreshSchemas}
                       className="h-6 w-6 p-0"
+                      disabled={isLoadingSchemas}
                     >
-                      <RefreshCw className="h-3 w-3" />
+                      <RefreshCw
+                        className={`h-3 w-3 ${isLoadingSchemas ? "animate-spin" : ""}`}
+                      />
                     </Button>
                   </div>
                   {isLoadingSchemas ? (
@@ -2297,10 +2396,13 @@ Use the textToSql tool to execute this updated request.
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={refreshData}
+                      onClick={refreshTables}
                       className="h-6 w-6 p-0"
+                      disabled={isLoadingTables}
                     >
-                      <RefreshCw className="h-3 w-3" />
+                      <RefreshCw
+                        className={`h-3 w-3 ${isLoadingTables ? "animate-spin" : ""}`}
+                      />
                     </Button>
                   </div>
                   {isLoadingTables ? (
@@ -2373,12 +2475,6 @@ Use the textToSql tool to execute this updated request.
               </p>
             </div>
             <div className="flex flex-col items-end gap-2">
-              {selectedTables.length > 0 && (
-                <Badge variant="secondary">
-                  {selectedTables.length} table
-                  {selectedTables.length !== 1 ? "s" : ""} selected
-                </Badge>
-              )}
               <div className="flex items-center gap-2">
                 <TooltipProvider>
                   <Tooltip>
@@ -2416,47 +2512,85 @@ Use the textToSql tool to execute this updated request.
 
         {/* Query Input */}
         <div className="p-6 border-b bg-muted/20">
-          <div className="max-w-4xl">
-            <label className="text-sm font-medium mb-2 block">
+          <div className="max-w-none">
+            <label className="text-sm font-medium mb-3 block">
               Ask a question about your data
             </label>
-            <div className="flex gap-3">
-              <Textarea
-                placeholder="Get me a line chart of monthly revenue, for premium and enterprise in EMEA - bar chart of monthly user signups, clustered by plan. Also in EMEA, all tiers except free for the last 6 months. Or show me raw data in a table format."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    if (
-                      !input.trim() ||
-                      selectedTables.length === 0 ||
-                      isChatLoading
-                    )
-                      return;
-                    generateChart();
-                  }
-                }}
-                className="flex-1 min-h-[60px] resize-none"
-                disabled={isChatLoading}
-              />
-              <div className="flex gap-2">
-                <Button
-                  onClick={generateChart}
-                  disabled={
+
+            {/* Full width text area */}
+            <Textarea
+              placeholder="Get me a line chart of monthly revenue, for premium and enterprise in EMEA - bar chart of monthly user signups, clustered by plan. Also in EMEA, all tiers except free for the last 6 months. Or show me raw data in a table format."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (
                     !input.trim() ||
                     selectedTables.length === 0 ||
                     isChatLoading
-                  }
-                  className="px-8 h-10"
-                >
-                  {isChatLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                  )}
-                  Generate
-                </Button>
+                  )
+                    return;
+                  generateChart();
+                }
+              }}
+              className="w-full min-h-[100px] resize-none text-base"
+              disabled={isChatLoading}
+            />
+
+            {/* Generate button and status */}
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <Button
+                onClick={generateChart}
+                disabled={
+                  !input.trim() || selectedTables.length === 0 || isChatLoading
+                }
+                className="px-8 h-11 font-medium"
+                size="lg"
+              >
+                {isChatLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                )}
+                Generate Chart
+              </Button>
+
+              {/* Status information */}
+              <div className="text-sm text-muted-foreground">
+                {isChatLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Generating chart...</span>
+                    <span className="text-xs">
+                      ({(currentGenerationTime / 1000).toFixed(1)}s)
+                    </span>
+                  </div>
+                ) : lastGenerationDuration ? (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-3 w-3 text-green-500" />
+                    <span>
+                      Last generation completed in{" "}
+                      {(lastGenerationDuration / 1000).toFixed(1)}s
+                    </span>
+                    {selectedTables.length > 0 && (
+                      <>
+                        <span className="mx-1">·</span>
+                        <span>
+                          {selectedTables.length} table
+                          {selectedTables.length !== 1 ? "s" : ""} selected
+                        </span>
+                      </>
+                    )}
+                  </div>
+                ) : selectedTables.length === 0 ? (
+                  <span>Select tables from the sidebar to get started</span>
+                ) : (
+                  <span>
+                    Ready to generate charts · {selectedTables.length} table
+                    {selectedTables.length !== 1 ? "s" : ""} selected
+                  </span>
+                )}
               </div>
             </div>
           </div>
