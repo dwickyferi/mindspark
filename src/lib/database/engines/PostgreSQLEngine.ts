@@ -290,9 +290,14 @@ export class PostgreSQLEngine extends DatabaseEngine {
     const { schema, table } = this.parseTableName(tableName);
     const fullTableName = schema ? `"${schema}"."${table}"` : `"${table}"`;
 
+    console.log(
+      `🔍 PostgreSQL: Getting sample data for ${fullTableName} (limit: ${limit})`,
+    );
+
     const client = await this.pool!.connect();
 
     try {
+      // First try with RANDOM() for better data distribution
       const result = await client.query(
         `
         SELECT * FROM ${fullTableName} 
@@ -302,8 +307,16 @@ export class PostgreSQLEngine extends DatabaseEngine {
         [limit],
       );
 
-      return result.rows;
+      console.log(
+        `✅ PostgreSQL: Retrieved ${result.rows.length} sample rows using RANDOM()`,
+      );
+      return result.rows || [];
     } catch (error) {
+      console.warn(
+        `⚠️  PostgreSQL: RANDOM() sampling failed for ${fullTableName}:`,
+        error,
+      );
+
       // If random sampling fails, try sequential sampling
       try {
         const result = await client.query(
@@ -313,13 +326,20 @@ export class PostgreSQLEngine extends DatabaseEngine {
           [limit],
         );
 
-        return result.rows;
+        console.log(
+          `✅ PostgreSQL: Retrieved ${result.rows.length} sample rows using sequential sampling`,
+        );
+        return result.rows || [];
       } catch (fallbackError) {
-        console.warn(
-          `Failed to get sample data for ${tableName}:`,
+        console.error(
+          `💥 PostgreSQL: Both sampling methods failed for ${tableName}:`,
           fallbackError,
         );
-        return [];
+
+        // Instead of returning empty array, let's throw the error so the API can handle it properly
+        throw new Error(
+          `Failed to get sample data for table ${tableName}: ${fallbackError instanceof Error ? fallbackError.message : "Unknown error"}`,
+        );
       }
     } finally {
       client.release();

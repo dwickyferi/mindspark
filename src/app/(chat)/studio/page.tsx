@@ -2053,6 +2053,14 @@ export default function AnalyticsStudioPage() {
       const schemaResult = await schemaResponse.json();
 
       if (schemaResult.success) {
+        console.log(`✅ Fetched table details for ${tableKey}:`, {
+          columns: schemaResult.columns?.length || 0,
+          sampleData: schemaResult.sampleData?.length || 0,
+          hasColumns: !!schemaResult.columns && schemaResult.columns.length > 0,
+          hasSampleData:
+            !!schemaResult.sampleData && schemaResult.sampleData.length > 0,
+        });
+
         setTableDetails((prev) => ({
           ...prev,
           [tableKey]: {
@@ -2068,15 +2076,27 @@ export default function AnalyticsStudioPage() {
       }
     } catch (error) {
       console.error(`Error fetching details for table ${tableKey}:`, error);
+
+      // More specific error message based on the error
+      let errorMessage = "Failed to fetch table details";
+      if (error instanceof Error) {
+        if (error.message.includes("does not exist")) {
+          errorMessage = "Table not found";
+        } else if (error.message.includes("permission")) {
+          errorMessage = "Permission denied";
+        } else if (error.message.includes("connection")) {
+          errorMessage = "Database connection error";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
       setTableDetails((prev) => ({
         ...prev,
         [tableKey]: {
           ...prev[tableKey],
           loading: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Failed to fetch table details",
+          error: errorMessage,
         },
       }));
     }
@@ -2858,53 +2878,63 @@ Use the textToSql tool to execute this updated request.
                                               {tableDetails[tableKey]?.error}
                                             </div>
                                           ) : tableDetails[tableKey]
-                                              ?.sampleData ? (
-                                            <div className="max-h-48 overflow-auto">
-                                              <Table>
-                                                <TableHeader>
-                                                  <TableRow>
-                                                    {tableDetails[tableKey]
-                                                      ?.sampleData?.[0] &&
-                                                      Object.keys(
-                                                        tableDetails[tableKey]
-                                                          ?.sampleData?.[0] ||
-                                                          {},
-                                                      ).map((key) => (
-                                                        <TableHead
-                                                          key={key}
-                                                          className="text-xs px-2 py-1"
-                                                        >
-                                                          {key}
-                                                        </TableHead>
-                                                      ))}
-                                                  </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                  {tableDetails[
-                                                    tableKey
-                                                  ]?.sampleData?.map(
-                                                    (row, idx) => (
-                                                      <TableRow key={idx}>
-                                                        {Object.values(row).map(
-                                                          (
-                                                            value: any,
-                                                            cellIdx,
-                                                          ) => (
-                                                            <TableCell
-                                                              key={cellIdx}
-                                                              className="text-xs px-2 py-1 max-w-24 truncate"
-                                                            >
-                                                              {value?.toString() ||
-                                                                ""}
-                                                            </TableCell>
-                                                          ),
-                                                        )}
-                                                      </TableRow>
-                                                    ),
-                                                  )}
-                                                </TableBody>
-                                              </Table>
-                                            </div>
+                                              ?.sampleData !== undefined ? (
+                                            tableDetails[tableKey]?.sampleData
+                                              ?.length > 0 ? (
+                                              <div className="max-h-48 overflow-auto">
+                                                <Table>
+                                                  <TableHeader>
+                                                    <TableRow>
+                                                      {tableDetails[tableKey]
+                                                        ?.sampleData?.[0] &&
+                                                        Object.keys(
+                                                          tableDetails[tableKey]
+                                                            ?.sampleData?.[0] ||
+                                                            {},
+                                                        ).map((key) => (
+                                                          <TableHead
+                                                            key={key}
+                                                            className="text-xs px-2 py-1"
+                                                          >
+                                                            {key}
+                                                          </TableHead>
+                                                        ))}
+                                                    </TableRow>
+                                                  </TableHeader>
+                                                  <TableBody>
+                                                    {tableDetails[
+                                                      tableKey
+                                                    ]?.sampleData?.map(
+                                                      (row, idx) => (
+                                                        <TableRow key={idx}>
+                                                          {Object.values(
+                                                            row,
+                                                          ).map(
+                                                            (
+                                                              value: any,
+                                                              cellIdx,
+                                                            ) => (
+                                                              <TableCell
+                                                                key={cellIdx}
+                                                                className="text-xs px-2 py-1 max-w-24 truncate"
+                                                              >
+                                                                {value?.toString() ||
+                                                                  ""}
+                                                              </TableCell>
+                                                            ),
+                                                          )}
+                                                        </TableRow>
+                                                      ),
+                                                    )}
+                                                  </TableBody>
+                                                </Table>
+                                              </div>
+                                            ) : (
+                                              <div className="text-xs text-muted-foreground py-2">
+                                                No sample data available for
+                                                this table
+                                              </div>
+                                            )
                                           ) : (
                                             <div className="text-xs text-muted-foreground py-2">
                                               Hover to load sample data
