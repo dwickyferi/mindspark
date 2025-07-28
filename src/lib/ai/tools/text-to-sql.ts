@@ -2,6 +2,310 @@ import { z } from "zod";
 import { tool } from "ai";
 import { TextToSQLService } from "@/lib/text-to-sql/service";
 import { DatasourceService } from "@/lib/services/datasource";
+import {
+  DynamicChartConfig,
+  SupportedChartType,
+  createDefaultConfig,
+  CHART_COLORS,
+  ChartComponent,
+} from "@/types/chart-config";
+
+/**
+ * Generate an intelligent chart configuration based on data analysis
+ */
+function generateChartConfig(
+  data: any[],
+  query: string,
+  title: string,
+  suggestedChartType?: string,
+): DynamicChartConfig {
+  if (!data || data.length === 0) {
+    return createDefaultConfig("BarChart", []);
+  }
+
+  const keys = Object.keys(data[0] || {});
+
+  // Determine the best chart type if not provided
+  let chartType: SupportedChartType = "BarChart";
+
+  if (suggestedChartType) {
+    const chartTypeMap: Record<string, SupportedChartType> = {
+      bar: "BarChart",
+      line: "LineChart",
+      pie: "PieChart",
+      area: "AreaChart",
+      scatter: "ScatterChart",
+    };
+    chartType = chartTypeMap[suggestedChartType] || "BarChart";
+  } else {
+    chartType = determineChartTypeFromData(data, query);
+  }
+
+  // Create base config
+  const config = createDefaultConfig(chartType, data);
+
+  // Enhance config based on chart type and data analysis
+  config.metadata = {
+    ...config.metadata,
+    title,
+    description: `${chartType} generated from: ${query}`,
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Intelligent component configuration based on data structure
+  if (chartType === "PieChart") {
+    config.components = generatePieChartComponents(data, keys);
+  } else if (chartType === "LineChart" || chartType === "AreaChart") {
+    config.components = generateTimeSeriesComponents(data, keys);
+  } else if (chartType === "BarChart") {
+    config.components = generateBarChartComponents(data, keys);
+  } else if (chartType === "ScatterChart") {
+    config.components = generateScatterChartComponents(data, keys);
+  }
+
+  return config;
+}
+
+/**
+ * Determine chart type from data analysis
+ */
+function determineChartTypeFromData(
+  data: any[],
+  query: string,
+): SupportedChartType {
+  const lowerQuery = query.toLowerCase();
+  const keys = Object.keys(data[0] || {});
+
+  // Time series detection
+  const hasTimeColumn = keys.some(
+    (key) =>
+      key.toLowerCase().includes("date") ||
+      key.toLowerCase().includes("time") ||
+      key.toLowerCase().includes("month") ||
+      key.toLowerCase().includes("year") ||
+      key.toLowerCase().includes("day"),
+  );
+
+  if (hasTimeColumn) return "LineChart";
+
+  // Pie chart for small categorical data
+  if (data.length <= 10 && keys.length === 2) return "PieChart";
+
+  // Query intent analysis
+  if (
+    lowerQuery.includes("distribution") ||
+    lowerQuery.includes("share") ||
+    lowerQuery.includes("percentage")
+  ) {
+    return "PieChart";
+  }
+
+  if (
+    lowerQuery.includes("trend") ||
+    lowerQuery.includes("over time") ||
+    lowerQuery.includes("growth")
+  ) {
+    return "LineChart";
+  }
+
+  if (
+    lowerQuery.includes("correlation") ||
+    lowerQuery.includes("relationship")
+  ) {
+    return "ScatterChart";
+  }
+
+  // Default to bar chart
+  return "BarChart";
+}
+
+/**
+ * Generate components for pie charts
+ */
+function generatePieChartComponents(
+  data: any[],
+  keys: string[],
+): ChartComponent[] {
+  const valueKey = findNumericKey(keys) || keys[1] || "value";
+  const nameKey = keys[0] || "name";
+
+  return [
+    { type: "ResponsiveContainer", props: { width: "100%", height: 400 } },
+    {
+      type: "Pie",
+      props: {
+        data,
+        cx: "50%",
+        cy: "50%",
+        outerRadius: 120,
+        dataKey: valueKey,
+        nameKey: nameKey,
+        fill: CHART_COLORS[0],
+      },
+    },
+    { type: "Tooltip" },
+    { type: "Legend" },
+  ];
+}
+
+/**
+ * Generate components for time series charts (Line/Area)
+ */
+function generateTimeSeriesComponents(
+  data: any[],
+  keys: string[],
+): ChartComponent[] {
+  const timeKey = findTimeKey(keys) || keys[0];
+  const valueKeys = findNumericKeys(keys);
+
+  const components: ChartComponent[] = [
+    { type: "ResponsiveContainer", props: { width: "100%", height: 300 } },
+    { type: "XAxis", props: { dataKey: timeKey } },
+    { type: "YAxis" },
+    { type: "CartesianGrid", props: { strokeDasharray: "3 3" } },
+    { type: "Tooltip" },
+    { type: "Legend" },
+  ];
+
+  // Add lines/areas for each numeric column
+  valueKeys.forEach((key, index) => {
+    components.push({
+      type: "Line",
+      props: {
+        type: "monotone",
+        dataKey: key,
+        stroke: CHART_COLORS[index % CHART_COLORS.length],
+        strokeWidth: 2,
+      },
+    });
+  });
+
+  return components;
+}
+
+/**
+ * Generate components for bar charts
+ */
+function generateBarChartComponents(
+  data: any[],
+  keys: string[],
+): ChartComponent[] {
+  const categoryKey = findCategoryKey(keys) || keys[0];
+  const valueKeys = findNumericKeys(keys);
+
+  const components: ChartComponent[] = [
+    { type: "ResponsiveContainer", props: { width: "100%", height: 300 } },
+    { type: "XAxis", props: { dataKey: categoryKey } },
+    { type: "YAxis" },
+    { type: "CartesianGrid", props: { strokeDasharray: "3 3" } },
+    { type: "Tooltip" },
+    { type: "Legend" },
+  ];
+
+  // Add bars for each numeric column
+  valueKeys.forEach((key, index) => {
+    components.push({
+      type: "Bar",
+      props: {
+        dataKey: key,
+        fill: CHART_COLORS[index % CHART_COLORS.length],
+      },
+    });
+  });
+
+  return components;
+}
+
+/**
+ * Generate components for scatter charts
+ */
+function generateScatterChartComponents(
+  data: any[],
+  keys: string[],
+): ChartComponent[] {
+  const numericKeys = findNumericKeys(keys);
+  const xKey = numericKeys[0] || keys[0];
+  const yKey = numericKeys[1] || keys[1];
+
+  return [
+    { type: "ResponsiveContainer", props: { width: "100%", height: 300 } },
+    { type: "XAxis", props: { dataKey: xKey, type: "number" } },
+    { type: "YAxis", props: { dataKey: yKey, type: "number" } },
+    { type: "CartesianGrid", props: { strokeDasharray: "3 3" } },
+    { type: "Tooltip" },
+    { type: "Legend" },
+    {
+      type: "Scatter",
+      props: {
+        data,
+        fill: CHART_COLORS[0],
+      },
+    },
+  ];
+}
+
+/**
+ * Helper functions to analyze data structure
+ */
+function findTimeKey(keys: string[]): string | null {
+  return (
+    keys.find(
+      (key) =>
+        key.toLowerCase().includes("date") ||
+        key.toLowerCase().includes("time") ||
+        key.toLowerCase().includes("month") ||
+        key.toLowerCase().includes("year") ||
+        key.toLowerCase().includes("day"),
+    ) || null
+  );
+}
+
+function findNumericKey(keys: string[]): string | null {
+  return (
+    keys.find(
+      (key) =>
+        key.toLowerCase().includes("count") ||
+        key.toLowerCase().includes("total") ||
+        key.toLowerCase().includes("sum") ||
+        key.toLowerCase().includes("amount") ||
+        key.toLowerCase().includes("value") ||
+        key.toLowerCase().includes("price") ||
+        key.toLowerCase().includes("revenue"),
+    ) ||
+    keys.find((key) => key !== keys[0]) ||
+    null
+  );
+}
+
+function findNumericKeys(keys: string[]): string[] {
+  return keys.filter(
+    (key) =>
+      key.toLowerCase().includes("count") ||
+      key.toLowerCase().includes("total") ||
+      key.toLowerCase().includes("sum") ||
+      key.toLowerCase().includes("amount") ||
+      key.toLowerCase().includes("value") ||
+      key.toLowerCase().includes("price") ||
+      key.toLowerCase().includes("revenue") ||
+      key.toLowerCase().includes("score") ||
+      key.toLowerCase().includes("rate"),
+  );
+}
+
+function findCategoryKey(keys: string[]): string | null {
+  return (
+    keys.find(
+      (key) =>
+        key.toLowerCase().includes("name") ||
+        key.toLowerCase().includes("category") ||
+        key.toLowerCase().includes("type") ||
+        key.toLowerCase().includes("status") ||
+        key.toLowerCase().includes("group"),
+    ) ||
+    keys[0] ||
+    null
+  );
+}
 
 const textToSqlSchema = z.object({
   query: z
@@ -22,11 +326,49 @@ const textToSqlSchema = z.object({
     .string()
     .optional()
     .describe("Current SQL query for context when modifying existing charts"),
+  currentChartConfig: z
+    .any()
+    .optional()
+    .describe("Current chart configuration to preserve for visual-only modifications"),
+  isVisualOnlyChange: z
+    .boolean()
+    .optional()
+    .describe("True if this is only a visual styling change (colors, chart type) without SQL modification"),
 });
 
 export const textToSqlTool = tool({
-  description:
-    "Convert natural language queries to SQL, execute them against a database, and return structured data with chart recommendations",
+  description: `
+    Convert natural language queries to SQL, execute them against a database, and return a complete chart configuration for visualization.
+    
+    This tool intelligently analyzes the query and resulting data to generate:
+    - Appropriate chart type (LineChart, BarChart, PieChart, AreaChart, ScatterChart)  
+    - Complete chart configuration with proper components (axes, legends, tooltips, etc.)
+    - Smart color schemes and styling
+    - Responsive sizing and margins
+    
+    The tool returns a DynamicChartConfig object that can be directly rendered without manual configuration.
+    
+    VISUAL-ONLY CHANGES:
+    For color changes, chart type changes, or other visual styling modifications WITHOUT data changes:
+    - Set isVisualOnlyChange: true
+    - Pass currentChartConfig with the existing configuration
+    - Pass currentSql to preserve the existing SQL query
+    - The tool will update only the visual properties and return immediately without executing SQL
+    
+    DATA CHANGES:
+    For queries that modify data (filtering, aggregation, new columns):
+    - Set isVisualOnlyChange: false or omit it
+    - Pass currentSql for context when modifying existing charts
+    - The tool will execute SQL and generate new chart configuration
+    
+    Chart type selection logic:
+    - Time series data (dates/times) → LineChart
+    - Small categorical data (≤10 items) → PieChart  
+    - Distribution/percentage queries → PieChart
+    - Trend/growth queries → LineChart
+    - Correlation/relationship queries → ScatterChart
+    - Default → BarChart
+  `,
   parameters: textToSqlSchema,
   execute: async ({
     query,
@@ -35,8 +377,127 @@ export const textToSqlTool = tool({
     chartType = "auto",
     chartTitle,
     currentSql,
+    currentChartConfig,
+    isVisualOnlyChange = false,
   }) => {
     try {
+      console.log("textToSql tool called with:", {
+        query,
+        isVisualOnlyChange,
+        hasCurrentChartConfig: !!currentChartConfig,
+        hasCurrentSql: !!currentSql,
+        datasourceId,
+      });
+
+      // Handle visual-only changes (like color modifications) without SQL execution
+      if (isVisualOnlyChange && currentChartConfig && currentSql) {
+        console.log("Processing visual-only change:", query);
+        
+        // Determine if this is a color change request
+        const lowerQuery = query.toLowerCase();
+        const isColorChange = lowerQuery.includes("color") || lowerQuery.includes("red") || 
+                            lowerQuery.includes("blue") || lowerQuery.includes("green") || 
+                            lowerQuery.includes("yellow") || lowerQuery.includes("orange") || 
+                            lowerQuery.includes("purple") || lowerQuery.includes("pink");
+        
+        if (isColorChange) {
+          console.log("Detected color change request in query:", query);
+          
+          // Parse the color from the query
+          const colorMapping: Record<string, string> = {
+            red: "#dc2626",
+            blue: "#2563eb", 
+            green: "#16a34a",
+            yellow: "#ca8a04",
+            orange: "#ea580c",
+            purple: "#9333ea",
+            pink: "#db2777",
+            black: "#000000",
+            white: "#ffffff",
+            gray: "#6b7280",
+            grey: "#6b7280"
+          };
+          
+          let newColor = "#dc2626"; // default red
+          for (const [colorName, hexColor] of Object.entries(colorMapping)) {
+            if (lowerQuery.includes(colorName)) {
+              newColor = hexColor;
+              console.log(`Setting color to ${colorName}: ${hexColor}`);
+              break;
+            }
+          }
+          
+          // Create updated chart config with new color
+          const updatedConfig = JSON.parse(JSON.stringify(currentChartConfig));
+          
+          // Update the color in the components
+          if (updatedConfig.components) {
+            updatedConfig.components = updatedConfig.components.map((component: any) => {
+              if (component.type === "Bar" && component.props) {
+                console.log(`Updating Bar component color from ${component.props.fill} to ${newColor}`);
+                return {
+                  ...component,
+                  props: {
+                    ...component.props,
+                    fill: newColor
+                  }
+                };
+              } else if (component.type === "Line" && component.props) {
+                console.log(`Updating Line component color from ${component.props.stroke} to ${newColor}`);
+                return {
+                  ...component,
+                  props: {
+                    ...component.props,
+                    stroke: newColor
+                  }
+                };
+              } else if (component.type === "Pie" && component.props) {
+                console.log(`Updating Pie component color from ${component.props.fill} to ${newColor}`);
+                return {
+                  ...component,
+                  props: {
+                    ...component.props,
+                    fill: newColor
+                  }
+                };
+              } else if (component.type === "Area" && component.props) {
+                console.log(`Updating Area component color from ${component.props.fill} to ${newColor}`);
+                return {
+                  ...component,
+                  props: {
+                    ...component.props,
+                    fill: newColor
+                  }
+                };
+              }
+              return component;
+            });
+          }
+          
+          // Update metadata
+          if (updatedConfig.metadata) {
+            updatedConfig.metadata.updatedAt = new Date().toISOString();
+            updatedConfig.metadata.description = `${updatedConfig.metadata.description} (Updated: ${query})`;
+          }
+          
+          console.log("Returning visual-only update result");
+          
+          // Return the visual-only update without executing SQL
+          return {
+            success: true,
+            sql: currentSql, // Keep the same SQL
+            data: currentChartConfig.data || [], // Keep the same data
+            chartConfig: updatedConfig,
+            executionTime: 0,
+            rowCount: currentChartConfig.data?.length || 0,
+            query: query,
+          };
+        }
+      }
+
+      console.log("Processing regular SQL execution flow");
+      
+      // Regular SQL execution flow for data changes
       // Get datasource configuration
       const datasourceResponse =
         await DatasourceService.getDatasource(datasourceId);
@@ -118,25 +579,41 @@ export const textToSqlTool = tool({
       const generatedTitle =
         chartTitle || generateChartTitle(query, analyzedChartType);
 
+      // Generate complete chart configuration
+      const chartConfig = generateChartConfig(
+        response.data || [],
+        query,
+        generatedTitle,
+        analyzedChartType,
+      );
+
       return {
         success: true,
         sql: response.sql,
         data: response.data || [],
-        chartType: analyzedChartType,
-        chartTitle: generatedTitle,
+        chartConfig,
         executionTime: response.executionTime,
         rowCount: response.data?.length || 0,
         query: query,
       };
     } catch (error) {
       console.error("Text-to-SQL tool error:", error);
+
+      // Generate error chart config
+      const errorConfig = createDefaultConfig("BarChart", []);
+      errorConfig.metadata = {
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
+        createdAt: new Date().toISOString(),
+      };
+
       return {
         success: false,
         error:
           error instanceof Error ? error.message : "Unknown error occurred",
         data: [],
-        chartType: "table" as "bar" | "line" | "pie" | "table",
-        chartTitle: "Error",
+        chartConfig: errorConfig,
         rowCount: 0,
       };
     }
@@ -150,9 +627,9 @@ function analyzeChartTypeFromQuery(
   query: string,
   data: any[],
   preferredType?: string,
-): "bar" | "line" | "pie" | "table" {
+): string {
   if (preferredType && preferredType !== "auto") {
-    return preferredType as "bar" | "line" | "pie" | "table";
+    return preferredType;
   }
 
   const lowerQuery = query.toLowerCase();
@@ -169,78 +646,20 @@ function analyzeChartTypeFromQuery(
     return "table";
   }
 
-  // Explicit chart type mentions
-  if (
-    lowerQuery.includes("line chart") ||
-    lowerQuery.includes("trend") ||
-    lowerQuery.includes("over time")
-  ) {
-    return "line";
-  }
-  if (
-    lowerQuery.includes("pie chart") ||
-    lowerQuery.includes("distribution") ||
-    lowerQuery.includes("proportion")
-  ) {
-    return "pie";
-  }
-  if (
-    lowerQuery.includes("bar chart") ||
-    lowerQuery.includes("compare") ||
-    lowerQuery.includes("comparison")
-  ) {
-    return "bar";
-  }
+  // Use the new intelligent chart type detection
+  const chartType = determineChartTypeFromData(data, query);
 
-  // Analyze based on data structure if available
-  if (data && data.length > 0) {
-    const keys = Object.keys(data[0]);
+  // Convert to old format for compatibility
+  const chartTypeMap: Record<SupportedChartType, string> = {
+    LineChart: "line",
+    BarChart: "bar",
+    PieChart: "pie",
+    AreaChart: "area",
+    ScatterChart: "scatter",
+    ComposedChart: "bar", // fallback to bar
+  };
 
-    // Time-based data suggests line chart
-    const hasTimeColumn = keys.some(
-      (key) =>
-        key.toLowerCase().includes("date") ||
-        key.toLowerCase().includes("time") ||
-        key.toLowerCase().includes("month") ||
-        key.toLowerCase().includes("year") ||
-        key.toLowerCase().includes("day"),
-    );
-
-    if (hasTimeColumn) return "line";
-
-    // Small dataset with 2 columns suggests pie chart
-    if (data.length <= 10 && keys.length === 2) return "pie";
-
-    // Keywords in column names
-    const columnString = keys.join(" ").toLowerCase();
-    if (
-      columnString.includes("category") ||
-      columnString.includes("type") ||
-      columnString.includes("status")
-    ) {
-      return data.length <= 8 ? "pie" : "bar";
-    }
-  }
-
-  // Query intent analysis
-  if (
-    lowerQuery.includes("total") ||
-    lowerQuery.includes("sum") ||
-    lowerQuery.includes("count")
-  ) {
-    return data && data.length <= 8 ? "pie" : "bar";
-  }
-
-  if (
-    lowerQuery.includes("growth") ||
-    lowerQuery.includes("change") ||
-    lowerQuery.includes("progress")
-  ) {
-    return "line";
-  }
-
-  // Default to bar chart
-  return "bar";
+  return chartTypeMap[chartType] || "bar";
 }
 
 /**
