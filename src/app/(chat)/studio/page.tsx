@@ -602,10 +602,10 @@ const ChartCardComponent = React.memo(
     return (
       <Card className="mb-4">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2 flex-1 min-w-0">
               {editingTitleId === chart.id ? (
-                <div className="flex items-center gap-1 flex-1">
+                <div className="flex items-center gap-1 flex-1 max-w-[430px]">
                   <Input
                     value={editingTitleValue}
                     onChange={(e) => onTitleValueChange(e.target.value)}
@@ -650,8 +650,8 @@ const ChartCardComponent = React.memo(
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <CardTitle className="text-lg truncate">
+                <div className="flex items-start gap-2 flex-1 min-w-0">
+                  <CardTitle className="text-lg max-w-[400px] break-words leading-tight">
                     {chart.chartTitle || chart.chartProps.title}
                   </CardTitle>
                   <Button
@@ -663,14 +663,14 @@ const ChartCardComponent = React.memo(
                         chart.chartTitle || chart.chartProps.title,
                       )
                     }
-                    className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
+                    className="h-6 w-6 p-0 opacity-60 hover:opacity-100 flex-shrink-0 mt-0.5"
                   >
                     <Pencil className="h-3 w-3" />
                   </Button>
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2 flex-shrink-0 pt-0.5">
               <Badge variant="secondary" className="text-xs">
                 {chart.rowCount} rows
               </Badge>
@@ -2604,7 +2604,7 @@ Use the textToSql tool to execute this updated request.
   );
 
   return (
-    <div className="flex h-full bg-background">
+    <div className="flex h-full bg-background border-t ">
       {/* Left Sidebar - Dataset Selection */}
       <div
         className={`border-r bg-muted/20 transition-all duration-300 flex flex-col ${expandedSidebar ? "w-80" : "w-16"}`}
