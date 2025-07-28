@@ -329,11 +329,15 @@ const textToSqlSchema = z.object({
   currentChartConfig: z
     .any()
     .optional()
-    .describe("Current chart configuration to preserve for visual-only modifications"),
+    .describe(
+      "Current chart configuration to preserve for visual-only modifications",
+    ),
   isVisualOnlyChange: z
     .boolean()
     .optional()
-    .describe("True if this is only a visual styling change (colors, chart type) without SQL modification"),
+    .describe(
+      "True if this is only a visual styling change (colors, chart type) without SQL modification",
+    ),
 });
 
 export const textToSqlTool = tool({
@@ -392,21 +396,26 @@ export const textToSqlTool = tool({
       // Handle visual-only changes (like color modifications) without SQL execution
       if (isVisualOnlyChange && currentChartConfig && currentSql) {
         console.log("Processing visual-only change:", query);
-        
+
         // Determine if this is a color change request
         const lowerQuery = query.toLowerCase();
-        const isColorChange = lowerQuery.includes("color") || lowerQuery.includes("red") || 
-                            lowerQuery.includes("blue") || lowerQuery.includes("green") || 
-                            lowerQuery.includes("yellow") || lowerQuery.includes("orange") || 
-                            lowerQuery.includes("purple") || lowerQuery.includes("pink");
-        
+        const isColorChange =
+          lowerQuery.includes("color") ||
+          lowerQuery.includes("red") ||
+          lowerQuery.includes("blue") ||
+          lowerQuery.includes("green") ||
+          lowerQuery.includes("yellow") ||
+          lowerQuery.includes("orange") ||
+          lowerQuery.includes("purple") ||
+          lowerQuery.includes("pink");
+
         if (isColorChange) {
           console.log("Detected color change request in query:", query);
-          
+
           // Parse the color from the query
           const colorMapping: Record<string, string> = {
             red: "#dc2626",
-            blue: "#2563eb", 
+            blue: "#2563eb",
             green: "#16a34a",
             yellow: "#ca8a04",
             orange: "#ea580c",
@@ -415,9 +424,9 @@ export const textToSqlTool = tool({
             black: "#000000",
             white: "#ffffff",
             gray: "#6b7280",
-            grey: "#6b7280"
+            grey: "#6b7280",
           };
-          
+
           let newColor = "#dc2626"; // default red
           for (const [colorName, hexColor] of Object.entries(colorMapping)) {
             if (lowerQuery.includes(colorName)) {
@@ -426,62 +435,72 @@ export const textToSqlTool = tool({
               break;
             }
           }
-          
+
           // Create updated chart config with new color
           const updatedConfig = JSON.parse(JSON.stringify(currentChartConfig));
-          
+
           // Update the color in the components
           if (updatedConfig.components) {
-            updatedConfig.components = updatedConfig.components.map((component: any) => {
-              if (component.type === "Bar" && component.props) {
-                console.log(`Updating Bar component color from ${component.props.fill} to ${newColor}`);
-                return {
-                  ...component,
-                  props: {
-                    ...component.props,
-                    fill: newColor
-                  }
-                };
-              } else if (component.type === "Line" && component.props) {
-                console.log(`Updating Line component color from ${component.props.stroke} to ${newColor}`);
-                return {
-                  ...component,
-                  props: {
-                    ...component.props,
-                    stroke: newColor
-                  }
-                };
-              } else if (component.type === "Pie" && component.props) {
-                console.log(`Updating Pie component color from ${component.props.fill} to ${newColor}`);
-                return {
-                  ...component,
-                  props: {
-                    ...component.props,
-                    fill: newColor
-                  }
-                };
-              } else if (component.type === "Area" && component.props) {
-                console.log(`Updating Area component color from ${component.props.fill} to ${newColor}`);
-                return {
-                  ...component,
-                  props: {
-                    ...component.props,
-                    fill: newColor
-                  }
-                };
-              }
-              return component;
-            });
+            updatedConfig.components = updatedConfig.components.map(
+              (component: any) => {
+                if (component.type === "Bar" && component.props) {
+                  console.log(
+                    `Updating Bar component color from ${component.props.fill} to ${newColor}`,
+                  );
+                  return {
+                    ...component,
+                    props: {
+                      ...component.props,
+                      fill: newColor,
+                    },
+                  };
+                } else if (component.type === "Line" && component.props) {
+                  console.log(
+                    `Updating Line component color from ${component.props.stroke} to ${newColor}`,
+                  );
+                  return {
+                    ...component,
+                    props: {
+                      ...component.props,
+                      stroke: newColor,
+                    },
+                  };
+                } else if (component.type === "Pie" && component.props) {
+                  console.log(
+                    `Updating Pie component color from ${component.props.fill} to ${newColor}`,
+                  );
+                  return {
+                    ...component,
+                    props: {
+                      ...component.props,
+                      fill: newColor,
+                    },
+                  };
+                } else if (component.type === "Area" && component.props) {
+                  console.log(
+                    `Updating Area component color from ${component.props.fill} to ${newColor}`,
+                  );
+                  return {
+                    ...component,
+                    props: {
+                      ...component.props,
+                      fill: newColor,
+                    },
+                  };
+                }
+                return component;
+              },
+            );
           }
-          
+
           // Update metadata
           if (updatedConfig.metadata) {
             updatedConfig.metadata.updatedAt = new Date().toISOString();
             updatedConfig.metadata.description = `${updatedConfig.metadata.description} (Updated: ${query})`;
           }
-          
+
           console.log("Returning visual-only update result");
-          
+
           // Return the visual-only update without executing SQL
           return {
             success: true,
@@ -496,7 +515,7 @@ export const textToSqlTool = tool({
       }
 
       console.log("Processing regular SQL execution flow");
-      
+
       // Regular SQL execution flow for data changes
       // Get datasource configuration
       const datasourceResponse =
