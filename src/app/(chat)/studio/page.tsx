@@ -3,6 +3,12 @@
 import { appStore } from "@/app/store";
 import { ConfirmationModal } from "@/components/confirmation-modal";
 import { SelectModel } from "@/components/select-model";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,7 +56,7 @@ import {
   Brain,
   Check,
   CheckCircle,
-  ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Database,
   Loader2,
@@ -2171,19 +2177,21 @@ Use the textToSql tool to execute this updated request.
         className={`border-r bg-muted/20 transition-all duration-300 flex flex-col ${expandedSidebar ? "w-80" : "w-16"}`}
       >
         <div className="p-4 flex flex-col h-full">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             {expandedSidebar && (
-              <h2 className="text-lg font-semibold">
-                Select datasets and tables
-              </h2>
+              <div className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                <h2 className="text-base font-semibold">Data Sources</h2>
+              </div>
             )}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setExpandedSidebar(!expandedSidebar)}
+              className="h-8 w-8 p-0"
             >
               {expandedSidebar ? (
-                <ChevronDown className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4" />
               ) : (
                 <ChevronRight className="h-4 w-4" />
               )}
@@ -2192,329 +2200,379 @@ Use the textToSql tool to execute this updated request.
 
           {expandedSidebar && (
             <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Datasource Selection */}
-              <div className="mb-6 flex-shrink-0">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium">Database</label>
-                </div>
-                <Select
-                  value={selectedDatasource?.id}
-                  onValueChange={(value) => {
-                    const datasource = datasources.find(
-                      (ds) => ds.id === value,
-                    );
-                    setSelectedDatasource(datasource || null);
-                    setSelectedDatabase(datasource?.name || "");
-                    setSelectedSchema("");
-                    setSelectedTables([]);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select database" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {datasources.map((datasource) => (
-                      <SelectItem key={datasource.id} value={datasource.id}>
-                        <div className="flex items-center gap-2">
-                          <Database className="h-4 w-4" />
-                          {datasource.name}
+              <Accordion
+                type="multiple"
+                defaultValue={["database", "schema", "tables"]}
+                className="w-full"
+              >
+                {/* Database Selection */}
+                <AccordionItem value="database">
+                  <AccordionTrigger className="py-3">
+                    <div className="flex items-center gap-2">
+                      <Database className="h-4 w-4" />
+                      <span>Database Connection</span>
+                      {selectedDatasource && (
+                        <Badge variant="secondary" className="ml-2">
+                          {selectedDatasource.name}
+                        </Badge>
+                      )}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3">
+                      <Select
+                        value={selectedDatasource?.id}
+                        onValueChange={(value) => {
+                          const datasource = datasources.find(
+                            (ds) => ds.id === value,
+                          );
+                          setSelectedDatasource(datasource || null);
+                          setSelectedDatabase(datasource?.name || "");
+                          setSelectedSchema("");
+                          setSelectedTables([]);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select database" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {datasources.map((datasource) => (
+                            <SelectItem key={datasource.id} value={datasource.id}>
+                              <div className="flex items-center gap-2">
+                                <Database className="h-4 w-4" />
+                                {datasource.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Schema Selection */}
+                {selectedDatasource && (
+                  <AccordionItem value="schema">
+                    <AccordionTrigger className="py-3">
+                      <div className="flex items-center gap-2">
+                        <Database className="h-4 w-4" />
+                        <span>Schema</span>
+                        {selectedSchema && (
+                          <Badge variant="secondary" className="ml-2">
+                            {selectedSchema}
+                          </Badge>
+                        )}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">
+                            Select schema
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={refreshSchemas}
+                            className="h-6 w-6 p-0"
+                            disabled={isLoadingSchemas}
+                          >
+                            <RefreshCw
+                              className={`h-3 w-3 ${isLoadingSchemas ? "animate-spin" : ""}`}
+                            />
+                          </Button>
                         </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                        {isLoadingSchemas ? (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        ) : (
+                          <Select
+                            value={selectedSchema}
+                            onValueChange={(value) => {
+                              setSelectedSchema(value);
+                              setSelectedTables([]);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select schema" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableSchemas.map((schema) => (
+                                <SelectItem key={schema.name} value={schema.name}>
+                                  <div className="flex items-center gap-2">
+                                    <Database className="h-4 w-4" />
+                                    <span>{schema.name}</span>
+                                    {schema.tableCount && (
+                                      <span className="text-xs text-muted-foreground">
+                                        ({schema.tableCount} tables)
+                                      </span>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                )}
 
-              {/* Schema Selection */}
-              {selectedDatasource && (
-                <div className="mb-6 flex-shrink-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium">Schema</label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={refreshSchemas}
-                      className="h-6 w-6 p-0"
-                      disabled={isLoadingSchemas}
-                    >
-                      <RefreshCw
-                        className={`h-3 w-3 ${isLoadingSchemas ? "animate-spin" : ""}`}
-                      />
-                    </Button>
-                  </div>
-                  {isLoadingSchemas ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    </div>
-                  ) : (
-                    <Select
-                      value={selectedSchema}
-                      onValueChange={(value) => {
-                        setSelectedSchema(value);
-                        setSelectedTables([]);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select schema" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableSchemas.map((schema) => (
-                          <SelectItem key={schema.name} value={schema.name}>
-                            <div className="flex items-center gap-2">
-                              <Database className="h-4 w-4" />
-                              <span>{schema.name}</span>
-                              {schema.tableCount && (
-                                <span className="text-xs text-muted-foreground">
-                                  ({schema.tableCount} tables)
-                                </span>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-              )}
+                {/* Table Selection */}
+                {selectedDatasource && selectedSchema && (
+                  <AccordionItem value="tables">
+                    <AccordionTrigger className="py-3">
+                      <div className="flex items-center gap-2">
+                        <TableIcon className="h-4 w-4" />
+                        <span>Tables</span>
+                        {selectedTables.length > 0 && (
+                          <Badge variant="secondary" className="ml-2">
+                            {selectedTables.length} selected
+                          </Badge>
+                        )}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">
+                            Select tables to query
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={refreshTables}
+                            className="h-6 w-6 p-0"
+                            disabled={isLoadingTables}
+                          >
+                            <RefreshCw
+                              className={`h-3 w-3 ${isLoadingTables ? "animate-spin" : ""}`}
+                            />
+                          </Button>
+                        </div>
+                        {isLoadingTables ? (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        ) : (
+                          <div className="max-h-80 overflow-y-auto">
+                            <div className="space-y-2 pr-2">
+                              {availableTables.map((table) => {
+                                const tableKey = `${table.schema}.${table.name}`;
+                                const isSelected = selectedTables.includes(
+                                  table.schema
+                                    ? `${table.schema}.${table.name}`
+                                    : table.name,
+                                );
 
-              {/* Table Selection */}
-              {selectedDatasource && selectedSchema && (
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="flex items-center justify-between mb-2 flex-shrink-0">
-                    <label className="text-sm font-medium">Tables</label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={refreshTables}
-                      className="h-6 w-6 p-0"
-                      disabled={isLoadingTables}
-                    >
-                      <RefreshCw
-                        className={`h-3 w-3 ${isLoadingTables ? "animate-spin" : ""}`}
-                      />
-                    </Button>
-                  </div>
-                  {isLoadingTables ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    </div>
-                  ) : (
-                    <div className="flex-1 min-h-0">
-                      <div className="h-full overflow-y-auto">
-                        <div className="space-y-2 pr-2">
-                          {availableTables.map((table) => {
-                            const tableKey = `${table.schema}.${table.name}`;
-                            const isSelected = selectedTables.includes(
-                              table.schema
-                                ? `${table.schema}.${table.name}`
-                                : table.name,
-                            );
-
-                            return (
-                              <HoverCard
-                                key={table.name}
-                                openDelay={400}
-                                closeDelay={100}
-                              >
-                                <HoverCardTrigger asChild>
-                                  <div
-                                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                                      isSelected
-                                        ? "bg-primary/10 border-primary"
-                                        : "bg-background hover:bg-muted"
-                                    }`}
-                                    onClick={() => handleTableSelection(table)}
-                                    onMouseEnter={() =>
-                                      fetchTableDetails(table)
-                                    }
+                                return (
+                                  <HoverCard
+                                    key={table.name}
+                                    openDelay={400}
+                                    closeDelay={100}
                                   >
-                                    <div className="flex items-center gap-2">
-                                      <TableIcon className="h-4 w-4 flex-shrink-0" />
-                                      <div className="flex-1 min-w-0">
-                                        <div className="font-medium text-sm truncate">
-                                          {table.name}
+                                    <HoverCardTrigger asChild>
+                                      <div
+                                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                                          isSelected
+                                            ? "bg-primary/10 border-primary"
+                                            : "bg-background hover:bg-muted"
+                                        }`}
+                                        onClick={() => handleTableSelection(table)}
+                                        onMouseEnter={() =>
+                                          fetchTableDetails(table)
+                                        }
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <TableIcon className="h-4 w-4 flex-shrink-0" />
+                                          <div className="flex-1 min-w-0">
+                                            <div className="font-medium text-sm truncate">
+                                              {table.name}
+                                            </div>
+                                          </div>
+                                          {isSelected && (
+                                            <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                                          )}
                                         </div>
                                       </div>
-                                      {isSelected && (
-                                        <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
-                                      )}
-                                    </div>
-                                  </div>
-                                </HoverCardTrigger>
-                                <HoverCardContent
-                                  className="w-96"
-                                  side="right"
-                                  align="start"
-                                >
-                                  <div className="space-y-3">
-                                    <div>
-                                      <h4 className="text-sm font-semibold">
-                                        {table.name}
-                                      </h4>
-                                      <p className="text-xs text-muted-foreground">
-                                        Schema: {table.schema}
-                                      </p>
-                                    </div>
-
-                                    <Tabs
-                                      defaultValue="schema"
-                                      className="w-full"
+                                    </HoverCardTrigger>
+                                    <HoverCardContent
+                                      className="w-96"
+                                      side="right"
+                                      align="start"
                                     >
-                                      <TabsList className="grid w-full grid-cols-2">
-                                        <TabsTrigger value="schema">
-                                          Schema
-                                        </TabsTrigger>
-                                        <TabsTrigger value="sample">
-                                          Sample Data
-                                        </TabsTrigger>
-                                      </TabsList>
-
-                                      <TabsContent
-                                        value="schema"
-                                        className="mt-3"
-                                      >
-                                        <div className="space-y-2">
-                                          <h5 className="text-xs font-medium text-muted-foreground">
-                                            Columns
-                                          </h5>
-                                          {tableDetails[tableKey]?.loading ? (
-                                            <div className="flex items-center justify-center py-4">
-                                              <Loader2 className="h-4 w-4 animate-spin" />
-                                              <span className="ml-2 text-xs text-muted-foreground">
-                                                Loading schema...
-                                              </span>
-                                            </div>
-                                          ) : tableDetails[tableKey]?.error ? (
-                                            <div className="text-xs text-red-500 py-2">
-                                              {tableDetails[tableKey]?.error}
-                                            </div>
-                                          ) : tableDetails[tableKey]
-                                              ?.columns ? (
-                                            <div className="max-h-48 overflow-y-auto">
-                                              <div className="space-y-1">
-                                                {tableDetails[
-                                                  tableKey
-                                                ]?.columns?.map(
-                                                  (column, idx) => (
-                                                    <div
-                                                      key={idx}
-                                                      className="flex justify-between items-center py-1 px-2 bg-muted/50 rounded text-xs"
-                                                    >
-                                                      <span className="font-mono">
-                                                        {column.name}
-                                                      </span>
-                                                      <span className="text-muted-foreground">
-                                                        {column.type}
-                                                      </span>
-                                                    </div>
-                                                  ),
-                                                )}
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            <div className="text-xs text-muted-foreground py-2">
-                                              Hover to load schema information
-                                            </div>
-                                          )}
+                                      <div className="space-y-3">
+                                        <div>
+                                          <h4 className="text-sm font-semibold">
+                                            {table.name}
+                                          </h4>
+                                          <p className="text-xs text-muted-foreground">
+                                            Schema: {table.schema}
+                                          </p>
                                         </div>
-                                      </TabsContent>
 
-                                      <TabsContent
-                                        value="sample"
-                                        className="mt-3"
-                                      >
-                                        <div className="space-y-2">
-                                          <h5 className="text-xs font-medium text-muted-foreground">
-                                            Sample Data (First 5 rows)
-                                          </h5>
-                                          {tableDetails[tableKey]?.loading ? (
-                                            <div className="flex items-center justify-center py-4">
-                                              <Loader2 className="h-4 w-4 animate-spin" />
-                                              <span className="ml-2 text-xs text-muted-foreground">
-                                                Loading sample data...
-                                              </span>
-                                            </div>
-                                          ) : tableDetails[tableKey]?.error ? (
-                                            <div className="text-xs text-red-500 py-2">
-                                              {tableDetails[tableKey]?.error}
-                                            </div>
-                                          ) : tableDetails[tableKey]
-                                              ?.sampleData !== undefined ? (
-                                            tableDetails[tableKey]?.sampleData
-                                              ?.length > 0 ? (
-                                              <div className="max-h-48 overflow-auto">
-                                                <Table>
-                                                  <TableHeader>
-                                                    <TableRow>
-                                                      {tableDetails[tableKey]
-                                                        ?.sampleData?.[0] &&
-                                                        Object.keys(
-                                                          tableDetails[tableKey]
-                                                            ?.sampleData?.[0] ||
-                                                            {},
-                                                        ).map((key) => (
-                                                          <TableHead
-                                                            key={key}
-                                                            className="text-xs px-2 py-1"
-                                                          >
-                                                            {key}
-                                                          </TableHead>
-                                                        ))}
-                                                    </TableRow>
-                                                  </TableHeader>
-                                                  <TableBody>
+                                        <Tabs
+                                          defaultValue="schema"
+                                          className="w-full"
+                                        >
+                                          <TabsList className="grid w-full grid-cols-2">
+                                            <TabsTrigger value="schema">
+                                              Schema
+                                            </TabsTrigger>
+                                            <TabsTrigger value="sample">
+                                              Sample Data
+                                            </TabsTrigger>
+                                          </TabsList>
+
+                                          <TabsContent
+                                            value="schema"
+                                            className="mt-3"
+                                          >
+                                            <div className="space-y-2">
+                                              <h5 className="text-xs font-medium text-muted-foreground">
+                                                Columns
+                                              </h5>
+                                              {tableDetails[tableKey]?.loading ? (
+                                                <div className="flex items-center justify-center py-4">
+                                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                                  <span className="ml-2 text-xs text-muted-foreground">
+                                                    Loading schema...
+                                                  </span>
+                                                </div>
+                                              ) : tableDetails[tableKey]?.error ? (
+                                                <div className="text-xs text-red-500 py-2">
+                                                  {tableDetails[tableKey]?.error}
+                                                </div>
+                                              ) : tableDetails[tableKey]
+                                                  ?.columns ? (
+                                                <div className="max-h-48 overflow-y-auto">
+                                                  <div className="space-y-1">
                                                     {tableDetails[
                                                       tableKey
-                                                    ]?.sampleData?.map(
-                                                      (row, idx) => (
-                                                        <TableRow key={idx}>
-                                                          {Object.values(
-                                                            row,
-                                                          ).map(
-                                                            (
-                                                              value: any,
-                                                              cellIdx,
-                                                            ) => (
-                                                              <TableCell
-                                                                key={cellIdx}
-                                                                className="text-xs px-2 py-1 max-w-24 truncate"
-                                                              >
-                                                                {value?.toString() ||
-                                                                  ""}
-                                                              </TableCell>
-                                                            ),
-                                                          )}
-                                                        </TableRow>
+                                                    ]?.columns?.map(
+                                                      (column, idx) => (
+                                                        <div
+                                                          key={idx}
+                                                          className="flex justify-between items-center py-1 px-2 bg-muted/50 rounded text-xs"
+                                                        >
+                                                          <span className="font-mono">
+                                                            {column.name}
+                                                          </span>
+                                                          <span className="text-muted-foreground">
+                                                            {column.type}
+                                                          </span>
+                                                        </div>
                                                       ),
                                                     )}
-                                                  </TableBody>
-                                                </Table>
-                                              </div>
-                                            ) : (
-                                              <div className="text-xs text-muted-foreground py-2">
-                                                No sample data available for
-                                                this table
-                                              </div>
-                                            )
-                                          ) : (
-                                            <div className="text-xs text-muted-foreground py-2">
-                                              Hover to load sample data
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                <div className="text-xs text-muted-foreground py-2">
+                                                  Hover to load schema information
+                                                </div>
+                                              )}
                                             </div>
-                                          )}
-                                        </div>
-                                      </TabsContent>
-                                    </Tabs>
-                                  </div>
-                                </HoverCardContent>
-                              </HoverCard>
-                            );
-                          })}
-                        </div>
+                                          </TabsContent>
+
+                                          <TabsContent
+                                            value="sample"
+                                            className="mt-3"
+                                          >
+                                            <div className="space-y-2">
+                                              <h5 className="text-xs font-medium text-muted-foreground">
+                                                Sample Data (First 5 rows)
+                                              </h5>
+                                              {tableDetails[tableKey]?.loading ? (
+                                                <div className="flex items-center justify-center py-4">
+                                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                                  <span className="ml-2 text-xs text-muted-foreground">
+                                                    Loading sample data...
+                                                  </span>
+                                                </div>
+                                              ) : tableDetails[tableKey]?.error ? (
+                                                <div className="text-xs text-red-500 py-2">
+                                                  {tableDetails[tableKey]?.error}
+                                                </div>
+                                              ) : tableDetails[tableKey]
+                                                  ?.sampleData !== undefined ? (
+                                                tableDetails[tableKey]?.sampleData
+                                                  ?.length > 0 ? (
+                                                  <div className="max-h-48 overflow-auto">
+                                                    <Table>
+                                                      <TableHeader>
+                                                        <TableRow>
+                                                          {tableDetails[tableKey]
+                                                            ?.sampleData?.[0] &&
+                                                            Object.keys(
+                                                              tableDetails[tableKey]
+                                                                ?.sampleData?.[0] ||
+                                                                {},
+                                                            ).map((key) => (
+                                                              <TableHead
+                                                                key={key}
+                                                                className="text-xs px-2 py-1"
+                                                              >
+                                                                {key}
+                                                              </TableHead>
+                                                            ))}
+                                                        </TableRow>
+                                                      </TableHeader>
+                                                      <TableBody>
+                                                        {tableDetails[
+                                                          tableKey
+                                                        ]?.sampleData?.map(
+                                                          (row, idx) => (
+                                                            <TableRow key={idx}>
+                                                              {Object.values(
+                                                                row,
+                                                              ).map(
+                                                                (
+                                                                  value: any,
+                                                                  cellIdx,
+                                                                ) => (
+                                                                  <TableCell
+                                                                    key={cellIdx}
+                                                                    className="text-xs px-2 py-1 max-w-24 truncate"
+                                                                  >
+                                                                    {value?.toString() ||
+                                                                      ""}
+                                                                  </TableCell>
+                                                                ),
+                                                              )}
+                                                            </TableRow>
+                                                          ),
+                                                        )}
+                                                      </TableBody>
+                                                    </Table>
+                                                  </div>
+                                                ) : (
+                                                  <div className="text-xs text-muted-foreground py-2">
+                                                    No sample data available for
+                                                    this table
+                                                  </div>
+                                                )
+                                              ) : (
+                                                <div className="text-xs text-muted-foreground py-2">
+                                                  Hover to load sample data
+                                                </div>
+                                              )}
+                                            </div>
+                                          </TabsContent>
+                                        </Tabs>
+                                      </div>
+                                    </HoverCardContent>
+                                  </HoverCard>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    </AccordionContent>
+                  </AccordionItem>
+                )}
+              </Accordion>
             </div>
           )}
         </div>
@@ -2658,89 +2716,106 @@ Use the textToSql tool to execute this updated request.
         </div>
 
         {/* Query Input */}
-        <div className="p-6 border-b bg-muted/20">
-          <div className="max-w-none">
-            <label className="text-sm font-medium mb-3 block">
-              Ask a question about your data
-            </label>
+        <div className="border-b bg-muted/20">
+          <Accordion
+            type="single"
+            defaultValue="query"
+            collapsible
+            className="px-6"
+          >
+            <AccordionItem value="query" className="border-none">
+              <AccordionTrigger className="py-4 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="font-medium">Ask a question about your data</span>
+                  {selectedTables.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {selectedTables.length} table{selectedTables.length !== 1 ? "s" : ""} selected
+                    </Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4 pb-4">
+                  {/* Full width text area */}
+                  <Textarea
+                    placeholder="Get me a line chart of monthly revenue, for premium and enterprise in EMEA - bar chart of monthly user signups, clustered by plan. Also in EMEA, all tiers except free for the last 6 months. Or show me raw data in a table format."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        if (
+                          !input.trim() ||
+                          selectedTables.length === 0 ||
+                          isChatLoading
+                        )
+                          return;
+                        generateChart();
+                      }
+                    }}
+                    className="w-full min-h-[80px] resize-none"
+                    disabled={isChatLoading}
+                  />
 
-            {/* Full width text area */}
-            <Textarea
-              placeholder="Get me a line chart of monthly revenue, for premium and enterprise in EMEA - bar chart of monthly user signups, clustered by plan. Also in EMEA, all tiers except free for the last 6 months. Or show me raw data in a table format."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  if (
-                    !input.trim() ||
-                    selectedTables.length === 0 ||
-                    isChatLoading
-                  )
-                    return;
-                  generateChart();
-                }
-              }}
-              className="w-full min-h-[100px] resize-none text-base"
-              disabled={isChatLoading}
-            />
+                  {/* Generate button and status */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <Button
+                      onClick={generateChart}
+                      disabled={
+                        !input.trim() || selectedTables.length === 0 || isChatLoading
+                      }
+                      className="px-6 h-10 font-medium"
+                    >
+                      {isChatLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                      )}
+                      Generate Chart
+                    </Button>
 
-            {/* Generate button and status */}
-            <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <Button
-                onClick={generateChart}
-                disabled={
-                  !input.trim() || selectedTables.length === 0 || isChatLoading
-                }
-                className="px-8 h-11 font-medium"
-                size="lg"
-              >
-                {isChatLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                )}
-                Generate Chart
-              </Button>
-
-              {/* Status information */}
-              <div className="text-sm text-muted-foreground">
-                {isChatLoading ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    <span>Generating chart...</span>
-                    <span className="text-xs">
-                      ({(currentGenerationTime / 1000).toFixed(1)}s)
-                    </span>
-                  </div>
-                ) : lastGenerationDuration ? (
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-3 w-3 text-green-500" />
-                    <span>
-                      Last generation completed in{" "}
-                      {(lastGenerationDuration / 1000).toFixed(1)}s
-                    </span>
-                    {selectedTables.length > 0 && (
-                      <>
-                        <span className="mx-1">·</span>
+                    {/* Status information */}
+                    <div className="text-sm text-muted-foreground">
+                      {isChatLoading ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <span>Generating chart...</span>
+                          <span className="text-xs">
+                            ({(currentGenerationTime / 1000).toFixed(1)}s)
+                          </span>
+                        </div>
+                      ) : lastGenerationDuration ? (
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-3 w-3 text-green-500" />
+                          <span>
+                            Last generation completed in{" "}
+                            {(lastGenerationDuration / 1000).toFixed(1)}s
+                          </span>
+                          {selectedTables.length > 0 && (
+                            <>
+                              <span className="mx-1">·</span>
+                              <span>
+                                {selectedTables.length} table
+                                {selectedTables.length !== 1 ? "s" : ""} selected
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      ) : selectedTables.length === 0 ? (
+                        <span>Select tables from the sidebar to get started</span>
+                      ) : (
                         <span>
-                          {selectedTables.length} table
+                          Ready to generate charts · {selectedTables.length} table
                           {selectedTables.length !== 1 ? "s" : ""} selected
                         </span>
-                      </>
-                    )}
+                      )}
+                    </div>
                   </div>
-                ) : selectedTables.length === 0 ? (
-                  <span>Select tables from the sidebar to get started</span>
-                ) : (
-                  <span>
-                    Ready to generate charts · {selectedTables.length} table
-                    {selectedTables.length !== 1 ? "s" : ""} selected
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
 
         {/* Charts Area */}
