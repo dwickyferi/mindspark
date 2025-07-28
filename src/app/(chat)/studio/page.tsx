@@ -13,6 +13,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -61,6 +68,7 @@ import {
   Database,
   Loader2,
   MoreHorizontal,
+  MoreVertical,
   Pencil,
   Plus,
   RefreshCw,
@@ -85,13 +93,15 @@ interface ChartCard {
   id: string;
   query: string;
   sql: string;
-  data: any[];
-  chartConfig: DynamicChartConfig; // AI-generated configuration (required)
+  chartConfig: Omit<DynamicChartConfig, "data">; // Config without data
   isExpanded: boolean;
   executionTime?: number;
   rowCount?: number;
   lastUpdated?: number; // Add timestamp to force re-renders
   toolCallId?: string; // Track the originating tool call for deduplication
+  cacheKey?: string; // Redis cache key for data fetching
+  datasourceId?: string; // Store datasource ID for refresh operations
+  selectedTables?: string[]; // Store selected tables for refresh operations
 }
 
 interface DatabaseTable {
@@ -108,8 +118,8 @@ interface DatabaseSchema {
 
 // Custom comparison function for ChartContent memo
 const chartContentPropsAreEqual = (
-  prevProps: { chart: ChartCard },
-  nextProps: { chart: ChartCard },
+  prevProps: { chart: ChartCard; data: any[] },
+  nextProps: { chart: ChartCard; data: any[] },
 ) => {
   const prev = prevProps.chart;
   const next = nextProps.chart;
@@ -127,29 +137,39 @@ const chartContentPropsAreEqual = (
     prev.rowCount === next.rowCount &&
     prev.executionTime === next.executionTime &&
     prev.isExpanded === next.isExpanded &&
-    JSON.stringify(prev.data) === JSON.stringify(next.data) &&
+    JSON.stringify(prevProps.data) === JSON.stringify(nextProps.data) &&
     JSON.stringify(prev.chartConfig) === JSON.stringify(next.chartConfig)
   );
 };
 
 // Optimized ChartContent component with React.memo and custom comparison
-const ChartContent = React.memo(({ chart }: { chart: ChartCard }) => {
-  const { chartConfig, data } = chart;
+const ChartContent = React.memo(
+  ({ chart, data }: { chart: ChartCard; data: any[] }) => {
+    const { chartConfig } = chart;
 
-  // Always use the AI-generated configuration
-  if (!chartConfig || !data || data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-        <div className="text-center">
-          <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>No data available for visualization</p>
+    // Always use the AI-generated configuration with the provided data
+    if (!chartConfig || !data || data.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+          <div className="text-center">
+            <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No data available for visualization</p>
+            <p className="text-sm mt-2">Try refreshing the chart data</p>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  return <DynamicChartRenderer config={chartConfig} />;
-}, chartContentPropsAreEqual);
+    // Create config with data for rendering
+    const configWithData = {
+      ...chartConfig,
+      data,
+    };
+
+    return <DynamicChartRenderer config={configWithData} />;
+  },
+  chartContentPropsAreEqual,
+);
 
 ChartContent.displayName = "ChartContent";
 
@@ -160,8 +180,8 @@ const chartCardPropsAreEqual = (
 ) => {
   // Compare chart properties that affect rendering
   const chartEqual = chartContentPropsAreEqual(
-    { chart: prevProps.chart },
-    { chart: nextProps.chart },
+    { chart: prevProps.chart, data: prevProps.data },
+    { chart: nextProps.chart, data: nextProps.data },
   );
 
   // Compare other props
@@ -183,13 +203,15 @@ const chartCardPropsAreEqual = (
     prevProps.onStartTitleEdit === nextProps.onStartTitleEdit &&
     prevProps.onCancelTitleEdit === nextProps.onCancelTitleEdit &&
     prevProps.onSaveTitle === nextProps.onSaveTitle &&
-    prevProps.onTitleValueChange === nextProps.onTitleValueChange
+    prevProps.onTitleValueChange === nextProps.onTitleValueChange &&
+    prevProps.onRefreshData === nextProps.onRefreshData
   );
 };
 
 // Optimized ChartCardComponent with React.memo
 interface ChartCardProps {
   chart: ChartCard;
+  data: any[]; // Chart data fetched separately
   aiInputOpen: { [key: string]: boolean };
   aiInputQuery: { [key: string]: string };
   isModifyLoading: boolean;
@@ -205,11 +227,13 @@ interface ChartCardProps {
   onCancelTitleEdit: () => void;
   onSaveTitle: (chartId: string) => void;
   onTitleValueChange: (value: string) => void;
+  onRefreshData: (chartId: string) => void; // New refresh action
 }
 
 const ChartCardComponent = React.memo(
   ({
     chart,
+    data,
     aiInputOpen,
     aiInputQuery,
     isModifyLoading,
@@ -225,6 +249,7 @@ const ChartCardComponent = React.memo(
     onCancelTitleEdit,
     onSaveTitle,
     onTitleValueChange,
+    onRefreshData,
   }: ChartCardProps) => {
     // Memoized handlers to prevent unnecessary re-renders and focus loss
     const handleQueryChange = useCallback(
@@ -253,6 +278,10 @@ const ChartCardComponent = React.memo(
         chart.chartConfig?.metadata?.title || "Untitled Chart",
       );
     }, [chart.id, chart.chartConfig?.metadata?.title, onDeleteChart]);
+
+    const handleRefreshClick = useCallback(() => {
+      onRefreshData(chart.id);
+    }, [chart.id, onRefreshData]);
 
     const handlePopoverOpenChange = useCallback(
       (open: boolean) => {
@@ -420,28 +449,43 @@ const ChartCardComponent = React.memo(
                   <p>{chart.isExpanded ? "View Chart" : "Inspect Data"}</p>
                 </TooltipContent>
               </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
+
+              {/* Triple-dot menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="shadow text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="shadow text-gray-600 hover:text-gray-800 h-8 w-8 p-0"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem
+                    onClick={handleRefreshClick}
+                    className="cursor-pointer flex items-center gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh Data
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
                     onClick={handleDeleteClick}
+                    className="cursor-pointer flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
                     <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Delete Chart</p>
-                </TooltipContent>
-              </Tooltip>
+                    Delete Chart
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-4">
           {!chart.isExpanded ? (
             <div className="h-[300px] w-full overflow-hidden">
-              <ChartContent chart={chart} />
+              <ChartContent chart={chart} data={data} />
             </div>
           ) : (
             <Tabs defaultValue="data" className="w-full">
@@ -456,14 +500,14 @@ const ChartCardComponent = React.memo(
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        {chart.data.length > 0 &&
-                          Object.keys(chart.data[0]).map((key) => (
+                        {data.length > 0 &&
+                          Object.keys(data[0]).map((key) => (
                             <TableHead key={key}>{key}</TableHead>
                           ))}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {chart.data.map((row, index) => (
+                      {data.map((row, index) => (
                         <TableRow key={index}>
                           {Object.values(row).map((value: any, cellIndex) => (
                             <TableCell key={cellIndex}>
@@ -520,6 +564,7 @@ export default function AnalyticsStudioPage() {
   const [availableTables, setAvailableTables] = useState<DatabaseTable[]>([]);
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
   const [chartCards, setChartCards] = useState<ChartCard[]>([]);
+  const [chartData, setChartData] = useState<{ [chartId: string]: any[] }>({});
   const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
   const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [expandedSidebar, setExpandedSidebar] = useState(true);
@@ -714,18 +759,26 @@ export default function AnalyticsStudioPage() {
             const processResult = async () => {
               try {
                 // AI now generates complete chart configuration
+                const chartId = generateUUID();
                 const newChart: ChartCard = {
-                  id: generateUUID(),
+                  id: chartId,
                   query: result.query,
-                  chartConfig: result.chartConfig, // Use AI-generated config
+                  chartConfig: result.chartConfig, // Use AI-generated config without data
                   sql: result.sql || "",
-                  data: result.data,
                   isExpanded: false,
                   executionTime: result.executionTime,
                   rowCount: result.rowCount,
                   lastUpdated: Date.now(), // Add timestamp for re-render tracking
                   toolCallId: invocation.toolCallId, // Track the originating tool call
+                  datasourceId: selectedDatasource?.id,
+                  selectedTables: selectedTables,
                 };
+
+                // Update chartData first to ensure data is available when chart renders
+                setChartData((prev) => ({
+                  ...prev,
+                  [chartId]: result.data || [],
+                }));
 
                 // Save chart to database
                 if (selectedDatasource) {
@@ -803,15 +856,65 @@ export default function AnalyticsStudioPage() {
                     query: result.query,
                     chartType: result.chartType,
                     totalCharts: prev.length + 1,
+                    hasData: result.data && result.data.length > 0,
                   });
                   const updatedCharts = [...prev, newChart];
 
                   // Immediate save after chart creation to prevent data loss
-                  setTimeout(() => {
+                  setTimeout(async () => {
                     console.log(
                       "[Session Debug] Immediate save after chart creation",
                     );
-                    saveCurrentSessionState();
+                    await saveCurrentSessionState();
+
+                    // Auto-refresh chart data to ensure it's loaded immediately
+                    console.log(
+                      "[Chart Debug] Auto-refreshing chart data after creation",
+                    );
+                    if (
+                      newChart.datasourceId &&
+                      newChart.sql &&
+                      selectedDatasource
+                    ) {
+                      try {
+                        const refreshResponse = await fetch(
+                          "/api/charts/refresh",
+                          {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                              chartId: newChart.id,
+                              datasourceId: newChart.datasourceId,
+                              sql: newChart.sql,
+                              selectedTables: newChart.selectedTables || [],
+                              query: newChart.query,
+                            }),
+                          },
+                        );
+
+                        if (refreshResponse.ok) {
+                          const refreshResult = await refreshResponse.json();
+                          if (refreshResult.success) {
+                            // Update chart data with refreshed data
+                            setChartData((prev) => ({
+                              ...prev,
+                              [newChart.id]: refreshResult.data || [],
+                            }));
+                            console.log(
+                              "[Chart Debug] Auto-refresh completed successfully",
+                            );
+                          }
+                        }
+                      } catch (refreshError) {
+                        console.warn(
+                          "[Chart Debug] Auto-refresh failed:",
+                          refreshError,
+                        );
+                        // Don't show error to user since the chart was still created successfully
+                      }
+                    }
                   }, 100);
 
                   return updatedCharts;
@@ -954,12 +1057,45 @@ export default function AnalyticsStudioPage() {
                       },
                     },
                     sql: result.sql || "",
-                    data: result.data || [],
                     executionTime: result.executionTime,
                     rowCount: result.rowCount,
                     lastUpdated: Date.now(), // Add timestamp to force re-render
                     toolCallId: invocation.toolCallId, // Update with new modification toolCallId
                   };
+
+                  // Invalidate cache when SQL changes (chart modification detected)
+                  if (originalChart.sql !== result.sql && result.sql) {
+                    console.log(
+                      `Chart ${targetChartId} SQL changed - invalidating cache via API`,
+                    );
+                    // Call API to invalidate cache on server-side (don't import Redis client in browser)
+                    fetch("/api/charts/invalidate-cache", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        chartId: targetChartId,
+                        newSql: result.sql,
+                        datasourceId:
+                          originalChart.datasourceId ||
+                          selectedDatasource?.id ||
+                          "",
+                        selectedTables: originalChart.selectedTables || [],
+                      }),
+                    }).catch((error) => {
+                      console.error(
+                        "Failed to invalidate chart cache via API:",
+                        error,
+                      );
+                    });
+                  }
+
+                  // Update data separately
+                  setChartData((prev) => ({
+                    ...prev,
+                    [targetChartId]: result.data || [],
+                  }));
 
                   return prev.map((chart) =>
                     chart.id === targetChartId ? updatedChart : chart,
@@ -1154,8 +1290,20 @@ export default function AnalyticsStudioPage() {
                   "[Session Debug] Chart cards restored:",
                   session.chartCards.length,
                 );
+
+                // Restore chart data if available
+                if (session.chartData) {
+                  setChartData(session.chartData);
+                  console.log(
+                    "[Session Debug] Chart data restored:",
+                    Object.keys(session.chartData).length,
+                  );
+                } else {
+                  setChartData({});
+                }
               } else {
                 setChartCards([]);
+                setChartData({});
                 console.log(
                   "[Session Debug] No chart cards found, cleared state",
                 );
@@ -1179,6 +1327,7 @@ export default function AnalyticsStudioPage() {
           setSelectedSchema("");
           setSelectedTables([]);
           setChartCards([]);
+          setChartData({});
           setAvailableSchemas([]);
           setAvailableTables([]);
         }
@@ -1208,6 +1357,7 @@ export default function AnalyticsStudioPage() {
         setSelectedSchema("");
         setSelectedTables([]);
         setChartCards([]);
+        setChartData({});
         setAvailableSchemas([]);
         setAvailableTables([]);
 
@@ -1236,6 +1386,7 @@ export default function AnalyticsStudioPage() {
         selectedTables,
         expandedSidebar,
         chartCards: chartCards,
+        chartData: chartData, // Save chart data separately
         sessionMetadata: {},
       });
 
@@ -1251,6 +1402,7 @@ export default function AnalyticsStudioPage() {
     selectedTables,
     expandedSidebar,
     chartCards,
+    chartData, // Add chartData to dependencies
   ]);
 
   const switchToSession = useCallback(
@@ -1903,6 +2055,100 @@ Use the textToSql tool to execute this request.
     setEditingTitleValue(value);
   }, []);
 
+  // Enhanced refresh data handler that handles modified charts
+  const handleRefreshData = useCallback(
+    async (chartId: string) => {
+      // Access the current state via a ref or by accessing it in the useCallback deps
+      const currentChart = chartCards.find((c) => c.id === chartId);
+
+      if (!currentChart || !currentChart.datasourceId || !selectedDatasource) {
+        toast.error("Cannot refresh chart: missing datasource information");
+        return;
+      }
+
+      // Add detailed logging for debugging
+      console.log("[Refresh Debug] Refreshing chart:", {
+        chartId: currentChart.id,
+        sql: currentChart.sql,
+        query: currentChart.query,
+        datasourceId: currentChart.datasourceId,
+        selectedTables: currentChart.selectedTables,
+        lastUpdated: currentChart.lastUpdated,
+      });
+
+      toast.info("Refreshing chart data...", { id: `refresh-${chartId}` });
+
+      try {
+        const response = await fetch("/api/charts/refresh", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            chartId: currentChart.id,
+            datasourceId: currentChart.datasourceId,
+            sql: currentChart.sql,
+            selectedTables: currentChart.selectedTables || [],
+            query: currentChart.query,
+            forceRefresh: true, // Add flag to force cache invalidation
+            lastUpdated: currentChart.lastUpdated, // Send timestamp to detect modifications
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+          console.log("[Refresh Debug] Refresh successful:", {
+            chartId,
+            dataRowCount: result.data?.length || 0,
+            fromCache: result.fromCache,
+            executionTime: result.executionTime,
+          });
+
+          // Update chart data with fresh results
+          setChartData((prev) => ({
+            ...prev,
+            [chartId]: result.data || [],
+          }));
+
+          // Update chart metadata with fresh execution info
+          setChartCards((prev) =>
+            prev.map((c) =>
+              c.id === chartId
+                ? {
+                    ...c,
+                    rowCount: result.rowCount || 0,
+                    executionTime: result.executionTime || 0,
+                    lastUpdated: Date.now(),
+                  }
+                : c,
+            ),
+          );
+
+          toast.success(
+            `Chart data refreshed successfully (${result.data?.length || 0} rows)`,
+            {
+              id: `refresh-${chartId}`,
+            },
+          );
+        } else {
+          throw new Error(result.error || "Failed to refresh chart data");
+        }
+      } catch (error) {
+        console.error("Failed to refresh chart data:", error);
+        toast.error(
+          `Failed to refresh chart data: ${error instanceof Error ? error.message : "Unknown error"}`,
+          { id: `refresh-${chartId}` },
+        );
+      }
+    },
+    [chartCards, selectedDatasource], // Include chartCards to get latest state
+  );
+
   const handleAiInputSubmit = useCallback(
     async (chartId: string) => {
       const query = aiInputQuery[chartId];
@@ -2210,7 +2456,7 @@ Use the textToSql tool to execute this updated request.
                   <AccordionTrigger className="py-3">
                     <div className="flex items-center gap-2">
                       <Database className="h-4 w-4" />
-                      <span>Database Connection</span>
+                      <span>DB Connection</span>
                       {selectedDatasource && (
                         <Badge variant="secondary" className="ml-2">
                           {selectedDatasource.name}
@@ -2237,7 +2483,10 @@ Use the textToSql tool to execute this updated request.
                         </SelectTrigger>
                         <SelectContent>
                           {datasources.map((datasource) => (
-                            <SelectItem key={datasource.id} value={datasource.id}>
+                            <SelectItem
+                              key={datasource.id}
+                              value={datasource.id}
+                            >
                               <div className="flex items-center gap-2">
                                 <Database className="h-4 w-4" />
                                 {datasource.name}
@@ -2299,7 +2548,10 @@ Use the textToSql tool to execute this updated request.
                             </SelectTrigger>
                             <SelectContent>
                               {availableSchemas.map((schema) => (
-                                <SelectItem key={schema.name} value={schema.name}>
+                                <SelectItem
+                                  key={schema.name}
+                                  value={schema.name}
+                                >
                                   <div className="flex items-center gap-2">
                                     <Database className="h-4 w-4" />
                                     <span>{schema.name}</span>
@@ -2379,7 +2631,9 @@ Use the textToSql tool to execute this updated request.
                                             ? "bg-primary/10 border-primary"
                                             : "bg-background hover:bg-muted"
                                         }`}
-                                        onClick={() => handleTableSelection(table)}
+                                        onClick={() =>
+                                          handleTableSelection(table)
+                                        }
                                         onMouseEnter={() =>
                                           fetchTableDetails(table)
                                         }
@@ -2433,16 +2687,21 @@ Use the textToSql tool to execute this updated request.
                                               <h5 className="text-xs font-medium text-muted-foreground">
                                                 Columns
                                               </h5>
-                                              {tableDetails[tableKey]?.loading ? (
+                                              {tableDetails[tableKey]
+                                                ?.loading ? (
                                                 <div className="flex items-center justify-center py-4">
                                                   <Loader2 className="h-4 w-4 animate-spin" />
                                                   <span className="ml-2 text-xs text-muted-foreground">
                                                     Loading schema...
                                                   </span>
                                                 </div>
-                                              ) : tableDetails[tableKey]?.error ? (
+                                              ) : tableDetails[tableKey]
+                                                  ?.error ? (
                                                 <div className="text-xs text-red-500 py-2">
-                                                  {tableDetails[tableKey]?.error}
+                                                  {
+                                                    tableDetails[tableKey]
+                                                      ?.error
+                                                  }
                                                 </div>
                                               ) : tableDetails[tableKey]
                                                   ?.columns ? (
@@ -2469,7 +2728,8 @@ Use the textToSql tool to execute this updated request.
                                                 </div>
                                               ) : (
                                                 <div className="text-xs text-muted-foreground py-2">
-                                                  Hover to load schema information
+                                                  Hover to load schema
+                                                  information
                                                 </div>
                                               )}
                                             </div>
@@ -2483,29 +2743,37 @@ Use the textToSql tool to execute this updated request.
                                               <h5 className="text-xs font-medium text-muted-foreground">
                                                 Sample Data (First 5 rows)
                                               </h5>
-                                              {tableDetails[tableKey]?.loading ? (
+                                              {tableDetails[tableKey]
+                                                ?.loading ? (
                                                 <div className="flex items-center justify-center py-4">
                                                   <Loader2 className="h-4 w-4 animate-spin" />
                                                   <span className="ml-2 text-xs text-muted-foreground">
                                                     Loading sample data...
                                                   </span>
                                                 </div>
-                                              ) : tableDetails[tableKey]?.error ? (
+                                              ) : tableDetails[tableKey]
+                                                  ?.error ? (
                                                 <div className="text-xs text-red-500 py-2">
-                                                  {tableDetails[tableKey]?.error}
+                                                  {
+                                                    tableDetails[tableKey]
+                                                      ?.error
+                                                  }
                                                 </div>
                                               ) : tableDetails[tableKey]
                                                   ?.sampleData !== undefined ? (
-                                                tableDetails[tableKey]?.sampleData
-                                                  ?.length > 0 ? (
+                                                tableDetails[tableKey]
+                                                  ?.sampleData?.length > 0 ? (
                                                   <div className="max-h-48 overflow-auto">
                                                     <Table>
                                                       <TableHeader>
                                                         <TableRow>
-                                                          {tableDetails[tableKey]
-                                                            ?.sampleData?.[0] &&
+                                                          {tableDetails[
+                                                            tableKey
+                                                          ]?.sampleData?.[0] &&
                                                             Object.keys(
-                                                              tableDetails[tableKey]
+                                                              tableDetails[
+                                                                tableKey
+                                                              ]
                                                                 ?.sampleData?.[0] ||
                                                                 {},
                                                             ).map((key) => (
@@ -2532,7 +2800,9 @@ Use the textToSql tool to execute this updated request.
                                                                   cellIdx,
                                                                 ) => (
                                                                   <TableCell
-                                                                    key={cellIdx}
+                                                                    key={
+                                                                      cellIdx
+                                                                    }
                                                                     className="text-xs px-2 py-1 max-w-24 truncate"
                                                                   >
                                                                     {value?.toString() ||
@@ -2727,10 +2997,13 @@ Use the textToSql tool to execute this updated request.
               <AccordionTrigger className="py-4 hover:no-underline">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4" />
-                  <span className="font-medium">Ask a question about your data</span>
+                  <span className="font-medium">
+                    Ask a question about your data
+                  </span>
                   {selectedTables.length > 0 && (
                     <Badge variant="secondary" className="ml-2">
-                      {selectedTables.length} table{selectedTables.length !== 1 ? "s" : ""} selected
+                      {selectedTables.length} table
+                      {selectedTables.length !== 1 ? "s" : ""} selected
                     </Badge>
                   )}
                 </div>
@@ -2763,7 +3036,9 @@ Use the textToSql tool to execute this updated request.
                     <Button
                       onClick={generateChart}
                       disabled={
-                        !input.trim() || selectedTables.length === 0 || isChatLoading
+                        !input.trim() ||
+                        selectedTables.length === 0 ||
+                        isChatLoading
                       }
                       className="px-6 h-10 font-medium"
                     >
@@ -2797,16 +3072,20 @@ Use the textToSql tool to execute this updated request.
                               <span className="mx-1">·</span>
                               <span>
                                 {selectedTables.length} table
-                                {selectedTables.length !== 1 ? "s" : ""} selected
+                                {selectedTables.length !== 1 ? "s" : ""}{" "}
+                                selected
                               </span>
                             </>
                           )}
                         </div>
                       ) : selectedTables.length === 0 ? (
-                        <span>Select tables from the sidebar to get started</span>
+                        <span>
+                          Select tables from the sidebar to get started
+                        </span>
                       ) : (
                         <span>
-                          Ready to generate charts · {selectedTables.length} table
+                          Ready to generate charts · {selectedTables.length}{" "}
+                          table
                           {selectedTables.length !== 1 ? "s" : ""} selected
                         </span>
                       )}
@@ -2836,6 +3115,7 @@ Use the textToSql tool to execute this updated request.
                   <ChartCardComponent
                     key={`${chart.id}-${chart.lastUpdated || 0}`}
                     chart={chart}
+                    data={chartData[chart.id] || []}
                     aiInputOpen={aiInputOpen}
                     aiInputQuery={aiInputQuery}
                     isModifyLoading={isModifyLoading}
@@ -2851,6 +3131,7 @@ Use the textToSql tool to execute this updated request.
                     onCancelTitleEdit={handleCancelTitleEdit}
                     onSaveTitle={handleSaveTitle}
                     onTitleValueChange={handleTitleValueChange}
+                    onRefreshData={handleRefreshData}
                   />
                 ))}
               </div>

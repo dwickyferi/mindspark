@@ -46,6 +46,7 @@ export async function GET(
         expandedSidebar: studioSession[0].expandedSidebar,
         sessionMetadata: studioSession[0].sessionMetadata || {},
         chartCards: studioSession[0].chartCards || [],
+        chartData: studioSession[0].chartData || {},
         isActive: studioSession[0].isActive,
         createdAt: studioSession[0].createdAt,
         updatedAt: studioSession[0].updatedAt,
@@ -84,6 +85,7 @@ export async function PUT(
       expandedSidebar,
       sessionMetadata,
       chartCards,
+      chartData,
       isActive,
     } = body;
 
@@ -107,6 +109,7 @@ export async function PUT(
         ...(expandedSidebar !== undefined && { expandedSidebar }),
         ...(sessionMetadata !== undefined && { sessionMetadata }),
         ...(chartCards !== undefined && { chartCards }),
+        ...(chartData !== undefined && { chartData }),
         ...(isActive !== undefined && { isActive }),
         updatedAt: new Date(),
       })
@@ -134,6 +137,7 @@ export async function PUT(
         expandedSidebar: updatedSession[0].expandedSidebar,
         sessionMetadata: updatedSession[0].sessionMetadata || {},
         chartCards: updatedSession[0].chartCards || [],
+        chartData: updatedSession[0].chartData || {},
         isActive: updatedSession[0].isActive,
         createdAt: updatedSession[0].createdAt,
         updatedAt: updatedSession[0].updatedAt,

@@ -1,0 +1,1 @@
+ALTER TABLE "studio_session" ADD COLUMN "chart_data" json DEFAULT '{}'::json;

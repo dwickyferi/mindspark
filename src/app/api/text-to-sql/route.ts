@@ -56,8 +56,11 @@ export async function POST(request: NextRequest) {
     // Initialize text-to-SQL service
     const textToSQLService = new TextToSQLService();
 
-    // Generate and execute SQL
-    const result = await textToSQLService.generateAndExecuteSQL(body);
+    // Generate and execute SQL with caching support
+    const result = await textToSQLService.generateAndExecuteSQL({
+      ...body, // Include all body parameters (chartId, useCache, etc.)
+      datasourceConfig,
+    });
 
     // Return result
     return NextResponse.json(result);

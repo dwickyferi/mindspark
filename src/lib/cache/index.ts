@@ -1,4 +1,5 @@
 import { MemoryCache } from "./memory-cache";
+import { RedisCache } from "./redis-cache";
 import { Cache } from "./cache.interface";
 import { IS_DEV, IS_DOCKER_ENV, IS_VERCEL_ENV } from "lib/const";
 
@@ -11,10 +12,9 @@ const createCache = () => {
   if (IS_DEV) {
     return new MemoryCache();
   } else if (IS_DOCKER_ENV) {
-    return new MemoryCache();
+    return new RedisCache();
   } else if (IS_VERCEL_ENV) {
-    // return new RedisCache();
-    return new MemoryCache();
+    return new RedisCache();
   }
   return new MemoryCache();
 };

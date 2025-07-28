@@ -536,6 +536,9 @@ export const textToSqlTool = tool({
         ? `${query}\n\nCONTEXT: The current SQL query is: ${currentSql}\nPlease modify this query to accommodate the new request while preserving important elements like LIMIT, WHERE conditions, and column selections unless specifically asked to change them.`
         : query;
 
+      // Generate a chartId for caching
+      const chartId = `chart_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
       const response = await textToSQLService.generateAndExecuteSQL({
         query: enhancedQuery,
         selectedTables,
@@ -544,6 +547,8 @@ export const textToSqlTool = tool({
         aiProvider: "openai", // This will be configurable
         aiModel: "gpt-4", // This will be configurable
         maxRetries: 3,
+        chartId, // Pass chartId for caching
+        useCache: true, // Enable caching
       });
 
       // Pre-validate the SQL to catch common issues

@@ -2,6 +2,7 @@ import { DatabaseEngineFactory } from "@/lib/database/engines/DatabaseEngineFact
 import { SchemaProcessor } from "./schema-processor";
 import { SQLGenerator } from "./sql-generator";
 import { SQLErrorRecovery } from "./error-recovery";
+import { ChartCacheService } from "@/lib/services/chart-cache";
 import type { DatabaseConfig } from "@/types/database";
 import type {
   ChartGenerationRequest,
@@ -10,6 +11,8 @@ import type {
 
 export interface TextToSQLRequest extends ChartGenerationRequest {
   datasourceConfig: DatabaseConfig;
+  chartId?: string; // Optional chart ID for caching
+  useCache?: boolean; // Whether to use caching (default: true)
 }
 
 export interface TextToSQLResponse extends ChartGenerationResponse {
@@ -21,6 +24,7 @@ export interface TextToSQLResponse extends ChartGenerationResponse {
   optimizationHints?: string[];
   tableSchemas?: any[];
   relationships?: string[];
+  fromCache?: boolean; // Indicates if data was served from cache
 }
 
 /**
@@ -45,6 +49,7 @@ export class TextToSQLService {
     request: TextToSQLRequest,
   ): Promise<TextToSQLResponse> {
     const startTime = Date.now();
+    const useCache = request.useCache !== false; // Default to true
 
     try {
       // Step 1: Create database engine
@@ -95,7 +100,43 @@ export class TextToSQLService {
       // Step 5: Add safety constraints
       const safeSql = this.sqlGenerator.addSafetyConstraints(sqlResult.sql);
 
-      // Step 6: Validate SQL syntax
+      // Step 6: Check cache first if enabled
+      let queryResult;
+
+      if (useCache) {
+        const cachedData = await ChartCacheService.getCachedChartData(
+          safeSql,
+          request.datasourceId,
+          request.selectedTables,
+        );
+
+        if (cachedData) {
+          await engine.disconnect();
+          console.log("Serving chart data from cache");
+
+          return {
+            success: true,
+            data: cachedData.data,
+            sql: cachedData.sql,
+            explanation: `${sqlResult.explanation}\n\nQuery returned ${cachedData.rowCount} rows from cache.`,
+            retryCount: sqlResult.retryCount,
+            executionTime: cachedData.executionTime,
+            queryComplexity: this.sqlGenerator.estimateQueryComplexity(safeSql),
+            optimizationHints:
+              this.errorRecovery.generateOptimizationHints(safeSql),
+            tableSchemas: tableSchemas.map((schema) => ({
+              name: schema.tableName,
+              schema: schema.schemaName,
+              columns: schema.columns.length,
+              sampleRows: schema.sampleData.length,
+            })),
+            relationships,
+            fromCache: true,
+          };
+        }
+      }
+
+      // Step 7: Validate SQL syntax
       const syntaxValidation = this.sqlGenerator.validateSQLSyntax(safeSql);
       if (!syntaxValidation.valid) {
         await engine.disconnect();
@@ -108,8 +149,7 @@ export class TextToSQLService {
         };
       }
 
-      // Step 7: Execute query with error recovery
-      let queryResult;
+      // Step 8: Execute query with error recovery
       let executionAttempt = 0;
       const maxExecutionAttempts = 2;
 
@@ -179,12 +219,25 @@ export class TextToSQLService {
 
       await engine.disconnect();
 
-      // Step 8: Analyze query complexity and generate optimization hints
+      // Step 9: Cache the results if enabled and chartId is provided
+      if (useCache && queryResult && request.chartId) {
+        await ChartCacheService.cacheChartData(
+          request.chartId,
+          safeSql,
+          request.datasourceId,
+          request.selectedTables,
+          queryResult?.rows || queryResult || [],
+          queryResult?.executionTime || 0,
+          request.query,
+        );
+      }
+
+      // Step 10: Analyze query complexity and generate optimization hints
       const complexity = this.sqlGenerator.estimateQueryComplexity(safeSql);
       const optimizationHints =
         this.errorRecovery.generateOptimizationHints(safeSql);
 
-      // Step 9: Return successful result
+      // Step 11: Return successful result
       return {
         success: true,
         data: queryResult?.rows || queryResult || [], // Include the actual query results
@@ -201,6 +254,7 @@ export class TextToSQLService {
           sampleRows: schema.sampleData.length,
         })),
         relationships,
+        fromCache: false,
       };
     } catch (error) {
       return {

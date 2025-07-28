@@ -11,6 +11,7 @@ export interface StudioSession {
   expandedSidebar: boolean;
   sessionMetadata: any;
   chartCards?: any[];
+  chartData?: Record<string, any>; // Chart data separated from config for caching
   isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;

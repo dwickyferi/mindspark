@@ -465,6 +465,7 @@ export const StudioSessionSchema = pgTable(
     expandedSidebar: boolean("expanded_sidebar").notNull().default(true),
     sessionMetadata: json("session_metadata").default({}), // Additional session data
     chartCards: json("chart_cards").default([]), // Store chart cards data for each session
+    chartData: json("chart_data").default({}), // Store chart data separately from config for caching
     isActive: boolean("is_active").notNull().default(false), // Track active session
     createdAt: timestamp("created_at")
       .notNull()
