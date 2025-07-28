@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  pgvector:
+    image: pgvector/pgvector:pg17 # PostgreSQL with pgvector support
+    container_name: mindspark_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: example_db
+    ports:
+      - "5543:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - ai-network
+
+  redis:
+    image: redis:7
+    container_name: mindspark_cache
+    restart: unless-stopped
+    volumes:
+      - redis:/data
+    ports:
+      - "6378:6379"
+
+volumes:
+  pgdata:
+  redis:
+
+networks:
+  ai-network:
+    driver: bridge
