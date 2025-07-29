@@ -35,6 +35,7 @@ function generateChartConfig(
       pie: "PieChart",
       area: "AreaChart",
       scatter: "ScatterChart",
+      table: "TableChart",
     };
     chartType = chartTypeMap[suggestedChartType] || "BarChart";
   } else {
@@ -61,6 +62,13 @@ function generateChartConfig(
     config.components = generateBarChartComponents(data, keys);
   } else if (chartType === "ScatterChart") {
     config.components = generateScatterChartComponents(data, keys);
+  } else if (chartType === "TableChart") {
+    config.components = generateTableChartComponents(data, keys);
+    // Set specific chart props for table
+    config.chartProps = {
+      ...config.chartProps,
+      maxRows: Math.min(100, data.length), // Limit rows for performance
+    };
   }
 
   return config;
@@ -219,18 +227,20 @@ function generateBarChartComponents(
 /**
  * Generate components for scatter charts
  */
+/**
+ * Generate components for scatter charts
+ */
 function generateScatterChartComponents(
   data: any[],
   keys: string[],
 ): ChartComponent[] {
-  const numericKeys = findNumericKeys(keys);
-  const xKey = numericKeys[0] || keys[0];
-  const yKey = numericKeys[1] || keys[1];
+  const xKey = keys[0] || "x";
+  const yKey = keys[1] || "y";
 
   return [
-    { type: "ResponsiveContainer", props: { width: "100%", height: 300 } },
-    { type: "XAxis", props: { dataKey: xKey, type: "number" } },
-    { type: "YAxis", props: { dataKey: yKey, type: "number" } },
+    { type: "ResponsiveContainer", props: { width: "100%", height: 400 } },
+    { type: "XAxis", props: { dataKey: xKey } },
+    { type: "YAxis", props: { dataKey: yKey } },
     { type: "CartesianGrid", props: { strokeDasharray: "3 3" } },
     { type: "Tooltip" },
     { type: "Legend" },
@@ -241,6 +251,23 @@ function generateScatterChartComponents(
         fill: CHART_COLORS[0],
       },
     },
+  ];
+}
+
+/**
+ * Generate components for table charts
+ */
+function generateTableChartComponents(
+  data: any[],
+  keys: string[],
+): ChartComponent[] {
+  return [
+    { type: "Table" },
+    { type: "TableHeader" },
+    { type: "TableBody" },
+    { type: "TableRow" },
+    { type: "TableHead" },
+    { type: "TableCell" },
   ];
 }
 
@@ -681,6 +708,7 @@ function analyzeChartTypeFromQuery(
     AreaChart: "area",
     ScatterChart: "scatter",
     ComposedChart: "bar", // fallback to bar
+    TableChart: "table",
   };
 
   return chartTypeMap[chartType] || "bar";

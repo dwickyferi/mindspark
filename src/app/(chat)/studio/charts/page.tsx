@@ -98,6 +98,18 @@ const mockCharts: Chart[] = [
     tags: ["monitoring", "performance", "realtime"],
     dataMode: "realtime",
   },
+  {
+    id: "5",
+    title: "Customer Data Export",
+    description: "Raw customer data with detailed information",
+    chartType: "table",
+    dataset: "Customer Database",
+    isPinned: false,
+    createdAt: new Date(Date.now() - 86400000 * 3),
+    updatedAt: new Date(Date.now() - 7200000),
+    tags: ["customers", "export", "data"],
+    dataMode: "static",
+  },
 ];
 
 export default function ChartsLibraryPage() {
@@ -134,8 +146,22 @@ export default function ChartsLibraryPage() {
   };
 
   const getChartTypeIcon = (type: string) => {
-    // Return appropriate icon based on chart type
-    return <BarChart3 className="h-4 w-4" />;
+    switch (type) {
+      case "bar":
+        return <BarChart3 className="h-4 w-4" />;
+      case "line":
+        return <BarChart3 className="h-4 w-4" />; // Would use LineChart icon if available
+      case "pie":
+        return <BarChart3 className="h-4 w-4" />; // Would use PieChart icon if available
+      case "table":
+        return <Grid className="h-4 w-4" />;
+      case "area":
+        return <BarChart3 className="h-4 w-4" />; // Would use AreaChart icon if available
+      case "scatter":
+        return <BarChart3 className="h-4 w-4" />; // Would use ScatterChart icon if available
+      default:
+        return <BarChart3 className="h-4 w-4" />;
+    }
   };
 
   const formatDate = (date: Date) => {

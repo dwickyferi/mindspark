@@ -103,6 +103,17 @@ export const SUPPORTED_CHART_TYPES = {
       "ResponsiveContainer",
     ],
   },
+  TableChart: {
+    name: "Table Chart",
+    components: [
+      "Table",
+      "TableHeader",
+      "TableBody",
+      "TableRow",
+      "TableHead",
+      "TableCell",
+    ],
+  },
 } as const;
 
 export type SupportedChartType = keyof typeof SUPPORTED_CHART_TYPES;
@@ -203,6 +214,22 @@ export const DEFAULT_CHART_CONFIGS: Record<
       { type: "CartesianGrid", props: { strokeDasharray: "3 3" } },
       { type: "Tooltip" },
       { type: "Legend" },
+    ],
+  },
+  TableChart: {
+    chartType: "TableChart",
+    chartProps: {
+      width: 800,
+      height: 400,
+      maxRows: 100,
+    },
+    components: [
+      { type: "Table" },
+      { type: "TableHeader" },
+      { type: "TableBody" },
+      { type: "TableRow" },
+      { type: "TableHead" },
+      { type: "TableCell" },
     ],
   },
 };
