@@ -51,6 +51,61 @@ export const ProjectSchema = pgTable("project", {
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Project Members
+export const ProjectMemberSchema = pgTable(
+  "project_member",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => ProjectSchema.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserSchema.id, { onDelete: "cascade" }),
+    role: text("role").notNull().$type<"owner" | "admin" | "member">(),
+    invitedBy: uuid("invited_by").references(() => UserSchema.id),
+    joinedAt: timestamp("joined_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    unique("project_member_unique").on(table.projectId, table.userId),
+    index("project_member_project_idx").on(table.projectId),
+    index("project_member_user_idx").on(table.userId),
+    index("project_member_role_idx").on(table.role),
+  ],
+);
+
+// Project Invitations
+export const ProjectInvitationSchema = pgTable(
+  "project_invitation",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => ProjectSchema.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role").notNull().$type<"admin" | "member">().default("member"),
+    token: text("token").notNull().unique(),
+    invitedBy: uuid("invited_by")
+      .notNull()
+      .references(() => UserSchema.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at").notNull(),
+    acceptedAt: timestamp("accepted_at"),
+    acceptedBy: uuid("accepted_by").references(() => UserSchema.id),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("project_invitation_project_idx").on(table.projectId),
+    index("project_invitation_email_idx").on(table.email),
+    index("project_invitation_token_idx").on(table.token),
+    index("project_invitation_expires_idx").on(table.expiresAt),
+  ],
+);
+
 export const McpServerSchema = pgTable("mcp_server", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   name: text("name").notNull(),
@@ -485,6 +540,9 @@ export type McpServerEntity = typeof McpServerSchema.$inferSelect;
 export type ChatThreadEntity = typeof ChatThreadSchema.$inferSelect;
 export type ChatMessageEntity = typeof ChatMessageSchema.$inferSelect;
 export type ProjectEntity = typeof ProjectSchema.$inferSelect;
+export type ProjectMemberEntity = typeof ProjectMemberSchema.$inferSelect;
+export type ProjectInvitationEntity =
+  typeof ProjectInvitationSchema.$inferSelect;
 export type UserEntity = typeof UserSchema.$inferSelect;
 export type ToolCustomizationEntity =
   typeof McpToolCustomizationSchema.$inferSelect;

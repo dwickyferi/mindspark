@@ -1,5 +1,5 @@
 import { getSession } from "auth/server";
-import { chatRepository } from "lib/db/repository";
+import { pgProjectMemberRepository } from "@/lib/db/pg/repositories/project-member-repository.pg";
 
 export async function GET() {
   const session = await getSession();
@@ -8,6 +8,9 @@ export async function GET() {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const projects = await chatRepository.selectProjectsByUserId(session.user.id);
+  // Get all projects the user has access to (as member, admin, or owner)
+  const projects = await pgProjectMemberRepository.getUserProjects(
+    session.user.id,
+  );
   return Response.json(projects);
 }

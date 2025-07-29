@@ -5,7 +5,13 @@ import {
 } from "@/app/api/chat/actions";
 import { appStore } from "@/app/store";
 import { Project } from "app-types/chat";
-import { AudioWaveformIcon, Loader, PencilLine, Trash } from "lucide-react";
+import {
+  AudioWaveformIcon,
+  Loader,
+  PencilLine,
+  Trash,
+  Settings,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type PropsWithChildren, useState } from "react";
 import { toast } from "sonner";
@@ -87,6 +93,18 @@ export function ProjectDropdown({ project, children, side, align }: Props) {
 
           <CommandList>
             <CommandGroup>
+              <CommandItem className="cursor-pointer p-0">
+                <div
+                  className="flex items-center gap-2 w-full px-2 py-1 rounded"
+                  onClick={() => {
+                    router.push(`/project/${project.id}/settings`);
+                    setOpen(false);
+                  }}
+                >
+                  <Settings className="text-foreground" />
+                  <span>Project Settings</span>
+                </div>
+              </CommandItem>
               <CommandItem className="cursor-pointer p-0">
                 <div
                   className="flex items-center gap-2 w-full px-2 py-1 rounded"

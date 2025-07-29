@@ -1,7 +1,11 @@
 import { ragService } from "@/lib/ai/rag/service";
 import { chatRepository } from "@/lib/db/repository";
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "auth/server";
+import {
+  verifyProjectAccess,
+  handleProjectAccessError,
+  ProjectAccessError,
+} from "@/lib/auth/project-access";
 
 // POST /api/project/[projectId]/search - Search for relevant content in project documents
 export async function POST(
@@ -9,12 +13,11 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   try {
-    const session = await getSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { projectId } = await params;
+
+    // Verify project access (read permission required)
+    await verifyProjectAccess(projectId);
+
     const { query, limit = 5, threshold = 0.3 } = await request.json();
 
     if (!query || typeof query !== "string" || query.trim().length === 0) {
@@ -42,6 +45,11 @@ export async function POST(
       context: ragService.formatContextForRAG(results),
     });
   } catch (error) {
+    // Handle project access errors
+    if (error instanceof ProjectAccessError) {
+      return handleProjectAccessError(error);
+    }
+
     console.error("Error searching documents:", error);
     return NextResponse.json(
       { error: "Failed to search documents" },

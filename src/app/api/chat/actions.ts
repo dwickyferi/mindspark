@@ -158,6 +158,15 @@ export async function insertProjectAction({
       systemPrompt: "",
     },
   });
+
+  // Import the project member repository
+  const { pgProjectMemberRepository } = await import(
+    "@/lib/db/pg/repositories/project-member-repository.pg"
+  );
+
+  // Add the creator as an owner member
+  await pgProjectMemberRepository.addProjectMember(project.id, userId, "owner");
+
   return project;
 }
 
@@ -178,6 +187,15 @@ export async function insertProjectWithThreadAction({
       systemPrompt: "",
     },
   });
+
+  // Import the project member repository
+  const { pgProjectMemberRepository } = await import(
+    "@/lib/db/pg/repositories/project-member-repository.pg"
+  );
+
+  // Add the creator as an owner member
+  await pgProjectMemberRepository.addProjectMember(project.id, userId, "owner");
+
   await chatRepository.updateThread(threadId, {
     projectId: project.id,
   });
