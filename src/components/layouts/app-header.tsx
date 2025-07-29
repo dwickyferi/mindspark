@@ -22,6 +22,7 @@ import { useShallow } from "zustand/shallow";
 import { getShortcutKeyList, Shortcuts } from "lib/keyboard-shortcuts";
 import { useTranslations } from "next-intl";
 import { TextShimmer } from "ui/text-shimmer";
+import { NotificationButton } from "../notification-button";
 
 export function AppHeader() {
   const t = useTranslations();
@@ -64,6 +65,8 @@ export function AppHeader() {
       <div className="flex-1" />
 
       <div className="flex items-center gap-2">
+        <NotificationButton />
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

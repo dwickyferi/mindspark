@@ -1,6 +1,11 @@
 import { ChatMessage, Project } from "app-types/chat";
 import { UserPreferences } from "app-types/user";
 import { MCPServerConfig } from "app-types/mcp";
+import {
+  NotificationType,
+  NotificationActionStatus,
+  NotificationPayload,
+} from "app-types/notification";
 import { sql } from "drizzle-orm";
 import {
   pgTable,
@@ -170,6 +175,35 @@ export const VerificationSchema = pgTable("verification", {
     () => /* @__PURE__ */ new Date(),
   ),
 });
+
+// Notification system
+export const NotificationSchema = pgTable(
+  "notification",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserSchema.id, { onDelete: "cascade" }),
+    type: text("type").notNull().$type<NotificationType>(),
+    message: text("message").notNull(),
+    payload: json("payload").$type<NotificationPayload>(),
+    actionStatus: text("action_status").$type<NotificationActionStatus>(),
+    isRead: boolean("is_read").notNull().default(false),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("notification_user_id_idx").on(table.userId),
+    index("notification_type_idx").on(table.type),
+    index("notification_is_read_idx").on(table.isRead),
+    index("notification_created_at_idx").on(table.createdAt),
+    index("notification_action_status_idx").on(table.actionStatus),
+  ],
+);
 
 // Tool customization table for per-user additional AI instructions
 export const McpToolCustomizationSchema = pgTable(
@@ -544,6 +578,7 @@ export type ProjectMemberEntity = typeof ProjectMemberSchema.$inferSelect;
 export type ProjectInvitationEntity =
   typeof ProjectInvitationSchema.$inferSelect;
 export type UserEntity = typeof UserSchema.$inferSelect;
+export type NotificationEntity = typeof NotificationSchema.$inferSelect;
 export type ToolCustomizationEntity =
   typeof McpToolCustomizationSchema.$inferSelect;
 export type McpServerCustomizationEntity =

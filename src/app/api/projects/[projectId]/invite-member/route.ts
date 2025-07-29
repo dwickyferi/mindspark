@@ -1,5 +1,7 @@
 import { getSession } from "auth/server";
 import { pgProjectMemberRepository } from "lib/db/pg/repositories/project-member-repository.pg";
+import { userRepository, notificationRepository } from "lib/db/repository";
+import { NotificationService } from "lib/services/notification-service";
 import { InviteMemberRequestSchema } from "app-types/project-member";
 import { z } from "zod";
 
@@ -32,10 +34,20 @@ export async function POST(
     const body = await request.json();
     const { email, role } = InviteMemberRequestSchema.parse(body);
 
-    // TODO: Check if user with this email already exists in the project
+    // Find user by email
+    const targetUser = await userRepository.findByEmail(email);
+    if (!targetUser) {
+      return new Response("User with this email does not exist", {
+        status: 404,
+      });
+    }
+
+    // Check if user is already a member of this project
     const existingMembers =
       await pgProjectMemberRepository.getProjectMembers(projectId);
-    const existingMember = existingMembers.find((m) => m.user?.email === email);
+    const existingMember = existingMembers.find(
+      (m) => m.user?.id === targetUser.id,
+    );
 
     if (existingMember) {
       return new Response("User is already a member of this project", {
@@ -43,52 +55,61 @@ export async function POST(
       });
     }
 
-    // TODO: Check for existing pending invitation
-    const pendingInvitations =
-      await pgProjectMemberRepository.getPendingInvitations(projectId);
-    const existingInvitation = pendingInvitations.find(
-      (inv) => inv.email === email,
+    // Check for existing pending invitations (check for existing notification)
+    const existingNotifications = await notificationRepository.findByUserId(
+      targetUser.id,
+      50, // limit
+      0, // offset
+    );
+
+    const existingInvitation = existingNotifications.find(
+      (notification) =>
+        notification.type === "actionable" &&
+        notification.actionStatus === "pending" &&
+        notification.payload?.projectId === projectId,
     );
 
     if (existingInvitation) {
-      return new Response("Invitation already sent to this email", {
+      return new Response("Invitation already sent to this user", {
         status: 400,
       });
     }
 
-    // Create invitation
-    const invitation = await pgProjectMemberRepository.createInvitation(
+    // Get project details
+    const project = await pgProjectMemberRepository.getProjectById(projectId);
+    if (!project) {
+      return new Response("Project not found", { status: 404 });
+    }
+
+    // Create notification-based invitation instead of direct invitation
+    const notification = await NotificationService.createProjectInvitation(
+      targetUser.id,
+      project.name,
       projectId,
-      email,
-      role,
       session.user.id,
+      role, // Pass the role from the request
     );
 
-    // TODO: Send email notification
-    // For now, we'll just return the invitation details
-    // In a real implementation, you'd integrate with an email service here
     console.log(
-      `Invitation created for ${email} to join project ${projectId} as ${role}`,
-    );
-    console.log(
-      `Invitation link: ${process.env.BETTER_AUTH_URL || "http://localhost:3000"}/projects/${projectId}/invite?token=${invitation.token}`,
+      `Project invitation notification sent to ${email} for project ${project.name}`,
     );
 
     return Response.json({
       success: true,
+      message: "Invitation sent successfully",
       invitation: {
-        id: invitation.id,
-        email: invitation.email,
-        role: invitation.role,
-        expiresAt: invitation.expiresAt,
-        inviteLink: `${process.env.BETTER_AUTH_URL || "http://localhost:3000"}/projects/${projectId}/invite?token=${invitation.token}`,
+        targetUserId: targetUser.id,
+        targetUserEmail: email,
+        projectName: project.name,
+        role: role,
+        notificationId: notification.id,
       },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return new Response("Invalid request data", { status: 400 });
     }
-    console.error("Error inviting member:", error);
+    console.error("Error sending project invitation:", error);
     return new Response("Internal Server Error", { status: 500 });
   }
 }

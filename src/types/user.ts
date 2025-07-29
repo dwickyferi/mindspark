@@ -23,6 +23,7 @@ export type UserRepository = {
   ) => Promise<User>;
   getPreferences: (userId: string) => Promise<UserPreferences | null>;
   findById: (userId: string) => Promise<User | null>;
+  findByEmail: (email: string) => Promise<User | null>;
 };
 
 export const UserZodSchema = z.object({

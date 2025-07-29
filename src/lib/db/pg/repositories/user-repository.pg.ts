@@ -60,4 +60,11 @@ export const pgUserRepository: UserRepository = {
       .where(eq(UserSchema.id, userId));
     return (result as User) ?? null;
   },
+  findByEmail: async (email: string) => {
+    const [result] = await db
+      .select()
+      .from(UserSchema)
+      .where(eq(UserSchema.email, email));
+    return (result as User) ?? null;
+  },
 };
