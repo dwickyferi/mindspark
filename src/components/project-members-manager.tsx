@@ -260,7 +260,9 @@ export function ProjectMembersManager() {
           <form onSubmit={handleInviteMember} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email" className="mb-2">
+                  Email Address
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -273,7 +275,9 @@ export function ProjectMembersManager() {
                 />
               </div>
               <div>
-                <Label htmlFor="role">Role</Label>
+                <Label htmlFor="role" className="mb-2">
+                  Role
+                </Label>
                 <Select
                   value={inviteForm.role}
                   onValueChange={(value: "admin" | "member") =>
