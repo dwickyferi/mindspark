@@ -24,7 +24,7 @@ export function NotificationButton({ className }: NotificationButtonProps) {
 
   const {
     unreadCount,
-    markInfoNotificationsAsRead,
+    markNonActionableNotificationsAsRead,
     notifications,
     markAsRead,
     connectionStatus,
@@ -73,9 +73,11 @@ export function NotificationButton({ className }: NotificationButtonProps) {
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
 
-    // When panel opens, auto-mark informational notifications as read
+    // When panel opens, auto-mark all non-actionable notifications as read
+    // (all types except actionable notifications with pending status)
     if (open) {
-      markInfoNotificationsAsRead();
+      console.log("🔔 Notification panel opened - auto-marking non-actionable notifications as read");
+      markNonActionableNotificationsAsRead();
     }
   };
 

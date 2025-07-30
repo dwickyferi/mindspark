@@ -30,6 +30,7 @@ interface NotificationContextType {
   fetchNotifications: () => Promise<void>;
   markAsRead: (notificationIds: string[]) => Promise<void>;
   markInfoNotificationsAsRead: () => Promise<void>;
+  markNonActionableNotificationsAsRead: () => Promise<void>;
   respondToNotification: (
     notificationId: string,
     action: "accept" | "reject",
@@ -130,6 +131,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     fetchNotifications: notificationState.fetchNotifications,
     markAsRead: notificationState.markAsRead,
     markInfoNotificationsAsRead: notificationState.markInfoNotificationsAsRead,
+    markNonActionableNotificationsAsRead: notificationState.markNonActionableNotificationsAsRead,
     respondToNotification: notificationState.respondToNotification,
     refreshUnreadCount: notificationState.refreshUnreadCount,
   };

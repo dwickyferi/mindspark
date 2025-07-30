@@ -19,7 +19,13 @@ export function NotificationItem({
   onRespond,
 }: NotificationItemProps) {
   const handleClick = () => {
-    if (!notification.isRead && notification.type === "info") {
+    // Mark any unread notification as read when clicked, not just "info" type
+    if (!notification.isRead) {
+      console.log(
+        "🔔 Marking notification as read:",
+        notification.id,
+        notification.type,
+      );
       onMarkAsRead(notification.id);
     }
   };
@@ -146,8 +152,8 @@ export function NotificationItem({
             )}
           </div>
 
-          {/* Mark as read button for info notifications */}
-          {!notification.isRead && notification.type === "info" && (
+          {/* Mark as read button for unread notifications (except actionable ones) */}
+          {!notification.isRead && notification.type !== "actionable" && (
             <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <Button
                 variant="ghost"
@@ -155,6 +161,10 @@ export function NotificationItem({
                 className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                 onClick={(e) => {
                   e.stopPropagation();
+                  console.log(
+                    "🔔 Mark as read button clicked for:",
+                    notification.id,
+                  );
                   onMarkAsRead(notification.id);
                 }}
               >

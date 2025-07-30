@@ -100,19 +100,23 @@ export async function PUT(request: Request) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      // Only allow informational notifications to be marked as read directly
-      // Actionable notifications can only be marked as read through the respond endpoint
-      if (notification.type === "info") {
-        validNotificationIds.push(id);
-      } else if (
+      // Allow most notification types to be marked as read directly
+      // Only actionable notifications with pending status require action first
+      if (
         notification.type === "actionable" &&
-        notification.actionStatus !== "pending"
+        notification.actionStatus === "pending"
       ) {
-        // Allow already responded actionable notifications to be marked as read
+        // Skip actionable notifications that are still pending - they should only be
+        // marked as read when the user takes action (accept/reject)
+        console.log(`Skipping pending actionable notification: ${id}`);
+      } else {
+        // Allow all other notification types (info, test, etc.) and
+        // actionable notifications that have been responded to
         validNotificationIds.push(id);
+        console.log(
+          `Adding notification to mark as read: ${id} (type: ${notification.type})`,
+        );
       }
-      // Skip actionable notifications that are still pending - they should only be
-      // marked as read when the user takes action (accept/reject)
     }
 
     if (validNotificationIds.length > 0) {

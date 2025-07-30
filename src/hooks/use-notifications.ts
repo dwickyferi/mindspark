@@ -9,6 +9,7 @@ interface UseNotificationsReturn {
   fetchNotifications: () => Promise<void>;
   markAsRead: (notificationIds: string[]) => Promise<void>;
   markInfoNotificationsAsRead: () => Promise<void>;
+  markNonActionableNotificationsAsRead: () => Promise<void>;
   respondToNotification: (
     notificationId: string,
     action: "accept" | "reject",
@@ -67,6 +68,8 @@ export function useNotifications(): UseNotificationsReturn {
 
   const markAsRead = useCallback(async (notificationIds: string[]) => {
     try {
+      console.log("🔔 markAsRead called with IDs:", notificationIds);
+
       const response = await fetch("/api/notifications", {
         method: "PUT",
         headers: {
@@ -75,11 +78,16 @@ export function useNotifications(): UseNotificationsReturn {
         body: JSON.stringify({ notificationIds }),
       });
 
+      console.log("🔔 markAsRead API response status:", response.status);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("🔔 markAsRead API error:", errorText);
         throw new Error("Failed to mark notifications as read");
       }
 
       const data = await response.json();
+      console.log("🔔 markAsRead API response data:", data);
 
       // Update local state
       setNotifications((prev) =>
@@ -91,7 +99,9 @@ export function useNotifications(): UseNotificationsReturn {
       );
 
       setUnreadCount(data.unreadCount || 0);
+      console.log("🔔 Updated unread count to:", data.unreadCount || 0);
     } catch (err) {
+      console.error("🔔 markAsRead error:", err);
       setError(err instanceof Error ? err.message : "Failed to mark as read");
     }
   }, []);
@@ -104,6 +114,23 @@ export function useNotifications(): UseNotificationsReturn {
 
     if (infoNotificationIds.length > 0) {
       await markAsRead(infoNotificationIds);
+    }
+  }, [notifications, markAsRead]);
+
+  const markNonActionableNotificationsAsRead = useCallback(async () => {
+    // Find all unread notifications that don't require user action
+    // (all types except actionable notifications with pending status)
+    const nonActionableNotificationIds = notifications
+      .filter((notif) => 
+        !notif.isRead && 
+        !(notif.type === "actionable" && notif.actionStatus === "pending")
+      )
+      .map((notif) => notif.id);
+
+    console.log("🔔 Auto-marking non-actionable notifications as read:", nonActionableNotificationIds);
+
+    if (nonActionableNotificationIds.length > 0) {
+      await markAsRead(nonActionableNotificationIds);
     }
   }, [notifications, markAsRead]);
 
@@ -251,6 +278,7 @@ export function useNotifications(): UseNotificationsReturn {
     fetchNotifications,
     markAsRead,
     markInfoNotificationsAsRead,
+    markNonActionableNotificationsAsRead,
     respondToNotification,
     refreshUnreadCount,
     addNotification,
