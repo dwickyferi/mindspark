@@ -17,7 +17,12 @@ interface NotificationButtonProps {
 export function NotificationButton({ className }: NotificationButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { data: session } = authClient.useSession();
-  const { unreadCount } = useNotifications();
+  const {
+    unreadCount,
+    markInfoNotificationsAsRead,
+    notifications,
+    markAsRead,
+  } = useNotifications();
 
   // Enable real-time updates
   useNotificationRealtime({
@@ -25,8 +30,27 @@ export function NotificationButton({ className }: NotificationButtonProps) {
     enabled: !!session?.user?.id,
   });
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+
+    // When panel opens, auto-mark informational notifications as read
+    if (open) {
+      markInfoNotificationsAsRead();
+    }
+  };
+
+  const handleMarkAllAsRead = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    const unreadIds = notifications.filter((n) => !n.isRead).map((n) => n.id);
+    if (unreadIds.length > 0) {
+      await markAsRead(unreadIds);
+    }
+  };
+
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
@@ -36,10 +60,21 @@ export function NotificationButton({ className }: NotificationButtonProps) {
             className,
           )}
           aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+          onDoubleClick={handleMarkAllAsRead}
+          title={
+            unreadCount > 0
+              ? "Double-click to mark all as read"
+              : "Notifications"
+          }
         >
-          <Bell className="h-4 w-4" />
+          <Bell
+            className={cn(
+              "h-4 w-4 transition-colors",
+              unreadCount > 0 ? "text-foreground" : "text-muted-foreground",
+            )}
+          />
           {unreadCount > 0 && (
-            <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 dark:bg-red-600 text-white text-xs font-medium rounded-full flex items-center justify-center shadow-sm">
+            <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 dark:bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg border-2 border-background z-10">
               {unreadCount > 99 ? "99+" : unreadCount}
             </div>
           )}

@@ -90,15 +90,34 @@ export async function PUT(request: Request) {
     const json = await request.json();
     const { notificationIds } = MarkAsReadZodSchema.parse(json);
 
-    // Verify all notifications belong to the authenticated user
+    // Verify all notifications belong to the authenticated user and validate read logic
+    const validNotificationIds: string[] = [];
+
     for (const id of notificationIds) {
       const notification = await notificationRepository.findById(id);
+
       if (!notification || notification.userId !== session.user.id) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
+
+      // Only allow informational notifications to be marked as read directly
+      // Actionable notifications can only be marked as read through the respond endpoint
+      if (notification.type === "info") {
+        validNotificationIds.push(id);
+      } else if (
+        notification.type === "actionable" &&
+        notification.actionStatus !== "pending"
+      ) {
+        // Allow already responded actionable notifications to be marked as read
+        validNotificationIds.push(id);
+      }
+      // Skip actionable notifications that are still pending - they should only be
+      // marked as read when the user takes action (accept/reject)
     }
 
-    await notificationRepository.markAsRead(notificationIds);
+    if (validNotificationIds.length > 0) {
+      await notificationRepository.markAsRead(validNotificationIds);
+    }
 
     const unreadCount = await notificationRepository.getUnreadCount(
       session.user.id,
@@ -107,7 +126,11 @@ export async function PUT(request: Request) {
     return NextResponse.json({
       success: true,
       unreadCount,
-      markedCount: notificationIds.length,
+      markedCount: validNotificationIds.length,
+      message:
+        validNotificationIds.length < notificationIds.length
+          ? "Some notifications require user action before they can be marked as read"
+          : undefined,
     });
   } catch (error: any) {
     console.error("Failed to mark notifications as read:", error);

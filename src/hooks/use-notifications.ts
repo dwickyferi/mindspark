@@ -8,6 +8,7 @@ interface UseNotificationsReturn {
   error: string | null;
   fetchNotifications: () => Promise<void>;
   markAsRead: (notificationIds: string[]) => Promise<void>;
+  markInfoNotificationsAsRead: () => Promise<void>;
   respondToNotification: (
     notificationId: string,
     action: "accept" | "reject",
@@ -88,6 +89,17 @@ export function useNotifications(): UseNotificationsReturn {
     }
   }, []);
 
+  const markInfoNotificationsAsRead = useCallback(async () => {
+    // Find all unread informational notifications
+    const infoNotificationIds = notifications
+      .filter((notif) => !notif.isRead && notif.type === "info")
+      .map((notif) => notif.id);
+
+    if (infoNotificationIds.length > 0) {
+      await markAsRead(infoNotificationIds);
+    }
+  }, [notifications, markAsRead]);
+
   const respondToNotification = useCallback(
     async (notificationId: string, action: "accept" | "reject") => {
       try {
@@ -139,6 +151,7 @@ export function useNotifications(): UseNotificationsReturn {
     error,
     fetchNotifications,
     markAsRead,
+    markInfoNotificationsAsRead,
     respondToNotification,
     refreshUnreadCount,
   };
