@@ -5,6 +5,7 @@ import {
   ThemeProvider,
   ThemeStyleProvider,
 } from "@/components/layouts/theme-provider";
+import { NotificationProvider } from "@/components/notification-provider";
 import { Toaster } from "ui/sonner";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
@@ -46,10 +47,12 @@ export default async function RootLayout({
         >
           <ThemeStyleProvider>
             <NextIntlClientProvider>
-              <div id="root">
-                {children}
-                <Toaster richColors />
-              </div>
+              <NotificationProvider>
+                <div id="root">
+                  {children}
+                  <Toaster richColors />
+                </div>
+              </NotificationProvider>
             </NextIntlClientProvider>
           </ThemeStyleProvider>
         </ThemeProvider>

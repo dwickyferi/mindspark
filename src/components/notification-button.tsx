@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "ui/popover";
-import { useNotifications } from "@/hooks/use-notifications";
-import { useNotificationRealtime } from "@/hooks/use-notification-simple-realtime";
+import { useNotificationContext } from "@/components/notification-provider";
+import {
+  isSupabaseConfigured,
+  isSupabaseRealtimeAvailable,
+} from "@/lib/supabase";
 import { NotificationPanel } from "@/components/notification-panel";
 import { authClient } from "auth/client";
 import { cn } from "lib/utils";
@@ -17,18 +20,55 @@ interface NotificationButtonProps {
 export function NotificationButton({ className }: NotificationButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { data: session } = authClient.useSession();
+  const userId = session?.user?.id;
+
   const {
     unreadCount,
     markInfoNotificationsAsRead,
     notifications,
     markAsRead,
-  } = useNotifications();
+    connectionStatus,
+    isRealtimeEnabled,
+  } = useNotificationContext();
 
-  // Enable real-time updates
-  useNotificationRealtime({
-    userId: session?.user?.id,
-    enabled: !!session?.user?.id,
-  });
+  // Check if Supabase is available 
+  const supabaseAvailable = isSupabaseRealtimeAvailable();
+
+  // Debug logging
+  useEffect(() => {
+    console.log("NotificationButton - Supabase status:", {
+      configured: isSupabaseConfigured(),
+      available: supabaseAvailable,
+      url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      userId: userId || "no user",
+    });
+
+    console.log("NotificationButton - Current notification state:", {
+      unreadCount,
+      notificationCount: notifications.length,
+      userId: userId || "no user",
+    });
+  }, [supabaseAvailable, userId, unreadCount, notifications.length]);
+
+  // Debug connection status
+  useEffect(() => {
+    console.log("NotificationButton - Connection status:", {
+      connectionStatus,
+      isRealtimeEnabled,
+      userId: userId || "no user",
+    });
+  }, [connectionStatus, isRealtimeEnabled, userId]);
+
+  // Debug notification state changes
+  useEffect(() => {
+    console.log("🔔 NotificationButton - State changed:", {
+      unreadCount,
+      notificationCount: notifications.length,
+      userId: userId || "no user",
+      timestamp: new Date().toLocaleTimeString(),
+    });
+  }, [unreadCount, notifications.length, userId]);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);

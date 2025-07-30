@@ -3,18 +3,20 @@
 import { ScrollArea } from "ui/scroll-area";
 import { Button } from "ui/button";
 import { CheckCheck, RefreshCw, Bell } from "lucide-react";
-import { useNotifications } from "@/hooks/use-notifications";
+import { useNotificationContext } from "@/components/notification-provider";
 import { NotificationItem } from "@/components/notification-item";
 import { cn } from "lib/utils";
 
 interface NotificationPanelProps {
   onClose?: () => void;
   className?: string;
+  showConnectionStatus?: boolean;
 }
 
 export function NotificationPanel({
   onClose,
   className,
+  showConnectionStatus = false,
 }: NotificationPanelProps) {
   const {
     notifications,
@@ -24,7 +26,8 @@ export function NotificationPanel({
     fetchNotifications,
     markAsRead,
     respondToNotification,
-  } = useNotifications();
+    isRealtimeEnabled,
+  } = useNotificationContext();
 
   const handleMarkAllAsRead = async () => {
     const unreadIds = notifications.filter((n) => !n.isRead).map((n) => n.id);
@@ -46,6 +49,18 @@ export function NotificationPanel({
           <div className="flex items-center gap-2">
             <Bell className="h-4 w-4 text-muted-foreground" />
             <h3 className="font-semibold text-sm">Notifications</h3>
+            {showConnectionStatus && (
+              <div
+                className={cn(
+                  "text-xs px-1.5 py-0.5 rounded-full",
+                  isRealtimeEnabled
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400"
+                    : "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
+                )}
+              >
+                {isRealtimeEnabled ? "Real-time" : "Polling"}
+              </div>
+            )}
             {unreadCount > 0 && (
               <div className="h-4 w-4 bg-red-500 dark:bg-red-500 text-white text-xs font-medium rounded-full flex items-center justify-center shadow-sm">
                 {unreadCount > 9 ? "9+" : unreadCount}
@@ -82,7 +97,7 @@ export function NotificationPanel({
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-h-0 max-h-96">
+      <div className="flex-1 min-h-0">
         {error && (
           <div className="p-3 text-sm text-destructive-foreground bg-destructive/10 border-b border-destructive/20">
             {error}
@@ -112,18 +127,22 @@ export function NotificationPanel({
             </p>
           </div>
         ) : (
-          <ScrollArea className="h-full">
-            <div className="divide-y divide-border">
-              {notifications.map((notification) => (
-                <NotificationItem
-                  key={notification.id}
-                  notification={notification}
-                  onMarkAsRead={(id) => markAsRead([id])}
-                  onRespond={(id, action) => respondToNotification(id, action)}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="h-80 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="divide-y divide-border">
+                {notifications.map((notification) => (
+                  <NotificationItem
+                    key={notification.id}
+                    notification={notification}
+                    onMarkAsRead={(id) => markAsRead([id])}
+                    onRespond={(id, action) =>
+                      respondToNotification(id, action)
+                    }
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
         )}
       </div>
 

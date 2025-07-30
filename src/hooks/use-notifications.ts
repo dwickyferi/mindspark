@@ -14,6 +14,13 @@ interface UseNotificationsReturn {
     action: "accept" | "reject",
   ) => Promise<void>;
   refreshUnreadCount: () => Promise<void>;
+  // New methods for real-time updates
+  addNotification: (notification: Notification) => void;
+  updateNotification: (
+    notificationId: string,
+    updates: Partial<Notification>,
+  ) => void;
+  removeNotification: (notificationId: string) => void;
 }
 
 export function useNotifications(): UseNotificationsReturn {
@@ -144,6 +151,98 @@ export function useNotifications(): UseNotificationsReturn {
     fetchNotifications();
   }, [fetchNotifications]);
 
+  // Real-time update methods
+  const addNotification = useCallback((notification: Notification) => {
+    console.log("🔔 Adding notification to state:", notification.id);
+
+    setNotifications((prev) => {
+      // Check if notification already exists to prevent duplicates
+      const exists = prev.find((n) => n.id === notification.id);
+      if (exists) {
+        console.log(
+          "⚠️ Notification already exists, skipping:",
+          notification.id,
+        );
+        return prev;
+      }
+
+      console.log(`➕ Adding new notification. Previous count: ${prev.length}`);
+      return [notification, ...prev];
+    });
+
+    if (!notification.isRead) {
+      setUnreadCount((prev) => {
+        console.log(`📊 Updating unread count: ${prev} → ${prev + 1}`);
+        return prev + 1;
+      });
+    }
+  }, []);
+
+  const updateNotification = useCallback(
+    (notificationId: string, updates: Partial<Notification>) => {
+      console.log("🔄 Updating notification:", notificationId, updates);
+
+      setNotifications((prev) => {
+        const updated = prev.map((notif) =>
+          notif.id === notificationId ? { ...notif, ...updates } : notif,
+        );
+        console.log(`📝 Updated notification list. Count: ${updated.length}`);
+        return updated;
+      });
+
+      // Update unread count if read status changed
+      if (updates.isRead !== undefined) {
+        const notification = notifications.find((n) => n.id === notificationId);
+        const wasUnread = notification?.isRead === false;
+
+        if (wasUnread && updates.isRead) {
+          setUnreadCount((prev) => {
+            const newCount = Math.max(0, prev - 1);
+            console.log(
+              `📊 Marking as read - unread count: ${prev} → ${newCount}`,
+            );
+            return newCount;
+          });
+        } else if (!wasUnread && !updates.isRead) {
+          setUnreadCount((prev) => {
+            const newCount = prev + 1;
+            console.log(
+              `📊 Marking as unread - unread count: ${prev} → ${newCount}`,
+            );
+            return newCount;
+          });
+        }
+      }
+    },
+    [notifications],
+  );
+
+  const removeNotification = useCallback((notificationId: string) => {
+    console.log("🗑️ Removing notification from state:", notificationId);
+
+    setNotifications((prev) => {
+      const notification = prev.find((n) => n.id === notificationId);
+      const filtered = prev.filter((notif) => notif.id !== notificationId);
+
+      console.log(
+        `🔥 Removed notification. Count: ${prev.length} → ${filtered.length}`,
+      );
+
+      // Update unread count if removed notification was unread
+      if (notification && !notification.isRead) {
+        setUnreadCount((count) => {
+          const newCount = Math.max(0, count - 1);
+          console.log(
+            `📊 Removing unread notification - count: ${count} → ${newCount}`,
+          );
+          return newCount;
+        });
+      }
+
+      return filtered;
+    });
+  }, []);
+
   return {
     notifications,
     unreadCount,
@@ -154,5 +253,8 @@ export function useNotifications(): UseNotificationsReturn {
     markInfoNotificationsAsRead,
     respondToNotification,
     refreshUnreadCount,
+    addNotification,
+    updateNotification,
+    removeNotification,
   };
 }
