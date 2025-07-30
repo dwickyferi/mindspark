@@ -10,7 +10,10 @@ interface UseNotificationRealtimeProps {
   // New props to accept notification actions from provider
   notificationActions?: {
     addNotification: (notification: Notification) => void;
-    updateNotification: (notificationId: string, updates: Partial<Notification>) => void;
+    updateNotification: (
+      notificationId: string,
+      updates: Partial<Notification>,
+    ) => void;
     removeNotification: (notificationId: string) => void;
     fetchNotifications: () => Promise<void>;
     refreshUnreadCount: () => Promise<void>;
@@ -53,7 +56,7 @@ export function useNotificationRealtime({
   const handleRealtimeNotification = useCallback(
     (payload: any) => {
       if (!notificationActions) return;
-      
+
       console.log("🔔 Received realtime notification:", payload);
       console.log("🔍 Current userId:", userId);
       console.log("🔍 Event details:", {
@@ -163,7 +166,7 @@ export function useNotificationRealtime({
   // Main effect for setting up subscription
   useEffect(() => {
     // Early returns for different conditions, but hooks are called first
-    
+
     // If using direct library, don't set up Supabase subscription
     if (useDirectLibrary) {
       return;
@@ -171,12 +174,14 @@ export function useNotificationRealtime({
 
     // If no notificationActions provided, we can't work with real-time updates
     if (!notificationActions) {
-      console.warn("useNotificationRealtime: No notificationActions provided, real-time updates will not work");
-      setConnectionState(prev => ({
+      console.warn(
+        "useNotificationRealtime: No notificationActions provided, real-time updates will not work",
+      );
+      setConnectionState((prev) => ({
         ...prev,
         isConnected: false,
         isEnabled: false,
-        error: "No notification actions provided"
+        error: "No notification actions provided",
       }));
       return;
     }
@@ -205,7 +210,8 @@ export function useNotificationRealtime({
     }
 
     // Validate userId format (should be a valid UUID)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(userId)) {
       console.error("❌ Invalid userId format:", userId);
       setConnectionState((prev) => ({
@@ -239,7 +245,7 @@ export function useNotificationRealtime({
       // Subscribe to notification changes for the current user
       const channelName = `notifications-${userId}`;
       console.log("📡 Creating channel:", channelName);
-      
+
       const channel = supabase
         .channel(channelName)
         .on(
@@ -290,7 +296,9 @@ export function useNotificationRealtime({
               reconnectAttempts: 0,
             }));
           } else if (status === "CHANNEL_ERROR") {
-            console.error("❌ Channel error - this is the issue you're experiencing");
+            console.error(
+              "❌ Channel error - this is the issue you're experiencing",
+            );
             setConnectionState((prev) => ({
               ...prev,
               isConnected: false,
@@ -403,5 +411,4 @@ export function useNotificationPolling({
       clearInterval(interval);
     };
   }, [userId, enabled, intervalMs, notificationActions]);
-
 }

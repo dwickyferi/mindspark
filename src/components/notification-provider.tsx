@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+} from "react";
 import {
   useNotificationRealtime,
   useNotificationPolling,
@@ -15,7 +21,7 @@ interface NotificationContextType {
   isRealtimeEnabled: boolean;
   connectionStatus: "connected" | "disconnected" | "connecting" | "polling";
   lastUpdate: Date | null;
-  
+
   // Notification data and actions - exposed from useNotifications
   notifications: Notification[];
   unreadCount: number;
@@ -51,21 +57,24 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   // Use the notifications hook to manage state
   const notificationState = useNotifications();
-  
+
   // Create stable notification actions object using useMemo to prevent recreating on every render
-  const notificationActions = useMemo(() => ({
-    addNotification: notificationState.addNotification,
-    updateNotification: notificationState.updateNotification,
-    removeNotification: notificationState.removeNotification,
-    fetchNotifications: notificationState.fetchNotifications,
-    refreshUnreadCount: notificationState.refreshUnreadCount,
-  }), [
-    notificationState.addNotification,
-    notificationState.updateNotification,
-    notificationState.removeNotification,
-    notificationState.fetchNotifications,
-    notificationState.refreshUnreadCount,
-  ]);
+  const notificationActions = useMemo(
+    () => ({
+      addNotification: notificationState.addNotification,
+      updateNotification: notificationState.updateNotification,
+      removeNotification: notificationState.removeNotification,
+      fetchNotifications: notificationState.fetchNotifications,
+      refreshUnreadCount: notificationState.refreshUnreadCount,
+    }),
+    [
+      notificationState.addNotification,
+      notificationState.updateNotification,
+      notificationState.removeNotification,
+      notificationState.fetchNotifications,
+      notificationState.refreshUnreadCount,
+    ],
+  );
 
   // Use Supabase realtime if available
   const realtimeConnection = useNotificationRealtime({
@@ -112,7 +121,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     isRealtimeEnabled: isRealtimeConfigured,
     connectionStatus,
     lastUpdate,
-    
+
     // Notification state and actions
     notifications: notificationState.notifications,
     unreadCount: notificationState.unreadCount,

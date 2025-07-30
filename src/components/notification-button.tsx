@@ -31,7 +31,7 @@ export function NotificationButton({ className }: NotificationButtonProps) {
     isRealtimeEnabled,
   } = useNotificationContext();
 
-  // Check if Supabase is available 
+  // Check if Supabase is available
   const supabaseAvailable = isSupabaseRealtimeAvailable();
 
   // Debug logging
