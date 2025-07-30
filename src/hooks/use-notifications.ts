@@ -121,13 +121,17 @@ export function useNotifications(): UseNotificationsReturn {
     // Find all unread notifications that don't require user action
     // (all types except actionable notifications with pending status)
     const nonActionableNotificationIds = notifications
-      .filter((notif) => 
-        !notif.isRead && 
-        !(notif.type === "actionable" && notif.actionStatus === "pending")
+      .filter(
+        (notif) =>
+          !notif.isRead &&
+          !(notif.type === "actionable" && notif.actionStatus === "pending"),
       )
       .map((notif) => notif.id);
 
-    console.log("🔔 Auto-marking non-actionable notifications as read:", nonActionableNotificationIds);
+    console.log(
+      "🔔 Auto-marking non-actionable notifications as read:",
+      nonActionableNotificationIds,
+    );
 
     if (nonActionableNotificationIds.length > 0) {
       await markAsRead(nonActionableNotificationIds);

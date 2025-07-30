@@ -131,7 +131,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     fetchNotifications: notificationState.fetchNotifications,
     markAsRead: notificationState.markAsRead,
     markInfoNotificationsAsRead: notificationState.markInfoNotificationsAsRead,
-    markNonActionableNotificationsAsRead: notificationState.markNonActionableNotificationsAsRead,
+    markNonActionableNotificationsAsRead:
+      notificationState.markNonActionableNotificationsAsRead,
     respondToNotification: notificationState.respondToNotification,
     refreshUnreadCount: notificationState.refreshUnreadCount,
   };

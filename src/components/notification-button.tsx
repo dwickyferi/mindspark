@@ -76,7 +76,9 @@ export function NotificationButton({ className }: NotificationButtonProps) {
     // When panel opens, auto-mark all non-actionable notifications as read
     // (all types except actionable notifications with pending status)
     if (open) {
-      console.log("🔔 Notification panel opened - auto-marking non-actionable notifications as read");
+      console.log(
+        "🔔 Notification panel opened - auto-marking non-actionable notifications as read",
+      );
       markNonActionableNotificationsAsRead();
     }
   };
