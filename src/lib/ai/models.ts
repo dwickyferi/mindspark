@@ -28,7 +28,7 @@ const staticModels = {
     "claude-3.7-sonnet": openrouter("anthropic/claude-3.7-sonnet"),
     "claude-sonnet-4": openrouter("anthropic/claude-sonnet-4"),
   },
-  moonshot: {
+  kimi: {
     "kimi-k2": openrouter("moonshotai/kimi-k2:free"),
   },
   deepseek: {
@@ -42,6 +42,10 @@ const staticModels = {
   },
   mistral: {
     "mistral-nemo": openrouter("mistralai/mistral-nemo"),
+  },
+  zai: {
+    "glm-4.5-air": openrouter("z-ai/glm-4.5-air:free"),
+    "glm-4.5": openrouter("z-ai/glm-4.5"),
   },
 };
 
