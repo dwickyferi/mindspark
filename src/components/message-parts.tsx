@@ -526,6 +526,17 @@ const CodeExecutor = dynamic(
   },
 );
 
+const SequentialThinkingToolInvocation = dynamic(
+  () =>
+    import("./tool-invocation/sequential-thinking").then(
+      (mod) => mod.SequentialThinkingToolInvocation,
+    ),
+  {
+    ssr: false,
+    loading,
+  },
+);
+
 export const ToolMessagePart = memo(
   ({
     part,
@@ -602,6 +613,14 @@ export const ToolMessagePart = memo(
         toolName === DefaultToolName.WebContent
       ) {
         return <WebSearchToolInvocation part={toolInvocation} />;
+      }
+
+      if (
+        toolName === DefaultToolName.SequentialThinking ||
+        toolName === DefaultToolName.EnhancedSequentialThinking ||
+        toolName === DefaultToolName.ReasoningPlanner
+      ) {
+        return <SequentialThinkingToolInvocation part={toolInvocation} />;
       }
 
       if (toolName === DefaultToolName.JavascriptExecution) {

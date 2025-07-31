@@ -22,6 +22,7 @@ export enum NodeKind {
   Http = "http", // HTTP request node
   Template = "template", // Template processing node
   Code = "code", // Code execution node (future implementation)
+  Reasoning = "reasoning", // Advanced reasoning and planning node
   Output = "output", // Exit point of workflow - produces final result
 }
 
@@ -189,6 +190,24 @@ export type TemplateNodeData = BaseWorkflowNodeDataData<{
 };
 
 /**
+ * Reasoning node: Advanced reasoning and planning capabilities
+ * Supports sequential thinking, hypothesis testing, and tool planning
+ */
+export type ReasoningNodeData = BaseWorkflowNodeDataData<{
+  kind: NodeKind.Reasoning;
+}> & {
+  reasoningType: "sequential" | "planning" | "hybrid";
+  maxSteps: number;
+  allowBranching: boolean;
+  allowRevision: boolean;
+  enableHypothesisTesting: boolean;
+  enableToolPlanning: boolean;
+  initialPrompt?: string;
+  outputFormat: "thoughts" | "plan" | "summary" | "conclusions";
+  timeout?: number; // milliseconds
+};
+
+/**
  * Union type of all possible node data types.
  * When adding a new node type, include it in this union.
  */
@@ -200,7 +219,8 @@ export type WorkflowNodeData =
   | ToolNodeData
   | ConditionNodeData
   | HttpNodeData
-  | TemplateNodeData;
+  | TemplateNodeData
+  | ReasoningNodeData;
 
 /**
  * Runtime fields added during workflow execution

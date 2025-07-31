@@ -4,6 +4,7 @@ export enum AppDefaultToolkit {
   Http = "http",
   Code = "code",
   Analytics = "analytics",
+  Reasoning = "reasoning",
 }
 
 export enum DefaultToolName {
@@ -15,5 +16,10 @@ export enum DefaultToolName {
   Http = "http",
   JavascriptExecution = "mini-javascript-execution",
   PythonExecution = "python-execution",
-  TextToSql = "textToSql",
+  TextToSql = "text-to-sql",
+  SequentialThinking = "sequential-thinking",
+  EnhancedSequentialThinking = "enhanced-sequential-thinking",
+  ReasoningPlanner = "reasoning-planner",
 }
+
+export const SequentialThinkingToolName = "sequential-thinking";

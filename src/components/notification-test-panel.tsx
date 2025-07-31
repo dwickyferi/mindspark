@@ -13,14 +13,7 @@ import { Button } from "ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "ui/card";
 import { Badge } from "ui/badge";
 import { ScrollArea } from "ui/scroll-area";
-import {
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Wifi,
-  WifiOff,
-  Database,
-} from "lucide-react";
+import { AlertCircle, CheckCircle, XCircle, Wifi, WifiOff } from "lucide-react";
 import {
   isSupabaseConfigured,
   isSupabaseRealtimeAvailable,

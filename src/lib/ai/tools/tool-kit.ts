@@ -8,6 +8,9 @@ import { httpFetchTool } from "./http/fetch";
 import { jsExecutionTool } from "./code/js-run-tool";
 import { pythonExecutionTool } from "./code/python-run-tool";
 import { textToSqlTool } from "./text-to-sql";
+import { sequentialThinkingTool } from "./thinking/sequential-thinking";
+import { enhancedSequentialThinkingTool } from "./thinking/enhanced-sequential-thinking";
+import { reasoningPlannerTool } from "./thinking/reasoning-planner";
 
 export const APP_DEFAULT_TOOL_KIT: Record<
   AppDefaultToolkit,
@@ -31,5 +34,11 @@ export const APP_DEFAULT_TOOL_KIT: Record<
   },
   [AppDefaultToolkit.Analytics]: {
     [DefaultToolName.TextToSql]: textToSqlTool,
+  },
+  [AppDefaultToolkit.Reasoning]: {
+    [DefaultToolName.SequentialThinking]: sequentialThinkingTool,
+    [DefaultToolName.EnhancedSequentialThinking]:
+      enhancedSequentialThinkingTool,
+    [DefaultToolName.ReasoningPlanner]: reasoningPlannerTool,
   },
 };
