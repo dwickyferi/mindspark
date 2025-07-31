@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
+import { authClient } from "auth/client";
 import {
   Card,
   CardContent,
@@ -76,6 +77,7 @@ const roleColors = {
 export function ProjectMembersManager() {
   const params = useParams();
   const projectId = params.id as string;
+  const { data: session } = authClient.useSession();
 
   const [inviteForm, setInviteForm] = useState<InviteMemberForm>({
     email: "",
@@ -228,7 +230,7 @@ export function ProjectMembersManager() {
 
   // Find current user's role
   const currentUserRole = members?.find(
-    (m) => m.user?.email === "current-user@example.com",
+    (m) => m.user?.email === session?.user?.email,
   )?.role;
 
   if (error) {
