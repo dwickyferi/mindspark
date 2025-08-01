@@ -55,17 +55,17 @@ export function useNotificationRealtime({
 
   // Polling fallback for when realtime fails
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const startPollingFallback = useCallback(() => {
     if (!notificationActions) return;
-    
+
     console.log("🔄 Starting polling fallback for notifications");
-    
+
     // Clear any existing polling
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
     }
-    
+
     // Poll every 10 seconds
     pollingIntervalRef.current = setInterval(() => {
       console.log("📮 Polling for notification updates");
@@ -349,7 +349,9 @@ export function useNotificationRealtime({
               }, 2000 * attempt); // Exponential backoff
             } else {
               // Max attempts reached, fall back to polling
-              console.log("🔄 Max reconnect attempts reached, falling back to polling");
+              console.log(
+                "🔄 Max reconnect attempts reached, falling back to polling",
+              );
               setConnectionState((prev) => ({
                 ...prev,
                 isConnected: false,
