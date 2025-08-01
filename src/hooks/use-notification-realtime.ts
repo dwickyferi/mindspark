@@ -28,6 +28,7 @@ interface ConnectionState {
   subscriptionStatus?: string;
   lastError?: any;
   reconnectAttempts?: number;
+  usingPolling?: boolean; // New flag to indicate if we're using polling fallback
 }
 
 export function useNotificationRealtime({
@@ -51,6 +52,35 @@ export function useNotificationRealtime({
   // Always create refs and callbacks, even if we might not use them
   const actionsRef = useRef(notificationActions);
   actionsRef.current = notificationActions;
+
+  // Polling fallback for when realtime fails
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const startPollingFallback = useCallback(() => {
+    if (!notificationActions) return;
+    
+    console.log("🔄 Starting polling fallback for notifications");
+    
+    // Clear any existing polling
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+    
+    // Poll every 10 seconds
+    pollingIntervalRef.current = setInterval(() => {
+      console.log("📮 Polling for notification updates");
+      notificationActions.fetchNotifications();
+      notificationActions.refreshUnreadCount();
+    }, 10000);
+  }, [notificationActions]);
+
+  const stopPollingFallback = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      console.log("⏹️ Stopping polling fallback");
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
 
   // Create a stable callback that doesn't change on every render
   const handleRealtimeNotification = useCallback(
@@ -317,6 +347,16 @@ export function useNotificationRealtime({
                   setupSubscription(attempt + 1);
                 }
               }, 2000 * attempt); // Exponential backoff
+            } else {
+              // Max attempts reached, fall back to polling
+              console.log("🔄 Max reconnect attempts reached, falling back to polling");
+              setConnectionState((prev) => ({
+                ...prev,
+                isConnected: false,
+                error: "Realtime failed, using polling instead",
+                usingPolling: true,
+              }));
+              startPollingFallback();
             }
           } else if (status === "TIMED_OUT") {
             console.error(
@@ -357,6 +397,7 @@ export function useNotificationRealtime({
         if (supabase) {
           supabase.removeChannel(channel);
         }
+        stopPollingFallback(); // Clean up polling when component unmounts
       };
     };
 
