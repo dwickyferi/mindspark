@@ -274,8 +274,8 @@ export function DirectRealtimeTest({ userId }: DirectRealtimeTestProps) {
               (usually 54321)
             </p>
             <p>
-              3. The connection should show "Connected" and subscription should
-              show "SUBSCRIBED"
+              3. The connection should show Connected and subscription should
+              show SUBSCRIBED
             </p>
             <p>4. Test by creating/updating notifications in another tab</p>
           </div>

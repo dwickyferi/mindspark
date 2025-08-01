@@ -3,13 +3,13 @@ import { NextRequest } from "next/server";
 import { generateTitleFromUserMessageAction } from "../actions";
 
 import { customModelProvider } from "lib/ai/models";
-import { getSession } from "auth/server";
+import { getSessionForApi } from "auth/server";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ threadId: string }> },
 ) {
-  const session = await getSession();
+  const session = await getSessionForApi();
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
   }

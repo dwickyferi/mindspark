@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getSession } from "lib/auth/server";
+import { getSessionForApi } from "lib/auth/server";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import { DatasourceSchema } from "lib/db/pg/schema.pg";
 import { eq, and } from "drizzle-orm";
@@ -8,7 +8,7 @@ import { DatabaseEngineFactory } from "lib/database/engines/DatabaseEngineFactor
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
     if (!session?.user?.id) {
       console.log("🚫 table-details: Unauthorized - no session");
       return Response.json({ error: "Unauthorized" }, { status: 401 });

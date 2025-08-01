@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import { StudioSessionSchema } from "lib/db/pg/schema.pg";
 import { eq, and } from "drizzle-orm";
-import { getSession } from "lib/auth/server";
+import { getSessionForApi } from "lib/auth/server";
 
 // GET - Fetch specific session
 export async function GET(
@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ sessionId: string }> },
 ) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -67,7 +67,7 @@ export async function PUT(
   { params }: { params: Promise<{ sessionId: string }> },
 ) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -159,7 +159,7 @@ export async function DELETE(
   { params }: { params: Promise<{ sessionId: string }> },
 ) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }

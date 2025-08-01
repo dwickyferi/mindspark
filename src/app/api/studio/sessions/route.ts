@@ -2,11 +2,11 @@ import { NextRequest } from "next/server";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import { StudioSessionSchema } from "lib/db/pg/schema.pg";
 import { eq } from "drizzle-orm";
-import { getSession } from "lib/auth/server";
+import { getSessionForApi } from "lib/auth/server";
 
 export async function GET() {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -57,7 +57,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }

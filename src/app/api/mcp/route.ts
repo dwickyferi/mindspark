@@ -1,10 +1,10 @@
-import { getSession } from "auth/server";
+import { getSessionForApi } from "auth/server";
 import { McpServerSchema } from "lib/db/pg/schema.pg";
 import { NextResponse } from "next/server";
 import { saveMcpClientAction } from "./actions";
 
 export async function POST(request: Request) {
-  const session = await getSession();
+  const session = await getSessionForApi();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

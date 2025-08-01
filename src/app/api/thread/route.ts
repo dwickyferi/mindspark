@@ -1,16 +1,16 @@
 import { chatRepository } from "lib/db/repository";
-import { getSession } from "auth/server";
-import { redirect } from "next/navigation";
+import { getSessionForApi } from "auth/server";
+import { NextResponse } from "next/server";
 import { generateUUID } from "lib/utils";
 import { generateTitleFromUserMessageAction } from "../chat/actions";
 
 export async function POST(request: Request) {
   const { id, projectId, message, model } = await request.json();
 
-  const session = await getSession();
+  const session = await getSessionForApi();
 
   if (!session?.user.id) {
-    return redirect("/sign-in");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const title = await generateTitleFromUserMessageAction({

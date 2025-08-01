@@ -1,10 +1,10 @@
-import { getSession } from "auth/server";
+import { getSessionForApi } from "auth/server";
 import { userRepository } from "lib/db/repository";
 import { NotificationService } from "lib/services/notification-service";
 
 export async function POST(request: Request) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
 
     if (!session?.user?.id) {
       return new Response("Unauthorized", { status: 401 });

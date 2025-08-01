@@ -1,11 +1,11 @@
-import { getSession } from "auth/server";
+import { getSessionForApi } from "auth/server";
 import { UserPreferencesZodSchema } from "app-types/user";
 import { userRepository } from "lib/db/repository";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -22,7 +22,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

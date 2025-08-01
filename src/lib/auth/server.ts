@@ -73,6 +73,24 @@ export const auth = betterAuth({
   },
 });
 
+// For API routes - returns null if no session, doesn't redirect
+export const getSessionForApi = async () => {
+  "use server";
+  const session = await auth.api
+    .getSession({
+      headers: await headers(),
+    })
+    .catch((e) => {
+      logger.error(e);
+      return null;
+    });
+  if (!session) {
+    logger.error("No session found");
+  }
+  return session;
+};
+
+// For pages - redirects to sign-in if no session
 export const getSession = async () => {
   "use server";
   const session = await auth.api

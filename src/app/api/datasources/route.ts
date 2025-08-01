@@ -2,14 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import { DatasourceSchema } from "lib/db/pg/schema.pg";
 import { eq } from "drizzle-orm";
-import { getSession } from "lib/auth/server";
+import { getSessionForApi } from "lib/auth/server";
 import { encrypt } from "lib/crypto";
 import { DatabaseEngineFactory } from "lib/database/engines/DatabaseEngineFactory";
 
 // GET - List user's datasources
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const userId = session.user.id;
 
     const datasources = await db
@@ -64,7 +67,10 @@ export async function GET(request: NextRequest) {
 // POST - Create new datasource
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const userId = session.user.id;
 
     const body = await request.json();

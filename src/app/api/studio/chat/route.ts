@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getSession } from "lib/auth/server";
+import { getSessionForApi } from "lib/auth/server";
 import { streamText } from "ai";
 import { customModelProvider } from "@/lib/ai/models";
 
@@ -11,7 +11,7 @@ export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }

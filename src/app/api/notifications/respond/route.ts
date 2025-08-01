@@ -1,4 +1,4 @@
-import { getSession } from "auth/server";
+import { getSessionForApi } from "auth/server";
 import {
   notificationRepository,
   projectMemberRepository,
@@ -8,7 +8,7 @@ import { NotificationResponseZodSchema } from "app-types/notification";
 
 export async function POST(request: Request) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

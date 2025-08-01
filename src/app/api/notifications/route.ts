@@ -1,4 +1,4 @@
-import { getSession } from "auth/server";
+import { getSessionForApi } from "auth/server";
 import { notificationRepository } from "lib/db/repository";
 import { NextResponse } from "next/server";
 import {
@@ -8,7 +8,7 @@ import {
 
 export async function GET(request: Request) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const session = await getSession();
+    const session = await getSessionForApi();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
