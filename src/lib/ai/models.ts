@@ -1,4 +1,3 @@
-import { openai } from "@ai-sdk/openai";
 import { openrouter } from "@openrouter/ai-sdk-provider";
 import { LanguageModel } from "ai";
 import {
@@ -9,35 +8,51 @@ import { ChatModel } from "app-types/chat";
 
 const staticModels = {
   openai: {
-    "gpt-4.1": openai("gpt-4.1"),
-    "gpt-4.1-mini": openai("gpt-4.1-mini"),
-    "4o": openai("gpt-4o"),
-    "4o-mini": openai("gpt-4o-mini", {}),
-    "o4-mini": openai("o4-mini", {
-      reasoningEffort: "medium",
-    }),
+    "gpt-4.1": openrouter("openai/gpt-4o"),
+    "gpt-4.1-mini": openrouter("openai/gpt-4.1-mini"),
+    "gpt-4o": openrouter("openai/gpt-4o"),
   },
-  openRouter: {
-    "qwen3-8b:free": openrouter("qwen/qwen3-8b:free"),
-    "qwen3-14b:free": openrouter("qwen/qwen3-14b:free"),
-    "qwen/qwen3-235b-a22b-07-25:free": openrouter(
-      "qwen/qwen3-235b-a22b-07-25:free",
-    ),
-    "x-ai/grok-4": openrouter("x-ai/grok-4"),
-    "x-ai/grok-3-mini": openrouter("x-ai/grok-3-mini"),
-    "anthropic/claude-sonnet-4": openrouter("anthropic/claude-sonnet-4"),
-    "anthropic/claude-3.7-sonnet": openrouter("anthropic/claude-3.7-sonnet"),
-    "anthropic/claude-3-5-sonnet": openrouter("anthropic/claude-3-5-sonnet"),
-    "google/gemini-2.5-flash-lite": openrouter("google/gemini-2.5-flash-lite"),
-    "openai/gpt-4o": openrouter("openai/gpt-4o"),
-    "openai/gpt-4.1": openrouter("openai/gpt-4.1"),
+  qwen: {
+    "qwen3-8b": openrouter("qwen/qwen3-8b:free"),
+    "qwen3-14b": openrouter("qwen/qwen3-14b:free"),
+    "qwen3-235b-a22b-07-25": openrouter("qwen/qwen3-235b-a22b-07-25:free"),
+    "qwen3-coder": openrouter("qwen/qwen3-coder:free"),
+  },
+  xai: {
+    "grok-3-mini": openrouter("x-ai/grok-3-mini"),
+    "grok-4": openrouter("x-ai/grok-4"),
+  },
+  anthropic: {
+    "claude-3-5-sonnet": openrouter("anthropic/claude-3-5-sonnet"),
+    "claude-3.5-haiku": openrouter("anthropic/claude-3.5-haiku"),
+    "claude-3.7-sonnet": openrouter("anthropic/claude-3.7-sonnet"),
+    "claude-sonnet-4": openrouter("anthropic/claude-sonnet-4"),
+  },
+  kimi: {
+    "kimi-k2": openrouter("moonshotai/kimi-k2:free"),
+  },
+  deepseek: {
+    "deepseek-chat-v3-0324": openrouter("deepseek/deepseek-chat-v3-0324:free"),
+    "deepseek-r1-0528": openrouter("deepseek/deepseek-r1-0528:free"),
+  },
+  google: {
+    "gemini-2.5-flash-lite": openrouter("google/gemini-2.5-flash-lite"),
+    "gemini-2.5-flash": openrouter("google/gemini-2.5-flash"),
+    "gemini-2.5-pro": openrouter("google/gemini-2.5-pro"),
+  },
+  mistral: {
+    "mistral-nemo": openrouter("mistralai/mistral-nemo"),
+  },
+  zai: {
+    "glm-4.5-air": openrouter("z-ai/glm-4.5-air:free"),
+    "glm-4.5": openrouter("z-ai/glm-4.5"),
   },
 };
 
 const staticUnsupportedModels = new Set([
   staticModels.openai["o4-mini"],
-  staticModels.openRouter["qwen3-8b:free"],
-  staticModels.openRouter["qwen3-14b:free"],
+  staticModels.qwen["qwen3-8b:free"],
+  staticModels.qwen["qwen3-14b:free"],
 ]);
 
 const openaiCompatibleProviders = openaiCompatibleModelsSafeParse(

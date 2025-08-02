@@ -5,6 +5,7 @@ import { useChatModels } from "@/hooks/queries/use-chat-models";
 import { ChatModel } from "app-types/chat";
 import { CheckIcon, ChevronDown } from "lucide-react";
 import { Fragment, memo, PropsWithChildren, useEffect, useState } from "react";
+import { AIIcon } from "ui/ai-icon";
 import { Button } from "ui/button";
 import { ClaudeIcon } from "ui/claude-icon";
 
@@ -17,10 +18,15 @@ import {
   CommandList,
   CommandSeparator,
 } from "ui/command";
+import { DeepSeekIcon } from "ui/deepseek-icon";
 import { GeminiIcon } from "ui/gemini-icon";
 import { GrokIcon } from "ui/grok-icon";
+import { KimiIcon } from "ui/kimi-icon";
+import { MistralIcon } from "ui/mistral-icon";
 import { OpenAIIcon } from "ui/openai-icon";
 import { Popover, PopoverContent, PopoverTrigger } from "ui/popover";
+import { QwenIcon } from "ui/qwen-icon";
+import { ZaiIcon } from "ui/zai-icon";
 
 interface SelectModelProps {
   onSelect: (model: ChatModel) => void;
@@ -128,7 +134,19 @@ const ProviderHeader = memo(function ProviderHeader({
         <ClaudeIcon className="size-3" />
       ) : provider === "google" ? (
         <GeminiIcon className="size-3" />
-      ) : null}
+      ) : provider === "deepseek" ? (
+        <DeepSeekIcon className="size-3" />
+      ) : provider === "qwen" ? (
+        <QwenIcon className="size-3" />
+      ) : provider === "mistral" ? (
+        <MistralIcon className="size-3" />
+      ) : provider === "kimi" ? (
+        <KimiIcon className="size-3" />
+      ) : provider === "zai" ? (
+        <ZaiIcon className="size-3" />
+      ) : (
+        <AIIcon className="size-3" />
+      )}
       {provider}
     </div>
   );
