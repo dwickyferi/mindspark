@@ -38,7 +38,7 @@ export interface ChartGenerationRequest {
   query: string;
   selectedTables: string[];
   datasourceId: string;
-  aiProvider: "openai" | "anthropic" | "ollama";
+  aiProvider: string; // Support any AI provider, not just limited ones
   aiModel: string;
   maxRetries?: number;
 }

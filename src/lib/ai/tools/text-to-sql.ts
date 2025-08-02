@@ -365,6 +365,14 @@ const textToSqlSchema = z.object({
     .describe(
       "True if this is only a visual styling change (colors, chart type) without SQL modification",
     ),
+  aiProvider: z
+    .string()
+    .optional()
+    .describe("AI provider to use (e.g., openai, anthropic, etc.)"),
+  aiModel: z
+    .string()
+    .optional()
+    .describe("AI model to use (e.g., gpt-4, claude-3-5-sonnet, etc.)"),
 });
 
 export const textToSqlTool = tool({
@@ -378,6 +386,23 @@ export const textToSqlTool = tool({
     - Responsive sizing and margins
     
     The tool returns a DynamicChartConfig object that can be directly rendered without manual configuration.
+    
+    AI PROVIDER SUPPORT:
+    This tool supports all static model providers defined in the system:
+    - OpenAI: gpt-4.1, gpt-4.1-mini, gpt-4o
+    - Qwen: qwen3-8b, qwen3-14b, qwen3-235b-a22b-07-25, qwen3-coder
+    - X.AI: grok-3-mini, grok-4
+    - Anthropic: claude-3-5-sonnet, claude-3.5-haiku, claude-3.7-sonnet, claude-sonnet-4
+    - Kimi: kimi-k2
+    - DeepSeek: deepseek-chat-v3-0324, deepseek-r1-0528
+    - Google: gemini-2.5-flash-lite, gemini-2.5-flash, gemini-2.5-pro
+    - Mistral: mistral-nemo
+    - ZhipuAI (zai): glm-4.5-air, glm-4.5
+    - Plus any OpenAI-compatible providers configured via OPENAI_COMPATIBLE_DATA
+    
+    The aiProvider and aiModel parameters are automatically injected by the studio chat system 
+    based on the currently selected model in the studio interface. The system validates that
+    the provider is one of the supported static providers before passing it to the SQL generator.
     
     VISUAL-ONLY CHANGES:
     For color changes, chart type changes, or other visual styling modifications WITHOUT data changes:
@@ -410,6 +435,8 @@ export const textToSqlTool = tool({
     currentSql,
     currentChartConfig,
     isVisualOnlyChange = false,
+    aiProvider,
+    aiModel,
   }) => {
     try {
       console.log("textToSql tool called with:", {
@@ -571,8 +598,8 @@ export const textToSqlTool = tool({
         selectedTables,
         datasourceId,
         datasourceConfig: datasourceResponse.data.connectionConfig,
-        aiProvider: "openai", // This will be configurable
-        aiModel: "gpt-4", // This will be configurable
+        aiProvider: aiProvider || "openai", // Use provided AI provider or fallback to openai
+        aiModel: aiModel || "gpt-4", // Use provided AI model or fallback to gpt-4
         maxRetries: 3,
         chartId, // Pass chartId for caching
         useCache: true, // Enable caching

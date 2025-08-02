@@ -31,7 +31,64 @@ export async function POST(request: NextRequest) {
     const tools: any = {};
 
     if (allowedAppDefaultToolkit.includes("analytics")) {
-      Object.assign(tools, APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Analytics]);
+      // Get the original tools
+      const analyticsTools = {
+        ...APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Analytics],
+      };
+
+      // Create a modified textToSql tool that has access to the current model context
+      if (analyticsTools.textToSql) {
+        const originalTextToSqlTool = analyticsTools.textToSql;
+
+        // Create a new tool that wraps the original and injects model context
+        analyticsTools.textToSql = {
+          ...originalTextToSqlTool,
+          execute: async (params: any, options?: any) => {
+            // Get the provider and model from the current chat model
+            const aiProvider = chatModel?.provider || "openai";
+            const aiModel = chatModel?.model || "gpt-4";
+
+            // Validate that the provider is one of our supported static model providers
+            const supportedProviders = [
+              "openai",
+              "qwen",
+              "xai",
+              "anthropic",
+              "kimi",
+              "deepseek",
+              "google",
+              "mistral",
+              "zai",
+            ];
+
+            const finalProvider = supportedProviders.includes(aiProvider)
+              ? aiProvider
+              : "openai"; // fallback to openai if provider not recognized
+
+            // Inject the current model information into the parameters
+            const enhancedParams = {
+              ...params,
+              aiProvider: finalProvider,
+              aiModel: aiModel,
+            };
+
+            console.log(
+              "[Studio Chat] Enhanced textToSql params with model context:",
+              {
+                originalProvider: chatModel?.provider,
+                finalProvider: finalProvider,
+                model: enhancedParams.aiModel,
+                supportedProviders,
+              },
+            );
+
+            // Call the original tool with enhanced parameters
+            return originalTextToSqlTool.execute!(enhancedParams, options);
+          },
+        };
+      }
+
+      Object.assign(tools, analyticsTools);
     }
 
     console.log(
